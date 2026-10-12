@@ -1,4 +1,6 @@
 (function () {
+    if (globalThis.__shiyingMediaBridge) return;
+    globalThis.__shiyingMediaBridge = true;
     var _videoObj = [];
     var _videoSrc = [];
     var _key = new Set();

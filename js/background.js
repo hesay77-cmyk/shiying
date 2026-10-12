@@ -7,7 +7,16 @@ if (typeof G === 'undefined') {
     importScripts("/js/polyfill.js", "/js/function.js", "/js/templates.js", "/js/init.js");
 }
 
-importScripts("/js/shiying-background.js");
+importScripts("/js/shiying-access.js", "/js/shiying-background.js");
+chrome.permissions.onRemoved.addListener(() => {
+    ShiyingAccess.sync().then(() => {
+        for (const id of Object.keys(cacheData)) if (Array.isArray(cacheData[id])) {
+            cacheData[id] = cacheData[id].filter(item => ShiyingAccess.allows(item.webUrl || item.initiator) && ShiyingAccess.allows(item.url));
+        }
+        (chrome.storage.session ?? chrome.storage.local).set({MediaData:cacheData});
+        chrome.runtime.sendMessage({Message:'shiyingAccessRevoked'}).catch(() => {});
+    }).catch(console.error);
+});
 
 // Service Worker 5分钟后会强制终止扩展
 // https://bugs.chromium.org/p/chromium/issues/detail?id=1271154
@@ -66,6 +75,7 @@ chrome.alarms.onAlarm.addListener(function (alarm) {
 chrome.webRequest.onSendHeaders.addListener(
     function (data) {
         if (G && G.initSyncComplete && !G.enable) { return; }
+        if (!ShiyingAccess.allows(data.url) || (data.initiator?.startsWith('http') && !ShiyingAccess.allows(data.initiator))) { return; }
         if (data.requestHeaders) {
             G.requestHeaders.set(data.requestId, data.requestHeaders);
             data.allRequestHeaders = data.requestHeaders;
@@ -234,6 +244,7 @@ function findMedia(data, isRegex = false, filter = false, timer = false) {
 
     chrome.tabs.get(data.tabId, async function (webInfo) {
         if (chrome.runtime.lastError) { return; }
+        if (!ShiyingAccess.allows(webInfo?.url) || !ShiyingAccess.allows(data.url)) { return; }
         data.requestHeaders = getRequestHeaders(data);
         // requestHeaders 中cookie 单独列出来
         if (data.requestHeaders?.cookie) {
@@ -527,6 +538,10 @@ chrome.runtime.onMessage.addListener(function (Message, sender, sendResponse) {
     }
     // 从 content-script 或 catch-script 传来的媒体url
     if (Message.Message == "addMedia") {
+        if (!ShiyingAccess.allows(Message.href) || !ShiyingAccess.allows(Message.url)) {
+            sendResponse({ok:false,error:"请先允许此网站和媒体来源"});
+            return true;
+        }
         chrome.tabs.query({}, function (tabs) {
             for (let item of tabs) {
                 if (item.url == Message.href) {

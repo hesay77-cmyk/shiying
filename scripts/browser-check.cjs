@@ -54,8 +54,13 @@ async function poll(action, timeout = 25000) {
 (async () => {
     await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
     origin = `http://127.0.0.1:${server.address().port}`;
+    // Isolated local-media fixture only. These hosts are not added to the product package.
+    const extension=path.join(run,'extension-fixture');fs.cpSync(path.join(root,'build'),extension,{recursive:true});
+    const fixtureManifest=JSON.parse(fs.readFileSync(path.join(extension,'manifest.json'),'utf8'));
+    fixtureManifest.host_permissions.push('http://127.0.0.1/*');fixtureManifest.content_scripts[0].matches.push('http://127.0.0.1/*');
+    fs.writeFileSync(path.join(extension,'manifest.json'),JSON.stringify(fixtureManifest));
     const errors = [], downloadEvents = [], external = [];
-    const context = await chromium.launchPersistentContext(path.join(run,'profile'), {channel:'chromium', executablePath:process.env.SHIYING_CHROMIUM, headless:true, acceptDownloads:true, downloadsPath:path.join(run,'downloads'), viewport:{width:440,height:600}, locale:'en-US', args:[`--disable-extensions-except=${path.join(root,'build')}`,`--load-extension=${path.join(root,'build')}`,'--lang=en-US']});
+    const context = await chromium.launchPersistentContext(path.join(run,'profile'), {channel:'chromium', executablePath:process.env.SHIYING_CHROMIUM, headless:true, acceptDownloads:true, downloadsPath:path.join(run,'downloads'), viewport:{width:440,height:600}, locale:'en-US', args:[`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--lang=en-US']});
     context.on('page', page => {page.on('pageerror', error=>errors.push(error.message));page.on('download', download=>downloadEvents.push(download));});
     context.on('request', req=>{if (/^https?:/.test(req.url()) && !req.url().startsWith(origin) && !req.url().startsWith('http://127.0.0.1:17863/')) external.push(req.url());});
     let success = false;

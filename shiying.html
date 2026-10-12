@@ -6,6 +6,7 @@
   <title>拾影 · 网页视频下载</title>
   <link rel="stylesheet" href="css/shiying.css">
   <script src="js/shiying-core.js" defer></script>
+  <script src="js/shiying-access.js" defer></script>
   <script src="js/shiying-platform.js" defer></script>
   <script src="js/shiying-platform-ui.js" defer></script>
   <script src="js/shiying.js" defer></script>
@@ -18,6 +19,7 @@
       <button id="pause">暂停识别</button>
       <button id="downloads">打开下载文件夹</button>
       <button id="advanced">高级工具</button>
+      <button id="siteSettings">管理网站权限</button>
       <button id="help">使用说明与开源信息</button>
     </div></details>
   </header>
@@ -33,6 +35,7 @@
       <form id="platformForm"><label class="visually-hidden" for="platformURL">视频网址</label><div class="link-input"><span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="m9 15 6-6m-5-2 2-2a5 5 0 0 1 7 7l-2 2M14 17l-2 2a5 5 0 0 1-7-7l2-2"/></svg></span><input id="platformURL" type="url" required aria-label="视频网址" placeholder="粘贴视频网址"><button id="platformRead" type="submit">读取</button></div></form>
     </section>
     <div id="mediaArea">
+    <section id="siteAccess" class="site-access" hidden><p id="siteAccessNote">首次使用时，只允许此网站及本页检测到的媒体来源。</p><button id="allowSite" class="download-button">允许此网站</button></section>
     <div class="list-heading"><h2>发现的媒体 <span id="count">0</span></h2><button id="clear" class="text-button">清空列表</button></div>
     <div class="filters"><div class="segments" role="group" aria-label="媒体类型"><button class="active" data-filter="all" aria-pressed="true">全部</button><button data-filter="video" aria-pressed="false">视频</button><button data-filter="audio" aria-pressed="false">音频</button></div><input id="search" type="search" placeholder="搜索名称或格式" aria-label="搜索名称或格式"></div>
     <div id="empty" class="empty"><div class="empty-symbol" aria-hidden="true">▷</div><h3>先播放一下网页里的视频</h3><p>拾影会在这里列出找到的视频。<br>如果已经在播放，刷新网页后再试一次。</p></div>

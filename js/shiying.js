@@ -1,6 +1,6 @@
 // 拾影，2026-10-12：无框架的中文主界面。GPL-3.0。
 const $ = selector => document.querySelector(selector);
-let tabId, filter = 'all', media = [], toastTimer;
+let tabId, filter = 'all', media = [], toastTimer, currentSite, accessCandidates = [], accessPatterns = [];
 const downloads = new Map();
 const cards = new Map();
 function notify(text) {
@@ -99,6 +99,7 @@ async function initialize() {
     const [tab] = requested ? [await chrome.tabs.get(requested)] : await chrome.tabs.query({active:true, currentWindow:true});
     if (!tab) throw new Error('没有找到当前网页');
     tabId = tab.id;
+    currentSite = tab;
     $('#pageTitle').textContent = tab.title || '当前网页';
     try { $('#pageHost').textContent = new URL(tab.url).hostname || '当前网页'; } catch { $('#pageHost').textContent = '当前网页'; }
     if (!Shiying.validURL(tab.url)) $('#empty p').textContent = '请切换到普通网页。Chrome 设置页和扩展商店无法读取视频。';
@@ -107,10 +108,44 @@ async function initialize() {
     setPaused(settings.enable);
     await refresh();
     ShiyingPlatformUI.bind(tab).catch(failure);
+    await updateSiteAccess();
     if (!Shiying.validURL(tab.url)) { $('#empty h3').textContent = '请切换到视频所在的网页'; $('#empty p').textContent = 'Chrome 设置页和扩展商店无法读取视频。'; }
 }
+async function updateSiteAccess() {
+    await ShiyingAccess.sync();
+    const site = ShiyingAccess.origin(currentSite?.url);
+    if (!site || ShiyingAccess.requiredSite(currentSite.url)) {$('#siteAccess').hidden = true;return;}
+    accessCandidates = await ShiyingAccess.discover(currentSite);
+    accessPatterns = [...new Set([site,...accessCandidates.map(item => ShiyingAccess.origin(item.url))])];
+    const missing = accessPatterns.filter(pattern => !ShiyingAccess.allows(pattern.slice(0,-1)));
+    $('#siteAccess').hidden = !missing.length;
+    $('#allowSite').textContent = ShiyingAccess.allows(currentSite.url) ? '允许媒体来源' : '允许此网站';
+    $('#siteAccessNote').textContent = '只授权此网站及本页检测到的媒体来源，可在 Chrome 中随时撤销。';
+    if (!missing.length) {await recordSiteMedia(currentSite, accessCandidates);await refresh();}
+}
+async function recordSiteMedia(tab, candidates) {
+    if (!ShiyingAccess.allows(tab.url)) return;
+    await chrome.scripting.executeScript({target:{tabId:tab.id},files:['js/content-script.js']});
+    for (const item of candidates) if (ShiyingAccess.allows(item.url)) await chrome.runtime.sendMessage({Message:'addMedia',href:tab.url,url:item.url,mime:item.type,extraExt:item.ext});
+}
+$('#allowSite').addEventListener('click', () => {
+    const requestedSite = currentSite;
+    // Invoke the browser permission prompt before any await or message hop.
+    ShiyingAccess.request(accessPatterns).then(async granted => {
+        if (!granted) {notify('未授权，已有下载和已允许的网站仍可使用');return;}
+        const result = await message('shiyingSyncAccess');
+        if (!result?.ok) throw new Error(result?.error || '网站授权未能更新');
+        const tab = await chrome.tabs.get(requestedSite.id);
+        if (ShiyingAccess.origin(tab.url) !== ShiyingAccess.origin(requestedSite.url)) {notify('网页已跳转，请重新打开拾影');await initialize();return;}
+        const candidates = await ShiyingAccess.discover(tab);
+        await ShiyingAccess.sync();await recordSiteMedia(tab, candidates);
+        await refresh();await updateSiteAccess();
+        notify($('#siteAccess').hidden ? '已允许此网站；需要时刷新网页再播放视频' : '网站已允许，请再允许本页媒体来源');
+    }).catch(failure);
+});
 function setPaused(enabled) { $('#pause').textContent = enabled ? '暂停识别' : '恢复识别'; $('.source').classList.toggle('paused', !enabled); }
 chrome.runtime.onMessage.addListener(event => {
+    if (event.Message === 'shiyingAccessRevoked') {cards.clear();refresh().then(updateSiteAccess).catch(failure);return;}
     if (event.Message === 'popupAddData' && event.data?.tabId === tabId && !media.some(item => item.url === event.data.url)) { media.push(event.data); render(); }
 });
 chrome.downloads.onChanged.addListener(event => {
@@ -122,12 +157,13 @@ chrome.downloads.onChanged.addListener(event => {
 chrome.tabs.onActivated.addListener(event => {
     if (!new URLSearchParams(location.search).has('tabId')) { cards.clear(); downloads.clear(); initialize().catch(failure); }
 });
-onClick($('#refresh'), async () => {await refresh(); await ShiyingPlatformUI.refresh();});
+onClick($('#refresh'), async () => {await refresh(); await ShiyingPlatformUI.refresh(); await updateSiteAccess();});
 onClick($('#pause'), async () => { const enabled = await message('enable'); setPaused(enabled); notify(enabled ? '已恢复识别' : '已暂停识别，已有列表仍可下载'); });
 onClick($('#clear'), async () => { await message('clearData', {type:true}); await message('ClearIcon', {type:true}); media = []; render(); notify('已清空当前页面的列表'); });
 onClick($('#downloads'), () => chrome.downloads.showDefaultFolder());
 onClick($('#help'), () => chrome.tabs.create({url:chrome.runtime.getURL('shiying-help.html')}));
 onClick($('#advanced'), () => chrome.tabs.create({url:chrome.runtime.getURL(`popup.html?tabId=${tabId}`)}));
+onClick($('#siteSettings'), () => chrome.tabs.create({url:chrome.runtime.getURL('shiying-help.html#site-access')}));
 onClick($('#copyAll'), () => copy([...$('#mediaList').querySelectorAll('.resource-url')].map(element => element.textContent).join('\n')));
 $('#saveAs').addEventListener('change', () => chrome.storage.sync.set({saveAs:$('#saveAs').checked}).catch(failure));
 $('#search').addEventListener('input', render);

@@ -6,7 +6,7 @@
 
 ## 下载与安装
 
-在 [Releases](https://github.com/hesay77-cmyk/shiying/releases/latest) 下载 `拾影-0.3.1-Chrome.zip`，解压后在 Chrome 打开 `chrome://extensions`，开启“开发者模式”，点击“加载已解压的扩展程序”，选择包含 `manifest.json` 的目录。需要 Chrome 116 或更新版本。
+在 [Releases](https://github.com/hesay77-cmyk/shiying/releases/latest) 下载 `拾影-0.3.2-Chrome.zip`，解压后在 Chrome 打开 `chrome://extensions`，开启“开发者模式”，点击“加载已解压的扩展程序”，选择包含 `manifest.json` 的目录。需要 Chrome 116 或更新版本。
 
 点击 Chrome 工具栏的拼图图标，把拾影固定在工具栏。当前为独立公开版，Chrome 商店尚未完成审核。
 
@@ -18,7 +18,7 @@
 
 成品由 Chrome 保存到下载目录中的“拾影”文件夹。主流程在 Chrome 内下载、合并和编码，无需安装或启动下载助手。下载期间可以关闭小面板，请保持 Chrome 运行。
 
-其他网页可以播放视频后，在媒体列表中尝试下载常见视频、音频或 HLS。高级工具保留可选外部服务；仅在用户主动配置或使用时参与，详见 [隐私说明](PRIVACY.md)。
+其他网页首次使用时，点击“允许此网站”，按本页检测到的媒体来源授权，然后在媒体列表中下载视频、音频或 HLS。可在菜单“管理网站权限”中添加具体网址或撤销授权；不同媒体来源可能需要分别确认。高级工具保留可选外部服务；仅在用户主动配置或使用时参与，详见 [隐私说明](PRIVACY.md)。
 
 ## 适用范围
 
@@ -49,6 +49,7 @@
 node scripts/package.cjs
 node scripts/check.cjs
 node scripts/native-check.cjs
+node scripts/check-access.cjs
 ```
 
 之后在 Chrome 中加载生成的 `build` 目录。构建复制随仓库提供的文件，不拉取远端执行代码，也不启动付费 API。
@@ -62,3 +63,5 @@ python scripts/release.py
 输出位于 `release`，已有同版本 ZIP 会被保留，脚本会停止而不会覆盖。`third-party-source` 提供实际组件对应的来源包及校验；各供应商的构建方法由原包内的说明和配置给出。
 
 浏览器端到端开发检查另需 Playwright、可加载扩展的独立 Chromium，以及仅用于开发成品校验的 FFmpeg；通过 `SHIYING_PLAYWRIGHT`、`SHIYING_CHROMIUM`、`SHIYING_FFMPEG` 指定现有安装路径。浏览器检查会访问测试网站并下载测试媒体，按需手动执行；它们不是普通使用或静态构建的前置步骤。
+
+最终 ZIP 检查还使用 OpenSSL 生成独立浏览器的本地测试证书，通过 `SHIYING_OPENSSL` 指定程序路径；证书和宽松的证书检查仅用于该本地样本环境，插件运行不需要这些程序。原生网站授权确认仍需人工验证；拒绝回调用模拟方式覆盖，授权/撤销与内容脚本范围通过独立逻辑检查覆盖。

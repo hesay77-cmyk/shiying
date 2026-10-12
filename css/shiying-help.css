@@ -1,2 +1,8 @@
 body{width:auto;max-width:720px;margin:44px auto;padding:0 28px;font-size:14px}header.brand{margin-bottom:36px}header.brand img{width:30px;height:30px}header.brand span{display:none}main{padding:0}.help-intro{max-width:580px;margin-bottom:30px}.help-intro h2{font-size:26px;line-height:1.5;margin:0 0 12px}.help-intro p{font-size:14px}.start-steps{margin:0;padding:0 0 18px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.start-steps h2{margin-top:24px}.start-steps ol{padding-left:22px}.start-steps li{margin:14px 0;color:var(--ink)}.start-steps b{font-size:14px;font-weight:600}.start-steps small{display:block;margin-top:4px;font-size:13px;color:var(--muted)}h2{font-size:17px;font-weight:600;margin:28px 0 10px}p,li{line-height:1.85;color:var(--muted)}p{margin:10px 0}li{padding:4px 0}a{color:var(--blue);text-underline-offset:3px}.help-details{border-top:1px solid var(--line);margin-top:28px;padding-top:16px}.help-details summary{cursor:pointer;color:var(--muted);font-size:13px}.help-details p{font-size:13px}
 @media(max-width:480px){body{margin:26px auto;padding:0 18px}.help-intro h2{font-size:22px}}
+#sitePermissionForm{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+#sitePermissionForm label{width:100%;font-size:12px;color:#687180}
+#sitePermissionURL{flex:1;min-width:150px;padding:9px;border:1px solid #d9dee5;border-radius:5px;font:inherit}
+#sitePermissionForm button,#grantedSites button{padding:8px 12px;border:0;border-radius:5px;background:#1a73e8;color:#fff;font:inherit;cursor:pointer}
+#grantedSites{padding:0;list-style:none}
+#grantedSites li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;overflow-wrap:anywhere}

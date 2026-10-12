@@ -10,3 +10,5 @@
 第三方来源及 SHA-256 见 `third-party-source/SOURCES.json`，版权及许可见 `lib/third-party-libraries.md`、各组件原始来源包和 `LICENSE`。`README.catcatch.md` 保留原上游说明；其中上游商店链接和项目名称均指 CatCatch。
 
 本次公开仓库使用独立的初始提交；来源保留在本文件和 NOTICE 中，未导入开发工作区的全部 Git 历史。
+
+0.3.2 更新：在同一发行源码上收窄权限、增加按网站授权和撤销入口，更新隐私和商店填写资料。`shiying-engine.js`、`shiying-platform.js`、`shiying-core.js`、`shiying-task.js` 和主平台任务实现未修改；新增权限检查脚本。0.3.1 发行标签和安装包继续保留。
