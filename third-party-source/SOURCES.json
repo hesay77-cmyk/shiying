@@ -1,0 +1,72 @@
+[
+  {
+    "component": "mux.js",
+    "file": "mux.js-7.1.0.tgz",
+    "source": "https://registry.npmjs.org/mux.js/-/mux.js-7.1.0.tgz",
+    "bytes": 1914239,
+    "sha256": "2334b5a7d622a2dde69137037e996a28c4f867549540dcb531956e98cca4a677"
+  },
+  {
+    "component": "mpd-parser",
+    "file": "mpd-parser-1.4.0.tgz",
+    "source": "https://registry.npmjs.org/mpd-parser/-/mpd-parser-1.4.0.tgz",
+    "bytes": 157443,
+    "sha256": "fedb85e74b039a0c2d493ee7e7660d24450cb3e1012808d97ea8dd62f34b369e"
+  },
+  {
+    "component": "jquery",
+    "file": "jquery-4.0.0.tgz",
+    "source": "https://registry.npmjs.org/jquery/-/jquery-4.0.0.tgz",
+    "bytes": 887975,
+    "sha256": "7ac123e4992439dc6a966cb4444fceb7f4698db94904a1256df542d5deb80f59"
+  },
+  {
+    "component": "hls.js",
+    "file": "hls.js-1.6.16.tgz",
+    "source": "https://registry.npmjs.org/hls.js/-/hls.js-1.6.16.tgz",
+    "bytes": 5871993,
+    "sha256": "d282339fed09a0987d55b49b41430a67d021861c24d33722e75e5ca2e5179c77"
+  },
+  {
+    "component": "mqtt",
+    "file": "mqtt-5.15.2.tgz",
+    "source": "https://registry.npmjs.org/mqtt/-/mqtt-5.15.2.tgz",
+    "bytes": 462644,
+    "sha256": "a887df5645ae284dfdbd702bef25cef128805385a3cdbd333b874f6c7e8a9762"
+  },
+  {
+    "component": "jquery-qrcode",
+    "file": "jquery-qrcode-1.0.tar.gz",
+    "source": "https://codeload.github.com/jeromeetienne/jquery-qrcode/tar.gz/refs/tags/v1.0",
+    "bytes": 15670,
+    "sha256": "6d5064f9919bee07c814de558133d04a5c0c31ed981b669d0ed1b60946656adf"
+  },
+  {
+    "component": "jquery-json-viewer",
+    "file": "jquery-json-viewer-1.5.0.tar.gz",
+    "source": "https://codeload.github.com/abodelot/jquery.json-viewer/tar.gz/refs/tags/v1.5.0",
+    "bytes": 7591,
+    "sha256": "d1e589f591202fc6b56f77e8b81eb91df31a3a6444f5eca6d457dca28fa4405c"
+  },
+  {
+    "component": "StreamSaver.js",
+    "file": "StreamSaver.js-2.0.6.tar.gz",
+    "source": "https://codeload.github.com/jimmywarting/StreamSaver.js/tar.gz/refs/tags/2.0.6",
+    "bytes": 19872,
+    "sha256": "f1f3993e3d14eff49a2046aec64f5b6741add75c41125b2b0491a991b0a9da6e"
+  },
+  {
+    "component": "mp4box",
+    "file": "mp4box-2.4.1.tgz",
+    "source": "https://registry.npmjs.org/mp4box/-/mp4box-2.4.1.tgz",
+    "bytes": 408220,
+    "sha256": "c24dd2e4a793afc080797bf3c69529f09add9880177b78289ef2a76603ed7388"
+  },
+  {
+    "component": "lamejs",
+    "file": "lamejs-1.2.1.tgz",
+    "source": "https://registry.npmjs.org/lamejs/-/lamejs-1.2.1.tgz",
+    "bytes": 3071027,
+    "sha256": "d8d099ef788808c15bc9b4a407dd23ae935feb1152e6bb0efdcd24e3e91c2a2d"
+  }
+]

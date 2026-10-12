@@ -1,0 +1,64 @@
+# 拾影
+
+免费、开源、无广告的中文网页视频下载插件。打开视频，点一下保存。
+
+![拾影主面板](docs/assets/panel.png)
+
+## 下载与安装
+
+在 [Releases](https://github.com/hesay77-cmyk/shiying/releases/latest) 下载 `拾影-0.3.1-Chrome.zip`，解压后在 Chrome 打开 `chrome://extensions`，开启“开发者模式”，点击“加载已解压的扩展程序”，选择包含 `manifest.json` 的目录。需要 Chrome 116 或更新版本。
+
+点击 Chrome 工具栏的拼图图标，把拾影固定在工具栏。当前为独立公开版，Chrome 商店尚未完成审核。
+
+## 怎么用
+
+1. 打开正常可播放的 B站或 YouTube 视频。
+2. 点拾影，等待标题和原站实际清晰度出现。
+3. 点“下载视频”保存有声音的 MP4，或点“下载 MP3”保存音频。
+
+成品由 Chrome 保存到下载目录中的“拾影”文件夹。主流程在 Chrome 内下载、合并和编码，无需安装或启动下载助手。下载期间可以关闭小面板，请保持 Chrome 运行。
+
+其他网页可以播放视频后，在媒体列表中尝试下载常见视频、音频或 HLS。高级工具保留可选外部服务；仅在用户主动配置或使用时参与，详见 [隐私说明](PRIVACY.md)。
+
+## 适用范围
+
+平台主流程优先处理非直播视频，单个媒体轨最大 768 MB；大文件可尝试较低清晰度。网站格式、登录状态、区域、访问权限和媒体地址有效期会影响可用性。只列出原站实际提供的清晰度，不将放大画质冒充原生画质。
+
+拾影不提供 DRM 解密或付费、会员、登录限制绕过。请只处理您拥有权利、取得必要许可或依法允许处理的内容，并遵守来源平台条款。免费开源不会替用户取得媒体授权。
+
+## 隐私与反馈
+
+插件没有开发者数据接收服务器、广告或统计 SDK。为识别和下载媒体，会处理网页网址、标题、媒体内容、请求头和认证信息。媒体与任务主要在本机或会话中处理；部分设置使用 Chrome 同步。主动使用高级外部工具时可能向所选服务发送相关数据。
+
+- [隐私说明](PRIVACY.md)
+- [反馈问题](https://github.com/hesay77-cmyk/shiying/issues)（请勿公开 Cookie、令牌或私密网址）
+- [Chrome 商店填写指南](docs/chrome-web-store.md)
+- [版本说明](docs/release-notes.md)
+
+## 开源与来源
+
+拾影是 [CatCatch](https://github.com/xifangczy/cat-catch) 的独立改版，非猫抓官方产品，采用 GPL-3.0。原作者及第三方版权、许可保留在 [LICENSE](LICENSE)、[NOTICE](NOTICE.md) 和 [第三方声明](lib/third-party-libraries.md)。源码 ZIP 包含插件、构建脚本与第三方来源包。
+
+[源码来源](docs/SOURCE-PROVENANCE.md) · [原上游说明](README.catcatch.md) · [第三方来源与校验](third-party-source/SOURCES.json)
+
+## 从源码构建
+
+需要 Node.js。插件运行不依赖 Node.js；它只用于构建和开发检查。
+
+```sh
+node scripts/package.cjs
+node scripts/check.cjs
+node scripts/native-check.cjs
+```
+
+之后在 Chrome 中加载生成的 `build` 目录。构建复制随仓库提供的文件，不拉取远端执行代码，也不启动付费 API。
+
+发行 ZIP 使用 Python 3 标准库，先构建再执行：
+
+```sh
+python scripts/release.py
+```
+
+输出位于 `release`，已有同版本 ZIP 会被保留，脚本会停止而不会覆盖。`third-party-source` 提供实际组件对应的来源包及校验；各供应商的构建方法由原包内的说明和配置给出。
+
+浏览器端到端开发检查另需 Playwright、可加载扩展的独立 Chromium，以及仅用于开发成品校验的 FFmpeg；通过 `SHIYING_PLAYWRIGHT`、`SHIYING_CHROMIUM`、`SHIYING_FFMPEG` 指定现有安装路径。浏览器检查会访问测试网站并下载测试媒体，按需手动执行；它们不是普通使用或静态构建的前置步骤。

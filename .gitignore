@@ -1,0 +1,11 @@
+build/
+dist/
+release/
+reports/
+.checks/
+node_modules/
+__pycache__/
+*.crx
+*.pem
+.env
+.env.*

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>拾影 · 网页视频下载</title>
+  <link rel="stylesheet" href="css/shiying.css">
+  <script src="js/shiying-core.js" defer></script>
+  <script src="js/shiying-platform.js" defer></script>
+  <script src="js/shiying-platform-ui.js" defer></script>
+  <script src="js/shiying.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><img src="img/shiying.svg" alt="" width="28" height="28"><h1>拾影</h1></div>
+    <details class="menu"><summary aria-label="打开设置"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/></svg></summary><div class="menu-panel">
+      <label><input id="saveAs" type="checkbox">下载时选择保存位置</label>
+      <button id="pause">暂停识别</button>
+      <button id="downloads">打开下载文件夹</button>
+      <button id="advanced">高级工具</button>
+      <button id="help">使用说明与开源信息</button>
+    </div></details>
+  </header>
+  <section class="source" aria-label="当前网页"><span class="source-dot"></span><div><b id="pageTitle">正在读取当前网页</b><span id="pageHost">只显示这个页面的媒体</span></div><button id="refresh" class="icon-button" aria-label="重新读取视频列表" title="重新读取视频列表"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6 7a7 7 0 0 1 12-1l2 3M4 15l2 3a7 7 0 0 0 12-1"/></svg></button></section>
+  <main>
+    <section id="platformEntry" class="platform-entry" hidden aria-label="B站和 YouTube 下载">
+      <article id="platformCard" class="platform-card" hidden>
+        <div class="platform-intro"><h2 id="platformTitle">读取视频</h2><p id="platformMeta" class="platform-meta"></p></div>
+        <section class="video-choice" aria-label="下载完整视频"><span class="format-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m10 9 5 3-5 3Z"/></svg></span><label class="visually-hidden" for="platformQuality">清晰度</label><select id="platformQuality" disabled aria-label="选择视频清晰度"><option>读取成功后选择</option></select><button id="platformDownload" class="download-button" disabled>下载视频</button></section>
+        <section class="platform-audio" aria-label="单独下载声音"><span class="format-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17V5l11-2v12M9 9l11-2"/><ellipse cx="6" cy="17" rx="3" ry="2.5"/><ellipse cx="17" cy="15" rx="3" ry="2.5"/></svg></span><div><h3>MP3 音频</h3></div><button id="platformAudio" class="download-button" disabled>下载 MP3</button></section>
+        <p id="platformNote" class="quality-note"></p><p id="platformError" class="error" role="alert" hidden></p>
+      </article>
+      <form id="platformForm"><label class="visually-hidden" for="platformURL">视频网址</label><div class="link-input"><span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="m9 15 6-6m-5-2 2-2a5 5 0 0 1 7 7l-2 2M14 17l-2 2a5 5 0 0 1-7-7l2-2"/></svg></span><input id="platformURL" type="url" required aria-label="视频网址" placeholder="粘贴视频网址"><button id="platformRead" type="submit">读取</button></div></form>
+    </section>
+    <div id="mediaArea">
+    <div class="list-heading"><h2>发现的媒体 <span id="count">0</span></h2><button id="clear" class="text-button">清空列表</button></div>
+    <div class="filters"><div class="segments" role="group" aria-label="媒体类型"><button class="active" data-filter="all" aria-pressed="true">全部</button><button data-filter="video" aria-pressed="false">视频</button><button data-filter="audio" aria-pressed="false">音频</button></div><input id="search" type="search" placeholder="搜索名称或格式" aria-label="搜索名称或格式"></div>
+    <div id="empty" class="empty"><div class="empty-symbol" aria-hidden="true">▷</div><h3>先播放一下网页里的视频</h3><p>拾影会在这里列出找到的视频。<br>如果已经在播放，刷新网页后再试一次。</p></div>
+    <p id="error" class="error" role="alert" hidden></p>
+    <div id="mediaList" class="media-list" aria-label="媒体列表"></div>
+    <p id="fragmentNote" class="fragment-note" hidden></p>
+    </div>
+  </main>
+  <footer><span>免费开源，无广告</span><button id="copyAll" class="text-button" disabled>复制全部链接</button></footer>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <template id="mediaTemplate">
+    <article class="media-item">
+      <div class="media-row"><div class="file-icon" aria-hidden="true">▷</div><div class="media-info"><h3></h3><div class="meta"><span class="format"></span><span class="size"></span></div></div><button class="download-button">下载</button></div>
+      <div class="row-tools"><button class="copy-button text-button">复制链接</button><button class="detail-button text-button" aria-expanded="false">查看详情</button><span class="item-status" role="status"></span></div>
+      <div class="item-details" hidden><p class="resource-url"></p><div class="quality" hidden><label>清晰度 <select aria-label="选择视频清晰度"></select></label><p class="quality-note"></p></div></div>
+    </article>
+  </template>
+</body>
+</html>

@@ -1,0 +1,27 @@
+/* 拾影，2026-10-12：统一内置下载工具的基础排版。GPL-3.0。 */
+body { font-family:"Microsoft YaHei UI","PingFang SC",sans-serif; font-size:14px; line-height:1.65; }
+.wrapper,.wrapper1080,.m3u8_wrapper { max-width:1000px; margin:24px auto; padding:0 24px; }
+.optionsTitle { font-size:23px; font-weight:650; margin:24px 0 12px; }
+.optionBox { border:1px solid #dfe6ef; border-radius:12px; padding:20px; margin:12px 0; box-shadow:none; }
+button,.button,.button2 { padding:7px 12px; border-radius:7px; font-size:13px; }
+input:not([type=checkbox]):not([type=range]),select,textarea { border:1px solid #cbd6e5; border-radius:6px; padding:7px; font:inherit; }
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible { outline:2px solid #255ddd; outline-offset:2px; }
+details { margin:14px 0; }
+summary { cursor:pointer; }
+.explain { color:#66758a; font-size:12px; }
+@media (prefers-color-scheme:dark) { .optionBox { border-color:#36465c; } .explain { color:#a4b3c9; } }
+.shiying-tool-heading { display:flex; align-items:center; gap:14px; max-width:940px; margin:36px auto 20px; padding:0 24px; }
+.shiying-tool-heading div { flex:1; min-width:0; }
+.shiying-tool-heading h1 { font-size:23px; line-height:1.4; margin:0; }
+.shiying-tool-heading p { color:#66758a; font-size:12px; margin:5px 0 0; overflow-wrap:anywhere; }
+.shiying-tool-heading button { white-space:nowrap; }
+.shiying-tool .m3u8_wrapper,.shiying-tool .wrapper1024 { width:auto; max-width:940px; margin:16px auto; padding:0 24px; }
+.shiying-tool #m3u8 > h1,.shiying-tool #downfile > h1 { display:none; }
+.shiying-tool #m3u8 .optionBox > .block:first-child { font-size:11px; color:#66758a; overflow-wrap:anywhere; }
+.shiying-tool #mediaList { height:auto; max-height:320px; }
+.shiying-tool #mergeDown { justify-content:space-between; align-items:center; gap:12px; margin:18px 0; }
+.shiying-tool #customFilename { flex:1; min-width:0; max-width:560px; }
+.shiying-tool:not(.advanced) #mergeDown > :not(#customFilename):not(label:has(#saveAs)) { display:none; }
+.shiying-tool .m3u8Tips { background:var(--background-color-two); width:100%; padding:16px; border-radius:8px; gap:12px; margin:14px 0; line-height:1.8; }
+.shiying-tool #mergeTs { padding:11px; }
+@media (max-width:600px) { .shiying-tool-heading { flex-wrap:wrap; margin-top:20px; } .shiying-tool-heading h1 { font-size:19px; } .shiying-tool .videoInfo { flex-wrap:wrap; } .shiying-tool #mergeDown { flex-wrap:wrap; } }
