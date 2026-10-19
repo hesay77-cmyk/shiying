@@ -6,9 +6,15 @@
 
 ## 下载与安装
 
-在 [Releases](https://github.com/hesay77-cmyk/shiying/releases/latest) 下载 `拾影-0.3.2-Chrome.zip`，解压后在 Chrome 打开 `chrome://extensions`，开启“开发者模式”，点击“加载已解压的扩展程序”，选择包含 `manifest.json` 的目录。需要 Chrome 116 或更新版本。
+在 [下载页](https://github.com/hesay77-cmyk/shiying/releases/tag/v0.4.36) 选择所需文件：
 
-点击 Chrome 工具栏的拼图图标，把拾影固定在工具栏。当前为独立公开版，Chrome 商店尚未完成审核。
+- 可选桌面版：`Ruxget-0.4.36-Windows-Setup.exe`，适用于 Windows 10/11 64 位。
+- 新版插件：`Ruxget-0.4.42-Chrome.zip`，解压后在 `chrome://extensions` 开启开发者模式，加载直接包含 `manifest.json` 的目录。
+- 配套源码：`Ruxget-0.4.42-source.zip`，包含插件 0.4.42、桌面版 0.4.36、构建脚本及第三方来源和许可。仓库目录保留较早基线，当前版本请使用该源码附件。
+
+普通下载仍可在 Chrome 内完成，不强制安装桌面版。选择桌面下载后才连接本机程序；未连接时可下载安装、修复连接或继续用 Chrome。商店版与本地测试版 ID 不同，已安装但无法连接时，请在插件引导中选择“已安装，修复连接”，再点“一键重新配对”。
+
+点击 Chrome 工具栏的拼图图标，把拾影固定在工具栏。Chrome 商店请使用现有的「拾影 · 网页视频下载」商品更新；GitHub 下载包已发布，不代表商店 0.4.42 已审核或上架。
 
 ## 怎么用
 
@@ -34,6 +40,8 @@
 - [反馈问题](https://github.com/hesay77-cmyk/shiying/issues)（请勿公开 Cookie、令牌或私密网址）
 - [Chrome 商店填写指南](docs/chrome-web-store.md)
 - [版本说明](docs/release-notes.md)
+
+新版可按具体网盘开启独立下载按钮，相关 Cookie 仅在授权后用于对应网盘及本机下载任务，详见隐私说明。网盘适配基于 LinkSwift 1.1.3，保留 AGPL 许可；完整修改源码与第三方说明随当前源码附件提供。
 
 ## 开源与来源
 
