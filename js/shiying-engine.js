@@ -1,6 +1,8 @@
 // 一个浏览器隐藏页完成下载、合并、MP3 和检查；无外部程序。GPL-3.0。
 import {createFile,DataStream,Log} from '../lib/mp4box/mp4box.all.mjs';
 Log.setLogLevel(Log.error);
+// Media is fetched with cache:'no-store': a cancelled or deleted download must not leave pieces in Chrome's HTTP cache
+// for the next download to pick up, and finished videos should not fill that cache either.
 const tasks=new Map();let queue=Promise.resolve();
 const pause=()=>new Promise(resolve=>setTimeout(resolve,0));
 const send=async(Message,extra={})=>{const result=await chrome.runtime.sendMessage({Message,...extra});if(!result?.ok)throw new Error(result?.error||'下载状态暂时不可用');return result};
@@ -25,14 +27,14 @@ async function downloadTrack(catalog,track,task,index,count){
     data=new Uint8Array(expected);
     for(let start=0;start<expected;start+=8*1024*1024){
      check(task);const end=Math.min(start+8*1024*1024-1,expected-1),url=new URL(source);url.searchParams.set('range',`${start}-${end}`);
-     const response=await fetch(url.href,{credentials:'omit',redirect:'error',signal:task.controller.signal});
+     const response=await fetch(url.href,{credentials:'omit',redirect:'error',cache:'no-store',signal:task.controller.signal});
      if(!response.ok)throw new Error(`原站返回 ${response.status}，请重新读取视频`);
      const bytes=new Uint8Array(await response.arrayBuffer());if(bytes.byteLength!==end-start+1)throw new Error('音视频轨没有完整下载，请重新读取');
      data.set(bytes,start);received+=bytes.byteLength;
      await update(task,{progress:Math.round(4+(index+received/expected)/count*68)});
     }
    }else{
-    const response=await fetch(source,{headers:{Range:'bytes=0-'},credentials:'omit',redirect:'error',signal:task.controller.signal});
+    const response=await fetch(source,{headers:{Range:'bytes=0-'},credentials:'omit',redirect:'error',cache:'no-store',signal:task.controller.signal});
     if(!response.ok)throw new Error(`原站返回 ${response.status}，请重新读取视频`);
     const range=response.headers.get('content-range')?.match(/bytes (\d+)-(\d+)\/(\d+)/);
     expected=Number(range?.[3]||response.headers.get('content-length'));
