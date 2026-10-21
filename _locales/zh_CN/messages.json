@@ -1,9 +1,9 @@
 {
   "catCatch": {
-    "message": "拾影"
+    "message": "Ruxget"
   },
   "description": {
-    "message": "网页媒体嗅探工具"
+    "message": "免费开源、无广告的网页视频下载助手，支持 B站和 YouTube 清晰度选择、完整 MP4 与单独 MP3 下载。"
   },
   "confirm": {
     "message": "确认"
@@ -177,13 +177,13 @@
     "message": "选项"
   },
   "titleOption": {
-    "message": "猫抓 设置"
+    "message": "Ruxget 设置"
   },
   "titleDownload": {
-    "message": "拾影 · 文件下载"
+    "message": "Ruxget · File Download"
   },
   "titleM3U8": {
-    "message": "拾影 · 视频下载"
+    "message": "Ruxget · Video Download"
   },
   "titleJson": {
     "message": "猫抓 json格式化"
@@ -1054,5 +1054,414 @@
   },
   "groupTime": {
     "message": "分组时间"
+  },
+  "language": {
+    "message": "语言"
+  },
+  "languageZh": {
+    "message": "中文"
+  },
+  "languageEn": {
+    "message": "English"
+  },
+  "languageAuto": {
+    "message": "跟随浏览器"
+  },
+  "languageHint": {
+    "message": "作用于 Ruxget 弹窗、设置页和状态提示。切换后如未立即生效，重新打开弹窗即可。"
+  },
+  "languageSaved": {
+    "message": "语言已保存"
+  },
+  "uiFloatingToggle": {
+    "message": "下载浮钮"
+  },
+  "uiPauseDetection": {
+    "message": "暂停识别"
+  },
+  "uiOpenDownloads": {
+    "message": "打开下载文件夹"
+  },
+  "uiOrdinaryDownload": {
+    "message": "普通文件下载…"
+  },
+  "uiDesktopHelp": {
+    "message": "桌面版安装与连接"
+  },
+  "uiAdvanced": {
+    "message": "高级工具"
+  },
+  "uiSiteSettings": {
+    "message": "管理网站权限"
+  },
+  "uiHelp": {
+    "message": "使用说明与开源信息"
+  },
+  "uiOpenMenu": {
+    "message": "打开设置"
+  },
+  "uiSaveAsLabel": {
+    "message": "保存时选择文件夹"
+  },
+  "uiSaveAsTitle": {
+    "message": "新下载的文件准备好后，由 Chrome 打开保存窗口，可选择文件夹和文件名"
+  },
+  "uiDefaultLocation": {
+    "message": "默认位置…"
+  },
+  "uiDefaultLocationTitle": {
+    "message": "打开 Chrome 下载设置，更改默认保存文件夹"
+  },
+  "uiReadingPage": {
+    "message": "正在读取当前网页"
+  },
+  "uiOnlyThisPage": {
+    "message": "只显示这个页面的媒体"
+  },
+  "uiRefreshList": {
+    "message": "重新读取视频列表"
+  },
+  "uiNetdiskTitle": {
+    "message": "Ruxget 网盘下载"
+  },
+  "uiNetdiskEnable": {
+    "message": "开启Ruxget下载"
+  },
+  "uiNetdiskDisable": {
+    "message": "关闭此网盘"
+  },
+  "uiBaiduAuth": {
+    "message": "百度授权"
+  },
+  "uiDesktopSetup": {
+    "message": "安装与连接桌面版"
+  },
+  "uiReadVideo": {
+    "message": "读取视频"
+  },
+  "uiCurrentDownload": {
+    "message": "当前下载"
+  },
+  "uiCancelDownload": {
+    "message": "取消下载"
+  },
+  "uiViewProgress": {
+    "message": "查看进度"
+  },
+  "uiDownloadOptions": {
+    "message": "下载选项"
+  },
+  "uiFullVideo": {
+    "message": "下载完整视频"
+  },
+  "uiQuality": {
+    "message": "清晰度"
+  },
+  "uiChooseQuality": {
+    "message": "选择视频清晰度"
+  },
+  "uiChooseAfterRead": {
+    "message": "读取成功后选择"
+  },
+  "uiDownloadVideo": {
+    "message": "下载视频"
+  },
+  "uiAudioOnlySection": {
+    "message": "单独下载声音"
+  },
+  "uiMp3Audio": {
+    "message": "MP3 音频"
+  },
+  "uiDownloadMp3": {
+    "message": "下载 MP3"
+  },
+  "uiSendDesktop": {
+    "message": "交给桌面版下载"
+  },
+  "uiVideoUrl": {
+    "message": "视频网址"
+  },
+  "uiPasteUrl": {
+    "message": "粘贴视频网址"
+  },
+  "uiRead": {
+    "message": "读取"
+  },
+  "uiSiteAccessNote": {
+    "message": "首次使用时，只允许此网站及本页检测到的媒体来源。"
+  },
+  "uiAllowSite": {
+    "message": "允许此网站"
+  },
+  "uiFoundMedia": {
+    "message": "发现的媒体"
+  },
+  "uiClearList": {
+    "message": "清空列表"
+  },
+  "uiMediaType": {
+    "message": "媒体类型"
+  },
+  "uiAll": {
+    "message": "全部"
+  },
+  "uiSearchPlaceholder": {
+    "message": "搜索名称或格式"
+  },
+  "uiEmptyTitle": {
+    "message": "先播放一下网页里的视频"
+  },
+  "uiEmptyBody": {
+    "message": "Ruxget 会在这里列出找到的视频。<br>如果已经在播放，刷新网页后再试一次。"
+  },
+  "uiFreeOpen": {
+    "message": "免费开源，无广告"
+  },
+  "uiCopyAllLinks": {
+    "message": "复制全部链接"
+  },
+  "uiLinkHowTitle": {
+    "message": "这个链接，怎么下？"
+  },
+  "uiCancel": {
+    "message": "取消"
+  },
+  "uiLinkHowNote": {
+    "message": "平时点击下载仍使用 Chrome，只有你选择时才打开Ruxget桌面版。"
+  },
+  "uiPasteHttp": {
+    "message": "粘贴 HTTP / HTTPS 下载链接"
+  },
+  "uiUseChrome": {
+    "message": "用 Chrome 下载"
+  },
+  "uiUseRuxget": {
+    "message": "用Ruxget下载"
+  },
+  "uiLinkContextNote": {
+    "message": "也可以右键网页中的下载链接，选择“用Ruxget下载此链接”。"
+  },
+  "uiCopyLink": {
+    "message": "复制链接"
+  },
+  "uiViewDetails": {
+    "message": "查看详情"
+  },
+  "uiDesktopDownload": {
+    "message": "桌面下载"
+  },
+  "uiSaveLocationAria": {
+    "message": "新下载保存位置"
+  },
+  "uiSourceAria": {
+    "message": "当前网页"
+  },
+  "uiBiliYtAria": {
+    "message": "B站和 YouTube 下载"
+  },
+  "uiDownloadProgressAria": {
+    "message": "下载进度"
+  },
+  "uiMediaListAria": {
+    "message": "媒体列表"
+  },
+  "uiHelpTagline": {
+    "message": "把视频和声音，留在本地"
+  },
+  "uiHelpIntroTitle": {
+    "message": "视频和声音，留在本地。"
+  },
+  "uiHelpIntroBody": {
+    "message": "点「下载视频」或「下载 MP3」，可以直接在 Chrome 内保存。需要大文件、BT 或让任务在关闭浏览器后继续时，可以安装配套桌面版，再点「交给桌面版下载」。"
+  },
+  "uiHelpDesktopLink": {
+    "message": "桌面版完整安装方法与连接检查"
+  },
+  "uiHelpStartTitle": {
+    "message": "第一次装好，之后直接下载"
+  },
+  "uiClickToDownload": {
+    "message": "点击选择下载"
+  },
+  "uiDragToMove": {
+    "message": "拖动调整位置"
+  },
+  "uiHideFloating": {
+    "message": "隐藏浮钮"
+  },
+  "uiShowFloating": {
+    "message": "显示浮钮",
+    "description": "弹窗顶栏：显示网页下载浮钮"
+  },
+  "uiRestoreFromToolbar": {
+    "message": "可从工具栏恢复"
+  },
+  "uiDownloading": {
+    "message": "下载中"
+  },
+  "uiDownloadInterrupted": {
+    "message": "下载中断"
+  },
+  "uiSaved": {
+    "message": "已保存"
+  },
+  "uiOpenFolder": {
+    "message": "打开文件夹"
+  },
+  "uiRetry": {
+    "message": "请重试"
+  },
+  "uiNetdiskShowBtn": {
+    "message": "显示网盘按钮"
+  },
+  "uiNetdiskBtnOn": {
+    "message": "按钮已开启"
+  },
+  "uiNetdiskTurnOn": {
+    "message": "开启"
+  },
+  "uiBaiduAuthSaved": {
+    "message": "百度授权已保存"
+  },
+  "uiBaiduNeedAuth": {
+    "message": "百度下载需先点下方「百度授权」。桌面版用 token，不传百度 Cookie；公开分享页也一样。"
+  },
+  "uiUnauthorized": {
+    "message": "未授权"
+  },
+  "uiFilesQueued": {
+    "message": "个文件加入 Ruxget 下载"
+  },
+  "uiBrowserDownload": {
+    "message": "浏览器下载"
+  },
+  "uiNetdiskDownload": {
+    "message": "网盘下载"
+  },
+  "uiDownloadSelected": {
+    "message": "下载当前勾选的文件"
+  },
+  "uiContextDownloadLink": {
+    "message": "用 Ruxget 下载此链接"
+  },
+  "uiResumeDetection": {
+    "message": "恢复识别"
+  },
+  "uiNetdiskTitleNamed": {
+    "message": "$1 · Ruxget下载"
+  },
+  "netdiskNameBaidu": {
+    "message": "百度网盘"
+  },
+  "netdiskNameAliyun": {
+    "message": "阿里云盘"
+  },
+  "netdiskNameMcloud": {
+    "message": "中国移动云盘"
+  },
+  "netdiskNameTcloud": {
+    "message": "天翼云盘"
+  },
+  "netdiskNameXunlei": {
+    "message": "迅雷云盘"
+  },
+  "netdiskNameQuark": {
+    "message": "夸克网盘"
+  },
+  "netdiskNameUc": {
+    "message": "UC 网盘"
+  },
+  "netdiskNamePan123": {
+    "message": "123 云盘"
+  },
+  "uiNetdiskNoteOff": {
+    "message": "开启后，在网盘工具栏旁显示一个“Ruxget下载”按钮。首次需允许读取这个网盘的登录信息，并连接桌面版。"
+  },
+  "uiNetdiskNoteOn": {
+    "message": "在网盘中勾选文件，再点工具栏旁的“Ruxget下载”。原下载按钮照常使用。"
+  },
+  "uiNetdiskNoteBaiduNeedAuth": {
+    "message": "百度下载需先点下方“百度授权”。桌面版用 token、不传百度 Cookie，公开分享页也一样。"
+  },
+  "uiNetdiskNoteBaiduReady": {
+    "message": "百度授权已保存。在网盘中勾选文件，再点“Ruxget下载”。"
+  },
+  "uiNetdiskAuth": {
+    "message": "百度授权"
+  },
+  "uiNetdiskReauth": {
+    "message": "重新授权"
+  },
+  "uiNetdiskSetupHint": {
+    "message": "请先通过下方“安装与连接桌面版”完成安装。"
+  },
+  "uiDesktopMissingConfirm": {
+    "message": "未检测到 Ruxget 桌面下载器。是否前往 GitHub 下载安装？"
+  },
+  "uiDesktopMissingError": {
+    "message": "请先安装 Ruxget 桌面下载器后再试"
+  },
+  "uiNetdiskNeedDesktop": {
+    "message": "请先安装Ruxget桌面版 0.4.28 或更新版本，再开启网盘下载"
+  },
+  "uiNetdiskDenied": {
+    "message": "未授权；网盘原来的下载方式仍可使用"
+  },
+  "uiNetdiskIncomplete": {
+    "message": "网盘设置未完成"
+  },
+  "uiNetdiskBtn": {
+    "message": "Ruxget 下载"
+  },
+  "uiNetdiskBtnReading": {
+    "message": "读取中…"
+  },
+  "uiNetdiskBtnTitle": {
+    "message": "下载当前勾选的文件，保存到Ruxget记住的位置"
+  },
+  "uiNetdiskBtnOptions": {
+    "message": "Ruxget 下载选项"
+  },
+  "uiNetdiskBtnAria": {
+    "message": "Ruxget 网盘下载"
+  },
+  "uiNetdiskMenuFolder": {
+    "message": "更改保存文件夹…"
+  },
+  "uiNetdiskMenuShow": {
+    "message": "查看下载任务"
+  },
+  "uiNetdiskMenuHide": {
+    "message": "隐藏此按钮"
+  },
+  "uiNetdiskAdded": {
+    "message": "已将 $1 个文件加入Ruxget"
+  },
+  "uiNetdiskNoResponse": {
+    "message": "Ruxget 暂时没有响应，请重试"
+  },
+  "uiDesktopConnectionMissing": {
+    "message": "还没有连接桌面下载器"
+  },
+  "uiDesktopConnectionFailed": {
+    "message": "桌面下载器暂时无法连接"
+  },
+  "uiDesktopConnectionMissingNote": {
+    "message": "尚未安装可以下载；已经安装，请检查或重新配对。也可以继续使用 Chrome 下载。"
+  },
+  "uiDesktopConnectionFailedNote": {
+    "message": "可能是配对权限或程序启动异常，请先修复连接，无需反复下载安装。"
+  },
+  "uiDesktopInstallAction": {
+    "message": "下载安装"
+  },
+  "uiDesktopRepairAction": {
+    "message": "已安装，修复连接"
+  },
+  "uiDesktopChromeAction": {
+    "message": "继续用 Chrome"
+  },
+  "uiDesktopConnectionPending": {
+    "message": "桌面连接尚未完成，可以继续使用 Chrome 下载"
   }
 }

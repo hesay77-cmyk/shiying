@@ -3,9 +3,23 @@ const ShiyingAccess = (() => {
     const required = chrome.runtime.getManifest().host_permissions || [];
     let granted = required.slice();
     let registration = Promise.resolve();
+    // Full package keeps this false. The Chrome Web Store build replaces the function body.
+    function editionBlocksHost(hostname) {
+        return false;
+    }
+    function blockedHost(value) {
+        try {
+            const raw = String(value || '');
+            if (!raw) return false;
+            const hostname = raw.includes('://') ? new URL(raw).hostname : raw.replace(/^\*\./, '').split('/')[0];
+            return editionBlocksHost(hostname);
+        } catch { return false; }
+    }
     function origin(value) {
         try {
             const url = new URL(value);
+            if(url.hostname==='chromewebstore.google.com'||(url.hostname==='chrome.google.com'&&/^\/webstore(?:\/|$)/.test(url.pathname)))return null;
+            if (editionBlocksHost(url.hostname)) return null;
             return ['http:', 'https:'].includes(url.protocol) ? `${url.protocol}//${url.hostname}/*` : null;
         } catch { return null; }
     }
@@ -17,12 +31,17 @@ const ShiyingAccess = (() => {
             return host.startsWith('*.') ? url.hostname === host.slice(2) || url.hostname.endsWith(host.slice(1)) : url.hostname === host;
         } catch { return false; }
     }
-    const allows = value => granted.some(pattern => matches(pattern, value));
+    const allows = value => !blockedHost(value) && granted.some(pattern => matches(pattern, value));
     const requiredSite = value => required.some(pattern => matches(pattern, value));
     async function sync() {
         granted = (await chrome.permissions.getAll()).origins || [];
+        const blocked = granted.filter(blockedHost);
+        if (blocked.length && typeof document === 'undefined' && chrome.permissions.remove) {
+            await chrome.permissions.remove({origins: blocked}).catch(() => {});
+            granted = granted.filter(origin => !blocked.includes(origin));
+        }
         if (typeof document !== 'undefined') return;
-        const optional = granted.filter(pattern => !required.includes(pattern) && /^https?:\/\/[^/*]+\/\*$/.test(pattern));
+        const optional = granted.filter(pattern => !required.includes(pattern) && /^https?:\/\/[^/*]+\/\*$/.test(pattern) && !blockedHost(pattern));
         registration = registration.catch(() => {}).then(async () => {
             const id = 'shiying-authorized-sites';
             const exists = (await chrome.scripting.getRegisteredContentScripts({ids:[id]})).length;
@@ -58,6 +77,7 @@ const ShiyingAccess = (() => {
         // Call directly from a click; only concrete origins, never a global grant.
         const origins = [...new Set(patterns.filter(Boolean))];
         if (!origins.length || origins.some(pattern => !/^https?:\/\/[^/*]+\/\*$/.test(pattern))) return Promise.reject(new Error('请使用具体的网站网址授权'));
+        if (origins.some(blockedHost)) return Promise.reject(new Error('这个商店版本不支持该网站'));
         return chrome.permissions.request({origins});
     }
     if (typeof document === 'undefined') {
@@ -69,6 +89,6 @@ const ShiyingAccess = (() => {
         });
         sync().catch(console.error);
     }
-    return {origin, matches, allows, requiredSite, sync, discover, request};
+    return {origin, matches, allows, requiredSite, sync, discover, request, blocks: blockedHost};
 })();
 if (typeof module !== 'undefined') module.exports = ShiyingAccess;

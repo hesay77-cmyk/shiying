@@ -1,23 +1,25 @@
-/* 拾影，2026-10-12：统一内置下载工具的基础排版。GPL-3.0。 */
+:root{color-scheme:dark;--paper:#000000;--wash:#111d2e;--ink:#ffffff;--muted:#c4d6eb;--line:#3b536f;--blue:#5fb9ff;--soft:#183958;--on-accent:#00192d;--hover:#8acbff;--audio:#c4d6eb;--audio-wash:#183958}
+:root{--background-color:var(--paper);--background-color-opacity:var(--paper);--background-color-two:var(--wash);--optionBox-color:var(--paper);--text-color:var(--ink);--text2-color:var(--blue);--text-error-color:#ffb5b5;--link-color:var(--blue);--button-color:var(--paper);--button-text-color:var(--ink);--button-border:solid 1px var(--line);--button-hover-color:var(--wash);--button-active-color:var(--soft);--button2-color:var(--blue);--button2-text-color:var(--on-accent);--button2-border:solid 1px var(--line);--button2-hover-color:var(--hover);--button2-active-color:var(--blue);--input-border:solid 1px var(--line);--scrollbar-thumb-color:var(--blue);--scrollbar-track-color:var(--paper)}
+/* Ruxget，2026-10-12：统一内置下载工具的基础排版。GPL-3.0。 */
 body { font-family:"Microsoft YaHei UI","PingFang SC",sans-serif; font-size:14px; line-height:1.65; }
 .wrapper,.wrapper1080,.m3u8_wrapper { max-width:1000px; margin:24px auto; padding:0 24px; }
 .optionsTitle { font-size:23px; font-weight:650; margin:24px 0 12px; }
-.optionBox { border:1px solid #dfe6ef; border-radius:12px; padding:20px; margin:12px 0; box-shadow:none; }
+.optionBox { border:1px solid var(--line); border-radius:12px; padding:20px; margin:12px 0; box-shadow:none; }
 button,.button,.button2 { padding:7px 12px; border-radius:7px; font-size:13px; }
-input:not([type=checkbox]):not([type=range]),select,textarea { border:1px solid #cbd6e5; border-radius:6px; padding:7px; font:inherit; }
-button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible { outline:2px solid #255ddd; outline-offset:2px; }
+input:not([type=checkbox]):not([type=range]),select,textarea { border:1px solid var(--line); border-radius:6px; padding:7px; font:inherit; }
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
 details { margin:14px 0; }
 summary { cursor:pointer; }
-.explain { color:#66758a; font-size:12px; }
-@media (prefers-color-scheme:dark) { .optionBox { border-color:#36465c; } .explain { color:#a4b3c9; } }
+.explain { color:var(--muted); font-size:12px; }
+
 .shiying-tool-heading { display:flex; align-items:center; gap:14px; max-width:940px; margin:36px auto 20px; padding:0 24px; }
 .shiying-tool-heading div { flex:1; min-width:0; }
 .shiying-tool-heading h1 { font-size:23px; line-height:1.4; margin:0; }
-.shiying-tool-heading p { color:#66758a; font-size:12px; margin:5px 0 0; overflow-wrap:anywhere; }
+.shiying-tool-heading p { color:var(--muted); font-size:12px; margin:5px 0 0; overflow-wrap:anywhere; }
 .shiying-tool-heading button { white-space:nowrap; }
 .shiying-tool .m3u8_wrapper,.shiying-tool .wrapper1024 { width:auto; max-width:940px; margin:16px auto; padding:0 24px; }
 .shiying-tool #m3u8 > h1,.shiying-tool #downfile > h1 { display:none; }
-.shiying-tool #m3u8 .optionBox > .block:first-child { font-size:11px; color:#66758a; overflow-wrap:anywhere; }
+.shiying-tool #m3u8 .optionBox > .block:first-child { font-size:12px; color:var(--muted); overflow-wrap:anywhere; }
 .shiying-tool #mediaList { height:auto; max-height:320px; }
 .shiying-tool #mergeDown { justify-content:space-between; align-items:center; gap:12px; margin:18px 0; }
 .shiying-tool #customFilename { flex:1; min-width:0; max-width:560px; }
@@ -25,3 +27,21 @@ summary { cursor:pointer; }
 .shiying-tool .m3u8Tips { background:var(--background-color-two); width:100%; padding:16px; border-radius:8px; gap:12px; margin:14px 0; line-height:1.8; }
 .shiying-tool #mergeTs { padding:11px; }
 @media (max-width:600px) { .shiying-tool-heading { flex-wrap:wrap; margin-top:20px; } .shiying-tool-heading h1 { font-size:19px; } .shiying-tool .videoInfo { flex-wrap:wrap; } .shiying-tool #mergeDown { flex-wrap:wrap; } }
+/* Shared fix for the old file, HLS and DASH download pages. */
+.shiying-tool,.shiying-tool *,.shiying-tool *::before,.shiying-tool *::after{box-sizing:border-box}
+.shiying-tool{color-scheme:dark;min-height:100vh;margin:0;background:var(--paper);color:var(--ink)}
+.shiying-tool .wrapper,.shiying-tool .wrapper1080,.shiying-tool .wrapper1024,.shiying-tool .m3u8_wrapper{width:auto;min-width:0;max-width:940px;margin:16px auto;padding:0 24px}
+.shiying-tool section,.shiying-tool .optionBox,.shiying-tool .block,.shiying-tool .downItem{min-width:0;max-width:100%}
+.shiying-tool .optionBox{background:var(--background-color);border-color:var(--line);border-radius:10px;padding:20px}
+.shiying-tool input:not([type=checkbox]):not([type=radio]):not([type=range]),.shiying-tool textarea,.shiying-tool select{min-width:0;max-width:100%}
+.shiying-tool .fullInput,.shiying-tool .width100,.shiying-tool .keyUrl{width:100%}
+.shiying-tool .explain,.shiying-tool .down-file-progress,.shiying-tool .block p,.shiying-tool .videoInfo,.shiying-tool .m3u8Tips{overflow-wrap:anywhere;word-break:break-word}
+.shiying-tool .progress-wrapper{min-width:0}
+.shiying-tool .progress-container{min-width:0;flex-wrap:wrap}
+.shiying-tool #m3u8_url,.shiying-tool #mpd_url{max-width:100%;white-space:normal;overflow-wrap:anywhere;word-break:break-word;max-height:112px;overflow:auto;animation:none;font-size:12px;line-height:1.65}
+.shiying-tool .cancel-btn{flex:none}
+.shiying-tool .rangeDown{min-width:0;flex-wrap:wrap;gap:6px}
+.shiying-tool .rangeDown>.merge{min-width:0;max-width:100%;flex-wrap:wrap;justify-content:flex-start;gap:4px}
+.shiying-tool details>.merge{min-width:0;max-width:100%;flex-wrap:wrap;justify-content:flex-start;gap:8px}
+.shiying-tool .rangeDown{flex:0 0 auto;max-width:100%}
+@media(max-width:600px){.shiying-tool .wrapper,.shiying-tool .wrapper1080,.shiying-tool .wrapper1024,.shiying-tool .m3u8_wrapper{padding:0 16px}.shiying-tool .optionBox{padding:16px}.shiying-tool-heading{padding:0 16px}.shiying-tool .progress-wrapper{flex-basis:140px}}

@@ -4,7 +4,7 @@
   },
   "action": {
     "default_icon": "img/icon.png",
-    "default_title": "拾影 · 网页视频下载",
+    "default_title": "Ruxget",
     "default_popup": "shiying.html"
   },
   "side_panel": {
@@ -17,7 +17,7 @@
   },
   "manifest_version": 3,
   "minimum_chrome_version": "116",
-  "name": "拾影 · 网页视频下载",
+  "name": "Ruxget · Web Video Downloader",
   "homepage_url": "https://github.com/hesay77-cmyk/shiying",
   "options_ui": {
     "page": "options.html",
@@ -91,13 +91,50 @@
       ],
       "run_at": "document_start",
       "all_frames": true
+    },
+    {
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://m.youtube.com/*",
+        "https://youtube.com/*",
+        "https://www.bilibili.com/*",
+        "https://bilibili.com/*"
+      ],
+      "js": [
+        "js/shiying-locale.js",
+        "js/shiying-floating.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
     }
   ],
   "default_locale": "zh_CN",
-  "version": "0.3.2",
+  "version": "0.4.42",
+  "version_name": "0.4.42 desktop-connection-recovery",
+  "optional_permissions": [
+    "nativeMessaging",
+    "cookies"
+  ],
   "incognito": "split",
   "optional_host_permissions": [
     "https://*/*",
     "http://*/*"
+  ],
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA9X3Rv8zD4/izofUnD6eTAkxdzUZhjobeOl1ixITR7I0hOe+fhd4ipOZsvjDHOY0MaCgg0VIVnE/VwWnkmlht2wL0Nxo41A96V4N4SWY2TNThXD5eai+FMMW0FHdWVxA+uUhBPZqYVo+YEeKgTZPXEANlNtCfsQPBRmR8wCj9X6PPfi5xXKmH8LTgFOfoU2Ujx8C67Rs1p3eMOiklpFW71hsX/svq/FLMRXppyWkDiiReTWZBX++659OAbUU0aZZaKcQd/4K1coMNyD0ERMBKpTUp8w1OhB/F7kpMd3IP1El+XRJCvHswQePHUdXWr9jmkZbxw0P6CFmF/YYvLryweQIDAQAB",
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "_locales/en/messages.json",
+        "_locales/zh_CN/messages.json"
+      ],
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://m.youtube.com/*",
+        "https://youtube.com/*",
+        "https://youtu.be/*",
+        "https://www.bilibili.com/*",
+        "https://bilibili.com/*"
+      ]
+    }
   ]
 }

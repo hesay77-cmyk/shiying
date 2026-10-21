@@ -1,56 +1,71 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-i18n-title="catCatch">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>拾影 · 网页视频下载</title>
+  <title>Ruxget · Web Video Downloader</title>
   <link rel="stylesheet" href="css/shiying.css">
+  <script src="js/polyfill.js"></script>
+  <script src="js/shiying-locale.js"></script>
+  <script src="js/i18n.js" defer></script>
   <script src="js/shiying-core.js" defer></script>
   <script src="js/shiying-access.js" defer></script>
   <script src="js/shiying-platform.js" defer></script>
   <script src="js/shiying-platform-ui.js" defer></script>
+  <script src="js/shiying-native.js" defer></script><script src="js/shiying-desktop.js" defer></script>
   <script src="js/shiying.js" defer></script>
+  <script src="js/shiying-netdisk.js" defer></script><script src="js/shiying-netdisk-popup.js" defer></script>
 </head>
 <body>
   <header class="topbar">
-    <div class="brand"><img src="img/shiying.svg" alt="" width="28" height="28"><h1>拾影</h1></div>
-    <details class="menu"><summary aria-label="打开设置"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/></svg></summary><div class="menu-panel">
-      <label><input id="saveAs" type="checkbox">下载时选择保存位置</label>
-      <button id="pause">暂停识别</button>
-      <button id="downloads">打开下载文件夹</button>
-      <button id="advanced">高级工具</button>
-      <button id="siteSettings">管理网站权限</button>
-      <button id="help">使用说明与开源信息</button>
+    <div class="brand"><img src="img/shiying.svg" alt="" width="28" height="28"><h1>Ruxget</h1></div>
+    <div class="topbar-actions">
+    <button id="floatingToggle" class="floating-toggle" type="button" disabled>下载浮钮</button>
+    <details class="menu"><summary aria-label="打开设置" data-i18n-aria="uiOpenMenu"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/></svg></summary><div class="menu-panel">
+      <button id="pause" data-i18n="uiPauseDetection" data-i18n-live>暂停识别</button>
+      <button id="downloads" data-i18n="uiOpenDownloads">打开下载文件夹</button>
+      <button id="ordinaryDownload" data-i18n="uiOrdinaryDownload">普通文件下载…</button>
+      <button id="desktopHelp" data-i18n="uiDesktopHelp">桌面版安装与连接</button>
+      <button id="advanced" data-i18n="uiAdvanced">高级工具</button>
+      <button id="siteSettings" data-i18n="uiSiteSettings">管理网站权限</button>
+      <button id="help" data-i18n="uiHelp">使用说明与开源信息</button>
     </div></details>
+    <button type="button" id="languageSelect" class="floating-toggle language-switch" aria-label="Language" title="A=跟随浏览器 · 中=中文 · EN=English" data-lang="auto">A</button>
+    </div>
   </header>
-  <section class="source" aria-label="当前网页"><span class="source-dot"></span><div><b id="pageTitle">正在读取当前网页</b><span id="pageHost">只显示这个页面的媒体</span></div><button id="refresh" class="icon-button" aria-label="重新读取视频列表" title="重新读取视频列表"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6 7a7 7 0 0 1 12-1l2 3M4 15l2 3a7 7 0 0 0 12-1"/></svg></button></section>
+  <section class="save-location" aria-label="新下载保存位置" data-i18n-aria="uiSaveLocationAria"><label title="新下载的文件准备好后，由 Chrome 打开保存窗口，可选择文件夹和文件名" data-i18n-title="uiSaveAsTitle"><input id="saveAs" type="checkbox"><span data-i18n="uiSaveAsLabel">保存时选择文件夹</span></label><button id="downloadLocation" class="text-button" type="button" title="打开 Chrome 下载设置，更改默认保存文件夹" data-i18n="uiDefaultLocation" data-i18n-title="uiDefaultLocationTitle">默认位置…</button></section>
+  <section class="source" aria-label="当前网页" data-i18n-aria="uiSourceAria"><span class="source-dot"></span><div><b id="pageTitle" data-i18n="uiReadingPage" data-i18n-live>正在读取当前网页</b><span id="pageHost" data-i18n="uiOnlyThisPage">只显示这个页面的媒体</span></div><button id="refresh" class="icon-button" aria-label="重新读取视频列表" title="重新读取视频列表" data-i18n-aria="uiRefreshList" data-i18n-title="uiRefreshList"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6 7a7 7 0 0 1 12-1l2 3M4 15l2 3a7 7 0 0 0 12-1"/></svg></button></section>
   <main>
-    <section id="platformEntry" class="platform-entry" hidden aria-label="B站和 YouTube 下载">
+    <section id="netdiskEntry" class="platform-card netdisk-entry" hidden aria-label="网盘下载"><h2 id="netdiskTitle" data-i18n-live>Ruxget 网盘下载</h2><p id="netdiskNote" class="quality-note" role="status"></p><div class="netdisk-actions"><button id="netdiskEnable" class="download-button" type="button" data-i18n="uiNetdiskEnable" data-i18n-live>开启Ruxget下载</button><button id="netdiskDisable" class="text-button" type="button" hidden data-i18n="uiNetdiskDisable">关闭此网盘</button></div><div class="netdisk-actions"><button id="netdiskAuthorize" class="text-button" type="button" hidden data-i18n="uiBaiduAuth">百度授权</button><button id="netdiskSetup" class="text-button" type="button" data-i18n="uiDesktopSetup">安装与连接桌面版</button></div></section>
+    <section id="platformEntry" class="platform-entry" hidden aria-label="B站和 YouTube 下载" data-i18n-aria="uiBiliYtAria">
       <article id="platformCard" class="platform-card" hidden>
-        <div class="platform-intro"><h2 id="platformTitle">读取视频</h2><p id="platformMeta" class="platform-meta"></p></div>
-        <section class="video-choice" aria-label="下载完整视频"><span class="format-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m10 9 5 3-5 3Z"/></svg></span><label class="visually-hidden" for="platformQuality">清晰度</label><select id="platformQuality" disabled aria-label="选择视频清晰度"><option>读取成功后选择</option></select><button id="platformDownload" class="download-button" disabled>下载视频</button></section>
-        <section class="platform-audio" aria-label="单独下载声音"><span class="format-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17V5l11-2v12M9 9l11-2"/><ellipse cx="6" cy="17" rx="3" ry="2.5"/><ellipse cx="17" cy="15" rx="3" ry="2.5"/></svg></span><div><h3>MP3 音频</h3></div><button id="platformAudio" class="download-button" disabled>下载 MP3</button></section>
+        <div class="platform-intro"><h2 id="platformTitle" data-i18n="uiReadVideo" data-i18n-live>读取视频</h2><p id="platformMeta" class="platform-meta"></p></div>
+        <section id="platformJob" class="job-capsule" aria-label="当前下载" data-i18n-aria="uiCurrentDownload" hidden><div class="job-line"><span id="platformStage" role="status"></span><b id="platformPercent"></b></div><progress id="platformProgress" max="100" value="0" aria-label="下载进度"></progress><div class="job-actions"><button id="platformCancel" class="text-button" data-i18n="uiCancelDownload">取消下载</button><button id="platformDetails" class="text-button" data-i18n="uiViewProgress">查看进度</button><button id="platformChoices" class="text-button" aria-expanded="false" data-i18n="uiDownloadOptions">下载选项</button></div></section>
+        <section class="video-choice" aria-label="下载完整视频" data-i18n-aria="uiFullVideo"><span class="format-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m10 9 5 3-5 3Z"/></svg></span><label class="visually-hidden" for="platformQuality" data-i18n="uiQuality">清晰度</label><select id="platformQuality" disabled aria-label="选择视频清晰度" data-i18n-aria="uiChooseQuality"><option data-i18n="uiChooseAfterRead">读取成功后选择</option></select><button id="platformDownload" class="download-button" disabled data-i18n="uiDownloadVideo">下载视频</button></section>
+        <section class="platform-audio" aria-label="单独下载声音" data-i18n-aria="uiAudioOnlySection"><span class="format-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17V5l11-2v12M9 9l11-2"/><ellipse cx="6" cy="17" rx="3" ry="2.5"/><ellipse cx="17" cy="15" rx="3" ry="2.5"/></svg></span><div><h3 data-i18n="uiMp3Audio">MP3 音频</h3></div><button id="platformAudio" class="download-button" disabled data-i18n="uiDownloadMp3">下载 MP3</button></section>
+        <button id="platformDesktop" class="text-button" disabled data-i18n="uiSendDesktop">交给桌面版下载</button>
         <p id="platformNote" class="quality-note"></p><p id="platformError" class="error" role="alert" hidden></p>
       </article>
-      <form id="platformForm"><label class="visually-hidden" for="platformURL">视频网址</label><div class="link-input"><span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="m9 15 6-6m-5-2 2-2a5 5 0 0 1 7 7l-2 2M14 17l-2 2a5 5 0 0 1-7-7l2-2"/></svg></span><input id="platformURL" type="url" required aria-label="视频网址" placeholder="粘贴视频网址"><button id="platformRead" type="submit">读取</button></div></form>
+      <form id="platformForm"><label class="visually-hidden" for="platformURL" data-i18n="uiVideoUrl">视频网址</label><div class="link-input"><span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="m9 15 6-6m-5-2 2-2a5 5 0 0 1 7 7l-2 2M14 17l-2 2a5 5 0 0 1-7-7l2-2"/></svg></span><input id="platformURL" type="url" required aria-label="视频网址" placeholder="粘贴视频网址" data-i18n-placeholder="uiPasteUrl"><button id="platformRead" type="submit" data-i18n="uiRead">读取</button></div></form>
     </section>
     <div id="mediaArea">
-    <section id="siteAccess" class="site-access" hidden><p id="siteAccessNote">首次使用时，只允许此网站及本页检测到的媒体来源。</p><button id="allowSite" class="download-button">允许此网站</button></section>
-    <div class="list-heading"><h2>发现的媒体 <span id="count">0</span></h2><button id="clear" class="text-button">清空列表</button></div>
-    <div class="filters"><div class="segments" role="group" aria-label="媒体类型"><button class="active" data-filter="all" aria-pressed="true">全部</button><button data-filter="video" aria-pressed="false">视频</button><button data-filter="audio" aria-pressed="false">音频</button></div><input id="search" type="search" placeholder="搜索名称或格式" aria-label="搜索名称或格式"></div>
-    <div id="empty" class="empty"><div class="empty-symbol" aria-hidden="true">▷</div><h3>先播放一下网页里的视频</h3><p>拾影会在这里列出找到的视频。<br>如果已经在播放，刷新网页后再试一次。</p></div>
+    <section id="siteAccess" class="site-access" hidden><p id="siteAccessNote" data-i18n="uiSiteAccessNote">首次使用时，只允许此网站及本页检测到的媒体来源。</p><button id="allowSite" class="download-button" data-i18n="uiAllowSite">允许此网站</button></section>
+    <div class="list-heading"><h2><span data-i18n="uiFoundMedia">发现的媒体</span> <span id="count">0</span></h2><button id="clear" class="text-button" data-i18n="uiClearList">清空列表</button></div>
+    <div class="filters"><div class="segments" role="group" aria-label="媒体类型" data-i18n-aria="uiMediaType"><button class="active" data-filter="all" aria-pressed="true" data-i18n="uiAll">全部</button><button data-filter="video" aria-pressed="false" data-i18n="video">视频</button><button data-filter="audio" aria-pressed="false" data-i18n="audio">音频</button></div><input id="search" type="search" placeholder="搜索名称或格式" aria-label="搜索名称或格式" data-i18n-placeholder="uiSearchPlaceholder" data-i18n-aria="uiSearchPlaceholder"></div>
+    <div id="empty" class="empty"><div class="empty-symbol" aria-hidden="true">▷</div><h3 data-i18n="uiEmptyTitle">先播放一下网页里的视频</h3><p data-i18n="uiEmptyBody">Ruxget 会在这里列出找到的视频。<br>如果已经在播放，刷新网页后再试一次。</p></div>
     <p id="error" class="error" role="alert" hidden></p>
     <div id="mediaList" class="media-list" aria-label="媒体列表"></div>
     <p id="fragmentNote" class="fragment-note" hidden></p>
     </div>
   </main>
-  <footer><span>免费开源，无广告</span><button id="copyAll" class="text-button" disabled>复制全部链接</button></footer>
+  <footer><span data-i18n="uiFreeOpen">免费开源，无广告</span><button id="copyAll" class="text-button" disabled data-i18n="uiCopyAllLinks">复制全部链接</button></footer>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <dialog id="linkDownload" class="link-download-sheet" aria-labelledby="linkDownloadTitle"><form id="linkDownloadForm"><div class="link-download-heading"><h2 id="linkDownloadTitle" data-i18n="uiLinkHowTitle">这个链接，怎么下？</h2><button id="linkDownloadCancel" type="button" class="text-button" data-i18n="uiCancel">取消</button></div><p class="quality-note" data-i18n="uiLinkHowNote">平时点击下载仍使用 Chrome，只有你选择时才打开Ruxget桌面版。</p><label for="linkDownloadURL" class="visually-hidden">文件下载链接</label><input id="linkDownloadURL" type="url" placeholder="粘贴 HTTP / HTTPS 下载链接" data-i18n-placeholder="uiPasteHttp" required maxlength="16384"><p id="linkDownloadError" class="error" role="alert" hidden></p><div class="link-download-actions"><button id="linkUseChrome" class="download-button" type="submit" data-i18n="uiUseChrome">用 Chrome 下载</button><button id="linkUseDesktop" class="text-button" type="button" data-i18n="uiUseRuxget">用Ruxget下载</button></div><p class="quality-note" data-i18n="uiLinkContextNote">也可以右键网页中的下载链接，选择“用Ruxget下载此链接”。</p></form></dialog>
   <template id="mediaTemplate">
     <article class="media-item">
       <div class="media-row"><div class="file-icon" aria-hidden="true">▷</div><div class="media-info"><h3></h3><div class="meta"><span class="format"></span><span class="size"></span></div></div><button class="download-button">下载</button></div>
-      <div class="row-tools"><button class="copy-button text-button">复制链接</button><button class="detail-button text-button" aria-expanded="false">查看详情</button><span class="item-status" role="status"></span></div>
-      <div class="item-details" hidden><p class="resource-url"></p><div class="quality" hidden><label>清晰度 <select aria-label="选择视频清晰度"></select></label><p class="quality-note"></p></div></div>
+      <div class="row-tools"><button class="copy-button text-button">复制链接</button><button class="detail-button text-button" aria-expanded="false" data-i18n="uiViewDetails">查看详情</button><button class="desktop-button text-button" data-i18n="uiDesktopDownload">桌面下载</button><span class="item-status" role="status"></span></div>
+      <div class="item-details" hidden><p class="resource-url"></p><div class="quality" hidden><label><span data-i18n="uiQuality">清晰度</span> <select aria-label="选择视频清晰度" data-i18n-aria="uiChooseQuality"></select></label><p class="quality-note"></p></div></div>
     </article>
   </template>
 </body>

@@ -13,7 +13,9 @@ async function showGrantedSites(){
  if(!list.children.length){const item=document.createElement('li');item.textContent='尚未允许其他网站。';list.append(item)}
 }
 siteForm.addEventListener('submit',event=>{
- event.preventDefault();const origin=ShiyingAccess.origin(document.querySelector('#sitePermissionURL').value);
+ event.preventDefault();const raw=document.querySelector('#sitePermissionURL').value;
+ if(ShiyingAccess.blocks?.(raw)){siteStatus.textContent='这个商店版本不支持该网站';return;}
+ const origin=ShiyingAccess.origin(raw);
  if(!origin){siteStatus.textContent='请填写 HTTP 或 HTTPS 网站网址';return;}
  ShiyingAccess.request([origin]).then(async granted=>{
   if(!granted){siteStatus.textContent='未授权，网站访问范围保持原样。';return;}

@@ -20,6 +20,7 @@ async function downloadTrack(catalog,track,task,index,count){
  for(const source of urls){
   try{
    received=0;
+   /* shiying-store-omit */
    if(catalog.site==='youtube'){
     if(!expected)throw new Error('原站没有提供完整文件大小，请重新读取');
     data=new Uint8Array(expected);
@@ -31,7 +32,9 @@ async function downloadTrack(catalog,track,task,index,count){
      data.set(bytes,start);received+=bytes.byteLength;
      await update(task,{progress:Math.round(4+(index+received/expected)/count*68)});
     }
-   }else{
+   }else
+   /* shiying-store-omit-end */
+   {
     const response=await fetch(source,{headers:{Range:'bytes=0-'},credentials:'omit',redirect:'error',signal:task.controller.signal});
     if(!response.ok)throw new Error(`原站返回 ${response.status}，请重新读取视频`);
     const range=response.headers.get('content-range')?.match(/bytes (\d+)-(\d+)\/(\d+)/);
@@ -73,7 +76,7 @@ async function merge(videoFile,audioFile,task,duration){
  for(const [file,track] of [[videoFile,video],[audioFile,audio]]){
   if(!track)throw new Error('文件缺少画面或声音');
   const entry=file.getTrackById(track.id).mdia.minf.stbl.stsd.entries[0];
-  const id=output.addTrack({type:entry.type,hdlr:track.video?'vide':'soun',name:'拾影',timescale:track.timescale,duration:Math.round(duration*track.timescale),width:track.video?.width||0,height:track.video?.height||0,channel_count:track.audio?.channel_count,samplerate:track.audio?.sample_rate,description_boxes:entry.boxes});
+  const id=output.addTrack({type:entry.type,hdlr:track.video?'vide':'soun',name:'Ruxget',timescale:track.timescale,duration:Math.round(duration*track.timescale),width:track.video?.width||0,height:track.video?.height||0,channel_count:track.audio?.channel_count,samplerate:track.audio?.sample_rate,description_boxes:entry.boxes});
   const samples=file.getTrackById(track.id).samples;
   for(let i=0;i<samples.length;i++){check(task);const sample=file.getTrackSample(track.id,i);output.addSample(id,sample.data,{duration:sample.duration,dts:sample.dts,cts:sample.cts,is_sync:sample.is_sync});if(i%1000===0)await pause()}
  }

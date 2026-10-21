@@ -476,3 +476,20 @@ const adjustSidebarPosition = () => {
 }
 window.addEventListener('load', adjustSidebarPosition)
 window.addEventListener('resize', adjustSidebarPosition);
+
+
+// Ruxget language preference
+document.addEventListener('DOMContentLoaded', async function () {
+  try {
+    if (!window.RuxgetI18n) return;
+    const info = await RuxgetI18n.ready();
+    const sel = document.getElementById('languageSelect');
+    if (!sel) return;
+    const stored = await chrome.storage.local.get(RuxgetI18n.STORAGE_KEY);
+    sel.value = stored[RuxgetI18n.STORAGE_KEY] || 'auto';
+    sel.addEventListener('change', async function () {
+      await RuxgetI18n.setLanguage(sel.value);
+      RuxgetI18n.applyDom(document);
+    });
+  } catch (e) { console.warn(e); }
+});

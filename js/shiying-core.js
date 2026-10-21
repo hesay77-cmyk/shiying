@@ -1,4 +1,4 @@
-// 拾影，2026-10-12：新的中文界面辅助函数。GPL-3.0，与 CatCatch 同许可。
+// Ruxget，2026-10-12：新的中文界面辅助函数。GPL-3.0，与 CatCatch 同许可。
 const Shiying = (() => {
     function kind(data) {
         const ext = String(data.ext || '').toLowerCase();
