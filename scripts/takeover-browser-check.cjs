@@ -103,6 +103,19 @@ const MB=1024*1024;
   // Settings page: the switch appears once the desktop is connected and saves the choices.
   await configure({enabled:false,minMB:1,skipHosts:[]});
   await browser.addInitScript(()=>{if(location.protocol!=='chrome-extension:')return;chrome.runtime.sendNativeMessage=async()=>({ok:true,version:'0.4.51'});const contains=chrome.permissions.contains.bind(chrome.permissions);chrome.permissions.contains=async request=>request?.permissions?.includes('nativeMessaging')?true:contains(request);chrome.permissions.request=async()=>true;});
+  // The popup's ⋯ menu names the feature and opens the page at the switch.
+  const menuPopup=await browser.newPage();await menuPopup.goto(`chrome-extension://${id}/shiying.html`);
+  await menuPopup.locator('details.menu summary').click();
+  assert.equal(await menuPopup.locator('#takeoverMenu').innerText(),'接管 Chrome 下载…');
+  const [opened]=await Promise.all([browser.waitForEvent('page'),menuPopup.locator('#takeoverMenu').click()]);
+  await opened.waitForLoadState();assert.match(opened.url(),/shiying-desktop\.html#takeover$/);
+  await opened.locator('#takeover.is-highlight').waitFor({state:'visible'});
+  await opened.waitForTimeout(600);
+  const box=await opened.locator('#takeover').boundingBox(),viewport=opened.viewportSize();
+  assert(box.y>=0&&box.y+box.height<=viewport.height,'the switch is scrolled into view');
+  await opened.screenshot({path:path.join(report,'menu-opens-switch.png')});await opened.close();
+  if(!menuPopup.isClosed())await menuPopup.close();
+  check('the ⋯ menu has “接管 Chrome 下载…”, which opens the page with the switch in view');
   const settings=await browser.newPage();await settings.goto(`chrome-extension://${id}/shiying-desktop.html`);
   await settings.locator('#takeover').waitFor({state:'visible'});
   assert.equal(await settings.locator('#takeoverEnabled').isChecked(),false);assert.equal(await settings.locator('#takeoverOptions').isVisible(),false);

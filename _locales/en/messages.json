@@ -1093,6 +1093,9 @@
   "uiDesktopHelp": {
     "message": "Desktop app install & connection"
   },
+  "uiTakeoverMenu": {
+    "message": "Take over Chrome downloads…"
+  },
   "uiAdvanced": {
     "message": "Advanced tools"
   },

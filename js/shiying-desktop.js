@@ -1,6 +1,7 @@
 // Desktop UI bindings; the explicit native bridge is shared with the link menu.
 const ShiyingDesktop=ShiyingNative;
 document.querySelector('#desktopHelp')?.addEventListener('click',()=>chrome.tabs.create({url:chrome.runtime.getURL('shiying-desktop.html')}));
+document.querySelector('#takeoverMenu')?.addEventListener('click',()=>chrome.tabs.create({url:chrome.runtime.getURL('shiying-desktop.html#takeover')}));
 const pick=(zh,en)=>window.RuxgetI18n?RuxgetI18n.pick(zh,en):zh;
 const desktopId=document.querySelector('#desktopExtensionId');
 if(desktopId){desktopId.textContent=chrome.runtime.id;document.querySelector('#copyDesktopId').addEventListener('click',async()=>{await navigator.clipboard.writeText(chrome.runtime.id);document.querySelector('#copyDesktopId').textContent=pick('已复制','Copied');});}
@@ -19,6 +20,11 @@ if(connectionStatus){
         document.querySelector('#desktopVersion').textContent=version;
         connectionStatus.dataset.state=step==='done'?'ready':step==='install'?'missing':step;
         connectionStatus.textContent=status;
+        if(location.hash==='#takeover'){
+            const card=document.querySelector('#takeover');
+            if(step==='done'&&card&&!card.dataset.shown){card.dataset.shown='1';card.classList.add('is-highlight');requestAnimationFrame(()=>card.scrollIntoView({block:'center',behavior:'smooth'}));}
+            else if(step!=='done')connectionStatus.textContent=[status,pick('接管 Chrome 下载需要先装好并连接桌面版，连上后开关会出现在这里。','Taking over Chrome downloads needs the desktop app installed and connected; the switch appears here once it is.')].filter(Boolean).join(' ');
+        }
     }
     function schedule(){clearTimeout(timer);if(granted&&!document.hidden&&document.body.dataset.step!=='done')timer=setTimeout(()=>checkConnection(false),3000);}
     async function checkConnection(requestPermission=false){

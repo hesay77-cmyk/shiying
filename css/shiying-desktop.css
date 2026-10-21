@@ -102,3 +102,5 @@ body:not([data-step="done"]) .takeover-card{display:none}
 .takeover-log .is-desktop{color:#9ff0c2}
 .takeover-card .wizard-status{text-align:left;margin-top:10px}
 .takeover-card .wizard-status:empty{display:none}
+.takeover-card.is-highlight{animation:takeover-flash 1.6s ease 2}
+@keyframes takeover-flash{50%{border-color:var(--blue);box-shadow:0 0 0 4px rgba(102,188,255,.22)}}

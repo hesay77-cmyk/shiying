@@ -1088,6 +1088,9 @@
   "uiDesktopHelp": {
     "message": "桌面版安装与连接"
   },
+  "uiTakeoverMenu": {
+    "message": "接管 Chrome 下载…"
+  },
   "uiAdvanced": {
     "message": "高级工具"
   },
