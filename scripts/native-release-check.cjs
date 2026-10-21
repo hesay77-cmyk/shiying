@@ -3,7 +3,7 @@ const fs=require('node:fs'),path=require('node:path'),https=require('node:https'
 const {execFileSync,spawnSync}=require('node:child_process'),{chromium}=require(process.env.SHIYING_PLAYWRIGHT||'playwright');
 const root=path.resolve(__dirname,'..'),version=JSON.parse(fs.readFileSync(path.join(root,'manifest.json'),'utf8')).version;
 const folder=path.join(root,'reports','2026-10-12-v'+version),run=path.join(folder,'安装包 验证-'+Date.now());fs.mkdirSync(run,{recursive:true});
-const records=JSON.parse(fs.readFileSync(path.join(root,`release/拾影-${version}-文件校验.json`),'utf8'));
+const records=JSON.parse(fs.readFileSync(path.join(root,`release/Ruxget-${version}-文件校验.json`),'utf8'));
 const ffmpeg=process.env.SHIYING_FFMPEG||path.join(root,'helper/bin/ffmpeg.exe'),hash=file=>crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 const files=(base,prefix='')=>fs.readdirSync(base,{withFileTypes:true}).flatMap(item=>item.isDirectory()?files(path.join(base,item.name),prefix+item.name+'/'):[prefix+item.name]);
 const quote=value=>"'"+value.replace(/'/g,"''")+"'",report={version,run,helperRequests:[],errors:[],checks:[]};

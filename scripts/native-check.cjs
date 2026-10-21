@@ -1,5 +1,8 @@
 const assert=require('node:assert/strict'),fs=require('node:fs');
 const platform=require('../js/shiying-platform.js');
+// YouTube lives in the full-edition module; load it onto the same platform object to keep testing it.
+globalThis.ShiyingPlatform=platform;require('../js/shiying-youtube.js');
+const store=JSON.parse(fs.readFileSync(require('node:path').join(__dirname,'..','manifest.json'),'utf8'));assert(!JSON.stringify(store).match(/youtube|googlevideo/i),'store manifest must not reference YouTube');
 assert.throws(()=>platform.mediaURL('https://googlevideo.com.evil.example/file','youtube'));
 assert.throws(()=>platform.mediaURL('https://127.0.0.1/private','bilibili'));
 assert.throws(()=>platform.mediaURL('https://x.bilivideo.com:7897/file','bilibili'));

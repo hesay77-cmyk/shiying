@@ -20,7 +20,7 @@ async function downloadTrack(catalog,track,task,index,count){
  for(const source of urls){
   try{
    received=0;
-   if(catalog.site==='youtube'){
+   if(catalog.chunked){
     if(!expected)throw new Error('原站没有提供完整文件大小，请重新读取');
     data=new Uint8Array(expected);
     for(let start=0;start<expected;start+=8*1024*1024){
@@ -73,13 +73,27 @@ async function merge(videoFile,audioFile,task,duration){
  for(const [file,track] of [[videoFile,video],[audioFile,audio]]){
   if(!track)throw new Error('文件缺少画面或声音');
   const entry=file.getTrackById(track.id).mdia.minf.stbl.stsd.entries[0];
-  const id=output.addTrack({type:entry.type,hdlr:track.video?'vide':'soun',name:'拾影',timescale:track.timescale,duration:Math.round(duration*track.timescale),width:track.video?.width||0,height:track.video?.height||0,channel_count:track.audio?.channel_count,samplerate:track.audio?.sample_rate,description_boxes:entry.boxes});
+  const id=output.addTrack({type:entry.type,hdlr:track.video?'vide':'soun',name:'Ruxget',timescale:track.timescale,duration:Math.round(duration*track.timescale),width:track.video?.width||0,height:track.video?.height||0,channel_count:track.audio?.channel_count,samplerate:track.audio?.sample_rate,description_boxes:entry.boxes});
   const samples=file.getTrackById(track.id).samples;
   for(let i=0;i<samples.length;i++){check(task);const sample=file.getTrackSample(track.id,i);output.addSample(id,sample.data,{duration:sample.duration,dts:sample.dts,cts:sample.cts,is_sync:sample.is_sync});if(i%1000===0)await pause()}
  }
  output.moov.mvhd.duration=Math.round(duration*output.moov.mvhd.timescale);
  for(const track of output.moov.traks)track.tkhd.duration=output.moov.mvhd.duration;
  return new Blob([output.getBuffer().buffer],{type:'video/mp4'});
+}
+// ID3v2.3 tag with title, artist and front cover. Text frames are UTF-16 so Chinese titles display everywhere.
+function id3(meta){
+ const frames=[],u16=text=>{const out=new Uint8Array(3+text.length*2+2);out[0]=1;out[1]=0xff;out[2]=0xfe;for(let i=0;i<text.length;i++){const c=text.charCodeAt(i);out[3+i*2]=c&255;out[4+i*2]=c>>8}return out};
+ const frame=(id,body)=>{const head=new Uint8Array(10);for(let i=0;i<4;i++)head[i]=id.charCodeAt(i);const n=body.length;head[4]=n>>>24&255;head[5]=n>>>16&255;head[6]=n>>>8&255;head[7]=n&255;frames.push(head,body)};
+ if(meta.title)frame('TIT2',u16(meta.title));if(meta.artist)frame('TPE1',u16(meta.artist));
+ if(meta.cover){const mime=new TextEncoder().encode(meta.coverType),body=new Uint8Array(4+mime.length+meta.cover.length);body.set(mime,1);body[mime.length+2]=3;body.set(meta.cover,mime.length+4);frame('APIC',body)}
+ const size=frames.reduce((n,f)=>n+f.length,0);
+ return new Blob([new Uint8Array([0x49,0x44,0x33,3,0,0,size>>>21&127,size>>>14&127,size>>>7&127,size&127]),...frames]);
+}
+// Cover is optional: any failure just leaves it out.
+async function coverArt(url,task){
+ if(!url)return null;
+ try{const response=await fetch(url,{credentials:'omit',redirect:'error',signal:task.controller.signal});const type=response.headers.get('content-type')||'';if(!response.ok||!/^image\/(jpeg|png)$/.test(type))return null;const bytes=new Uint8Array(await response.arrayBuffer());return bytes.length&&bytes.length<=4*1024*1024?{cover:bytes,coverType:type}:null}catch{return null}
 }
 async function mp3(audio,task){
  const channels=Math.min(audio.numberOfChannels,2),encoder=new lamejs.Mp3Encoder(channels,audio.sampleRate,192),parts=[];
@@ -100,12 +114,20 @@ async function run(task){
  const timer=setTimeout(()=>{task.timedOut=true;task.controller.abort()},900000);
  try{
   check(task);const audioOnly=job.format==='mp3',video=catalog.video.find(track=>track.height===job.height),audio=catalog.audio[0];
-  const tracks=audioOnly?[audio]:[video,audio],downloads=[];
+  // muxed: one file already holds picture and sound (抖音、快手、小红书); no separate audio track, no merge.
+  const tracks=audioOnly?[audio]:catalog.muxed?[video]:[video,audio],downloads=[];
   for(let i=0;i<tracks.length;i++)downloads.push(await downloadTrack(catalog,tracks[i],task,i,tracks.length));
   await update(task,{status:'verifying',stage:'正在检查声音与完整时长',progress:75});
   const sound=await decodeAudio(downloads.at(-1).buffer,catalog.duration);check(task);
   let blob,videoFrames=0,width=0,height=0;
-  if(audioOnly){await update(task,{stage:'正在生成 MP3',progress:77});blob=await mp3(sound.audio,task);await update(task,{stage:'正在检查 MP3 文件',progress:93});await decodeAudio(await blob.arrayBuffer(),catalog.duration)}
+  if(audioOnly){await update(task,{stage:'正在生成 MP3',progress:77});blob=await mp3(sound.audio,task);blob=new Blob([id3({title:catalog.title,artist:catalog.artist,...await coverArt(catalog.cover,task)}),blob],{type:'audio/mpeg'});await update(task,{stage:'正在检查 MP3 文件',progress:93});await decodeAudio(await blob.arrayBuffer(),catalog.duration)}
+  else if(catalog.muxed){
+   const file=parse(downloads[0].buffer),track=file.getInfo().videoTracks[0];
+   if(!track||job.height&&track.video.height!==job.height||Math.abs(trackDuration(file,track.id)-catalog.duration)>Math.max(2,catalog.duration*0.005))throw new Error('视频清晰度或时长不符合选择，请重新下载');
+   width=track.video.width;height=track.video.height;
+   await update(task,{stage:'正在检查完整画面',progress:77});videoFrames=await decodeVideo(file,track,task);
+   blob=new Blob([downloads[0].buffer],{type:'video/mp4'});
+  }
   else{
    const videoFile=parse(downloads[0].buffer),audioFile=parse(downloads[1].buffer),track=videoFile.getInfo().videoTracks[0];
    if(!track||track.video.height!==job.height||Math.abs(trackDuration(videoFile,track.id)-catalog.duration)>Math.max(2,catalog.duration*0.005))throw new Error('视频清晰度或时长不符合选择，请重新下载');
@@ -116,9 +138,9 @@ async function run(task){
   check(task);await update(task,{stage:'检查通过，正在保存',progress:97});
   task.blobURL=URL.createObjectURL(blob);
   const actual=await outputInfo(task.blobURL,job.format);
-  if(!Number.isFinite(actual.duration)||Math.abs(actual.duration-catalog.duration)>Math.max(2,catalog.duration*0.005)||!audioOnly&&actual.height!==job.height)throw new Error('成品时长或清晰度不符合选择，请重新下载');
+  if(!Number.isFinite(actual.duration)||Math.abs(actual.duration-catalog.duration)>Math.max(2,catalog.duration*0.005)||!audioOnly&&job.height&&actual.height!==job.height)throw new Error('成品时长或清晰度不符合选择，请重新下载');
   const verification={...actual,audio:audioOnly?'mp3':'aac',video:audioOnly?null:'h264',audioActive:sound.active,bytes:blob.size,fullDecode:true,expectedDuration:catalog.duration,videoFrames,trackBytes:downloads.map(({bytes,expected})=>({bytes,expected}))};
-  await send('shiyingEngineSave',{id:job.id,url:task.blobURL,filename:`${filename(job.title)}-${audioOnly?'声音':job.height+'p'}.${job.format}`,verification});
+  await send('shiyingEngineSave',{id:job.id,url:task.blobURL,filename:`${filename(job.title)}-${audioOnly?'声音':Math.min(width,height)?Math.min(width,height)+'p':'原画'}.${job.format}`,verification});
  }catch(error){const message=task.timedOut?'下载耗时过长，请检查网络后重试':(error.message||String(error));await send('shiyingEngineUpdate',{id:job.id,values:{status:task.cancelled?'cancelled':'error',stage:task.cancelled?'已取消':'下载失败',error:task.cancelled?null:(/[\u4e00-\u9fff]/.test(message)?message:'文件未通过处理或完整性检查，请重新读取后再试')}}).catch(()=>{});if(task.blobURL)URL.revokeObjectURL(task.blobURL);tasks.delete(job.id)}finally{clearTimeout(timer)}
 }
 chrome.runtime.onMessage.addListener((event,sender,respond)=>{

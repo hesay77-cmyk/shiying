@@ -113,7 +113,7 @@ function start() {
             fragment.downFileName = getUrlFileName(fragment.url);
         }
         const html = $(`<div class="downItem">
-                            <div class="explain">${fragment.downFileName}</div>
+                            <div class="explain"></div>
                             <div class="down-file-progress"></div>
                             <div class="progress-container">
                             <div class="progress-wrapper">
@@ -126,6 +126,7 @@ function start() {
                             </div>
                         </div>`);
 
+        html.find('.explain').text(fragment.downFileName);
         const $button = html.find("button");
         $button.data("action", "stop");
 

@@ -23,7 +23,7 @@ const root = path.resolve(__dirname, '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'build/manifest.json')));
 assert.equal(manifest.default_locale, 'zh_CN');
 assert.equal(manifest.action.default_popup, 'shiying.html');
-assert.deepEqual(fs.readdirSync(path.join(root, 'build/_locales')), ['zh_CN']);
+assert.deepEqual(fs.readdirSync(path.join(root, 'build/_locales')), ['en', 'zh_CN']); // Chinese and English interface since 0.4.29
 for (const name of fs.readdirSync(path.join(root, 'build'))) if (name.endsWith('.html')) {
     const html = fs.readFileSync(path.join(root, 'build', name), 'utf8');
     for (const match of html.matchAll(/(?:src|href)="((?:js|lib|css|img)\/[^"?#]+)"/g)) assert.ok(fs.existsSync(path.join(root, 'build', match[1])), `${name}: ${match[1]}`);

@@ -202,10 +202,13 @@
     // Heart Beat
     var Port;
     function connect() {
-        Port = chrome.runtime.connect(chrome.runtime.id, { name: "HeartBeat" });
-        Port.postMessage("HeartBeat");
-        Port.onMessage.addListener(function (message, Port) { return true; });
-        Port.onDisconnect.addListener(connect);
+        try {
+            if (!chrome.runtime?.id) return;
+            Port = chrome.runtime.connect(chrome.runtime.id, { name: "HeartBeat" });
+            Port.postMessage("HeartBeat");
+            Port.onMessage.addListener(function (message, Port) { return true; });
+            Port.onDisconnect.addListener(connect);
+        } catch {}
     }
     connect();
 
@@ -234,6 +237,7 @@
         });
     };
     window.addEventListener("message", (event) => {
+        try { if (!chrome.runtime?.id) return; } catch { return; }
         const action = ["catCatchAddMedia", "catCatchAddKey", "catCatchFFmpeg", "catCatchFFmpegResult", "catCatchCloseScript"];
         if (!event.data || !event.data.action || event.origin !== window.location.origin || !action.includes(event.data.action)) { return; }
         event.stopPropagation();

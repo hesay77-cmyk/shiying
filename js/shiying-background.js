@@ -1,38 +1,46 @@
-// 拾影纯浏览器流程：原站读取，插件内合并/转换，Chrome 保存。GPL-3.0。
-importScripts('/js/shiying-core.js','/js/shiying-platform.js');
+// Ruxget 纯浏览器流程：原站读取，插件内合并/转换，Chrome 保存。GPL-3.0。
+importScripts('/js/shiying-core.js','/js/shiying-platform.js','/js/shiying-shortvideo.js');
 const NATIVE_JOB_PREFIX='shiyingJob:',NATIVE_CATALOG_PREFIX='shiyingCatalog:';
 let engineCreation;
+async function ensureFloatingControl(tabId){
+ if(!Number.isInteger(tabId))throw new Error('请先切换到视频页');
+ const tab=await chrome.tabs.get(tabId);
+ ShiyingPlatform.source(tab.url);
+ await chrome.scripting.executeScript({target:{tabId},files:['js/shiying-locale.js', 'js/shiying-floating.js']});
+ return {};
+}
+async function restoreOpenFloatingControls(){
+ const matches=chrome.runtime.getManifest().content_scripts.find(script=>script.js?.includes('js/shiying-floating.js'))?.matches;
+ if(!matches?.length)return;
+ const tabs=await chrome.tabs.query({url:matches});
+ for(const tab of tabs)try{await ensureFloatingControl(tab.id);}catch{/* Closed, restricted or non-video tabs need no control. */}
+}
+chrome.runtime.onInstalled?.addListener(()=>restoreOpenFloatingControls().catch(()=>{}));
 async function sourceTab(source,requestedId){
  const tabs=await chrome.tabs.query({});
  const matching=tabs.filter(tab=>{try{return ShiyingPlatform.source(tab.url).url===source.url}catch{return false}});
  let tab=matching.find(tab=>tab.id===requestedId)||matching[0];
- if(!tab)tab=await chrome.tabs.create({url:source.url,active:false});
+ if(!tab){tab=await chrome.tabs.create({url:source.url,active:false});tab.shiyingOwned=true;}
  if(tab.status!=='complete')await new Promise((resolve,reject)=>{const timer=setTimeout(()=>{chrome.tabs.onUpdated.removeListener(changed);reject(new Error('视频网页加载超时，请重新读取'))},45000);function changed(id,info){if(id===tab.id&&info.status==='complete'){clearTimeout(timer);chrome.tabs.onUpdated.removeListener(changed);resolve()}}chrome.tabs.onUpdated.addListener(changed);chrome.tabs.get(tab.id).then(current=>{if(current.status==='complete')changed(tab.id,{status:'complete'})})});
  return tab;
 }
 async function platformRead(event){
  const source=ShiyingPlatform.source(event.url),tab=await sourceTab(source,event.tabId);
  let catalog;
+ try{
  if(source.site==='bilibili'){
   const [result]=await chrome.scripting.executeScript({target:{tabId:tab.id},world:'MAIN',func:ShiyingPlatform.readBilibiliPage,args:[source.url]});
   if(result.result?.error)throw new Error(result.result.error);
   catalog=ShiyingPlatform.bilibiliCatalog(source,result.result);
- }else{
-  const [context]=await chrome.scripting.executeScript({target:{tabId:tab.id},world:'MAIN',func:()=>({visitorData:window.ytcfg?.get('VISITOR_DATA')||window.ytcfg?.get('INNERTUBE_CONTEXT')?.client?.visitorData})});
-  if(!context.result?.visitorData)throw new Error('视频网页还在准备，请稍后重新读取');
-  const ua='Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15';
-  await chrome.declarativeNetRequest.updateSessionRules({removeRuleIds:[1610000000],addRules:[{id:1610000000,priority:1,action:{type:'modifyHeaders',requestHeaders:[{header:'User-Agent',operation:'set',value:ua},{header:'Origin',operation:'set',value:'https://www.youtube.com'}]},condition:{initiatorDomains:[chrome.runtime.id],urlFilter:'|https://www.youtube.com/youtubei/v1/player',resourceTypes:['xmlhttprequest']}}]});
-  const client={clientName:'VISIONOS',clientVersion:'1.02',deviceMake:'Apple',deviceModel:'RealityDevice17,1',userAgent:ua,osName:'visionOS',osVersion:'26.5.23O471',hl:'en',gl:'US',utcOffsetMinutes:0,visitorData:context.result.visitorData};
-  const response=await fetch('https://www.youtube.com/youtubei/v1/player?prettyPrint=false',{method:'POST',headers:{'Content-Type':'application/json','X-YouTube-Client-Name':'101','X-YouTube-Client-Version':'1.02','X-Goog-Visitor-Id':client.visitorData},body:JSON.stringify({context:{client},videoId:new URL(source.url).searchParams.get('v'),contentCheckOk:true,racyCheckOk:true,playbackContext:{contentPlaybackContext:{html5Preference:'HTML5_PREF_WANTS'}}}),credentials:'omit',signal:AbortSignal.timeout(20000)});
-  if(!response.ok)throw new Error('原站暂时没有返回视频，请稍后重新读取');
-  catalog=ShiyingPlatform.youtubeCatalog(source,await response.json());
- }
+ }else if(ShiyingPlatform.readers[source.site])catalog=await ShiyingPlatform.readers[source.site](source,tab);
+ else throw new Error('这个入口目前支持 B站视频');
  if(!Number.isFinite(catalog.duration)||catalog.duration<=0)throw new Error('没读到完整视频时长，请重新读取');
  catalog.id=crypto.randomUUID();catalog.createdAt=Date.now();
  const previous=(await chrome.storage.session.get('shiyingCatalogIds')).shiyingCatalogIds||[];
  if(previous.length>=20)await chrome.storage.session.remove(NATIVE_CATALOG_PREFIX+previous.shift());
  await chrome.storage.session.set({[NATIVE_CATALOG_PREFIX+catalog.id]:catalog,shiyingCatalogIds:[...previous,catalog.id]});
- return {id:catalog.id,site:catalog.site,url:catalog.url,title:catalog.title,duration:catalog.duration,choices:catalog.choices,audioAvailable:true,native:true};
+ return {id:catalog.id,site:catalog.site,url:catalog.url,title:catalog.title,duration:catalog.duration,choices:catalog.choices,audioAvailable:true,native:true,siteName:catalog.siteName,listUrl:catalog.listUrl,muxed:!!catalog.muxed,mediaOrigins:ShiyingPlatform.mediaOrigins?.[catalog.site]||[],subtitles:(catalog.subtitles||[]).map(({lang,name})=>({lang,name}))};
+ }finally{if(event.collection&&tab.shiyingOwned)await chrome.tabs.remove(tab.id).catch(()=>{});}
 }
 async function jobRead(id){const job=(await chrome.storage.local.get(NATIVE_JOB_PREFIX+id))[NATIVE_JOB_PREFIX+id];if(!job)throw new Error('没有找到下载记录，请重新开始');return job}
 async function jobUpdate(id,values){const job=await jobRead(id);if(job.status==='cancelled'&&values.status!=='cancelled')return job;Object.assign(job,values);await chrome.storage.local.set({[NATIVE_JOB_PREFIX+id]:job});return job}
@@ -44,7 +52,8 @@ async function engineSave(event){
  if(job.status==='cancelled')throw new Error('已取消下载');
  if(job.status!=='verifying'||!event.url.startsWith(`blob:${chrome.runtime.getURL('')}`))throw new Error('文件来源不符合当前任务');
  const settings=await chrome.storage.sync.get({saveAs:false});
- const downloadId=await chrome.downloads.download({url:event.url,filename:'拾影/'+event.filename,saveAs:settings.saveAs,conflictAction:'uniquify'});
+ const chooseLocation=typeof job.saveAs==='boolean'?job.saveAs:settings.saveAs;
+ const downloadId=await chrome.downloads.download({url:event.url,filename:chooseLocation?event.filename:'Ruxget/'+event.filename,saveAs:chooseLocation,conflictAction:'uniquify'});
  const saved=await jobUpdate(event.id,{status:'saving',stage:'Chrome 正在保存文件',progress:99,downloadId,verification:event.verification});
  const [download]=await chrome.downloads.search({id:downloadId});
  // 小文件可能在状态登记前就保存完成，读取实际状态补齐这一事件。
@@ -61,25 +70,96 @@ async function platformStart(event){
  const existing=await chrome.storage.local.get(ids.map(id=>NATIVE_JOB_PREFIX+id));
  if(!engineCreation&&!await chrome.offscreen.hasDocument())for(const job of Object.values(existing))if(['queued','downloading','verifying'].includes(job.status))Object.assign(job,await jobUpdate(job.id,{status:'error',stage:'下载已中断',error:'Chrome 曾关闭，请重新读取视频后下载'}));
  if(Object.values(existing).filter(job=>['queued','downloading','verifying','saving'].includes(job.status)).length>=3)throw new Error('已有下载正在处理，请稍后再添加');
- const job={ok:true,id:crypto.randomUUID(),url:catalog.url,title:catalog.title,format,height,status:'queued',stage:'正在准备下载',progress:0,createdAt:new Date().toISOString(),native:true};
+ const job={ok:true,id:crypto.randomUUID(),url:catalog.url,title:catalog.title,format,height,status:'queued',stage:'正在准备下载',progress:0,createdAt:new Date().toISOString(),native:true,...(event.collectionId?{collectionId:event.collectionId}:{}),...(typeof event.saveAs==='boolean'?{saveAs:event.saveAs}:{})};
  await chrome.storage.local.set({[NATIVE_JOB_PREFIX+job.id]:job,shiyingJobIds:[...ids.slice(-49),job.id]});
- const mediaHosts=catalog.site==='bilibili'?['bilivideo.com','bilivideo.cn']:['googlevideo.com'];
- const rule=catalog.site==='bilibili'?1610000001:1610000002;
+ const mediaHosts=ShiyingPlatform.mediaDomains[catalog.site]||[];
+ const rule=1610000001+Math.max(0,Object.keys(ShiyingPlatform.mediaDomains).indexOf(catalog.site));
  await chrome.declarativeNetRequest.updateSessionRules({removeRuleIds:[rule],addRules:[{id:rule,priority:1,action:{type:'modifyHeaders',requestHeaders:[{header:'Referer',operation:'set',value:catalog.url},{header:'Origin',operation:'set',value:new URL(catalog.url).origin}]},condition:{initiatorDomains:[chrome.runtime.id],requestDomains:mediaHosts,resourceTypes:['xmlhttprequest']}}]});
  // ponytail: 单个隐藏页顺序处理任务；无需另一个程序，也不增加并行设置。
- try{await engineSend({Message:'shiyingEngineRun',catalog,job});await chrome.tabs.create({url:chrome.runtime.getURL(`shiying-task.html?id=${job.id}`)});return job}catch(error){await jobUpdate(job.id,{status:'error',stage:'下载失败',error:error.message});throw error}
+ try{await engineSend({Message:'shiyingEngineRun',catalog,job});if(event.openDetails===true)await chrome.tabs.create({url:chrome.runtime.getURL(`shiying-task.html?id=${job.id}`)});return jobRead(job.id)}catch(error){await jobUpdate(job.id,{status:'error',stage:'下载失败',error:error.message});throw error}
+}
+async function cancelPlatformJob(id){const job=await jobRead(id);if(['complete','error','cancelled'].includes(job.status))return job;await engineSend({Message:'shiyingEngineCancel',id});if(Number.isInteger(job.downloadId))await chrome.downloads.cancel(job.downloadId).catch(()=>{});return jobUpdate(id,{status:'cancelled',stage:'已取消',error:null})}
+async function floatingRequest(event,sender){
+ if(sender.frameId!==0||!Number.isInteger(sender.tab?.id))throw new Error('请在当前视频页使用 Ruxget');
+ const source=ShiyingPlatform.source(sender.url);
+ if(source.url!==ShiyingPlatform.source(sender.tab.url).url)throw new Error('视频页已切换，请重新打开');
+ const action=event.Message.slice('shiyingFloating'.length);
+ if(action==='Location'){await chrome.tabs.create({url:'chrome://settings/downloads'});return {};}
+ if(action==='Hide'){
+  if(chrome.sidePanel?.close)try{await chrome.sidePanel.close({tabId:sender.tab.id}).catch(()=>chrome.sidePanel.close({windowId:sender.tab.windowId}));}catch{/* The float's saved hidden state remains valid if an older Chrome has no open panel. */}
+  return {};
+ }
+ if(action==='Read')return platformRead({url:source.url,tabId:sender.tab.id});
+ if(action==='Start'){
+  const key=NATIVE_CATALOG_PREFIX+event.id,catalog=(await chrome.storage.session.get(key))[key];
+  if(catalog?.url!==source.url)throw new Error('视频页已切换，请重新读取清晰度');
+  return platformStart({id:event.id,format:event.format,height:event.height,saveAs:event.saveAs});
+ }
+ const job=await jobRead(event.id);
+ if(job.url!==source.url)throw new Error('这个任务不属于当前视频');
+ if(action==='Job')return jobSnapshot(job.id);
+ if(action==='Cancel')return cancelPlatformJob(job.id);
+ if(action==='Open'){if(job.status!=='complete'||!Number.isInteger(job.downloadId))throw new Error('文件还没保存完成');chrome.downloads.show(job.downloadId);return {};}
+ if(action==='Details'){await chrome.tabs.create({url:chrome.runtime.getURL('shiying-task.html?id='+encodeURIComponent(job.id))});return {};}
+ throw new Error('无法识别这个操作');
+}
+const localeCatalogCache=Object.create(null);
+async function loadLocaleCatalog(lang){
+ const key=(lang==='en'||lang==='zh_CN')?lang:'zh_CN';
+ if(localeCatalogCache[key])return {lang:key,catalog:localeCatalogCache[key]};
+ const url=chrome.runtime.getURL('_locales/'+key+'/messages.json');
+ const res=await fetch(url);
+ if(!res.ok)throw new Error('HTTP '+res.status+' loading locale '+key);
+ const data=await res.json();
+ localeCatalogCache[key]=data;
+ return {lang:key,catalog:data};
 }
 chrome.runtime.onMessage.addListener((event,sender,respond)=>{
  if(sender.id!==chrome.runtime.id)return;
  let task;
- if(event.Message==='shiyingPlatformHealth')task=Promise.resolve({version:chrome.runtime.getManifest().version,native:true});
+ if(event.Message==='shiyingEnsureFloating')task=(async()=>{
+  if(sender.url?.split('?')[0]!==chrome.runtime.getURL('shiying.html'))throw new Error('请从 Ruxget 工具栏恢复下载浮钮');
+  return ensureFloatingControl(event.tabId);
+ })();
+ else if(event.Message?.startsWith('shiyingFloating'))task=floatingRequest(event,sender);
+ else if(event.Message==='shiyingOpenPanel'){
+  try{
+   if(sender.frameId!==0||!Number.isInteger(sender.tab?.id)||ShiyingPlatform.source(sender.url).url!==ShiyingPlatform.source(sender.tab.url).url)throw new Error('请在当前视频页打开 Ruxget');
+   // Use the same compact popup as the toolbar; older Chrome retains its side-panel entry.
+   task=(chrome.action?.openPopup?chrome.action.openPopup({windowId:sender.tab.windowId}):chrome.sidePanel.open({tabId:sender.tab.id})).catch(()=>chrome.tabs.create({url:chrome.runtime.getURL('shiying.html?tabId='+sender.tab.id)}));
+  }catch(error){respond({ok:false,error:error.message});return;}
+ }
+ else if(event.Message==='shiyingPlatformHealth')task=Promise.resolve({version:chrome.runtime.getManifest().version,native:true});
  else if(event.Message==='shiyingPlatformRead')task=platformRead(event);
+ else if(event.Message==='shiyingPlatformDesktop')task=(async()=>{
+  if(sender.url?.split('?')[0]!==chrome.runtime.getURL('shiying.html'))throw new Error('请在 Ruxget 面板中发送桌面下载');
+  const catalog=(await chrome.storage.session.get(NATIVE_CATALOG_PREFIX+event.id))[NATIVE_CATALOG_PREFIX+event.id];
+  if(!catalog||Date.now()-catalog.createdAt>20*60*1000)throw new Error('视频信息已过期，请重新读取');
+  if(catalog.muxed){const track=event.format==='mp3'?catalog.audio[0]:catalog.video.find(item=>item.height===Number(event.height));if(!track)throw new Error('请选择实际可用的清晰度');return {payload:{action:'add',kind:'tracks',url:catalog.url,title:catalog.title,height:track.height||1080,videoUrl:track.url,audioUrl:'',extractAudio:event.format==='mp3',referer:catalog.url,userAgent:navigator.userAgent}};}
+  if(event.format==='mp3')return {payload:{action:'add',kind:'audio',url:catalog.url,title:catalog.title}};
+  const height=Number(event.height),video=catalog.video.find(track=>track.height===height),audio=catalog.audio[0];
+  if(!video||!audio)throw new Error('请选择实际可用的清晰度');
+  return {payload:{action:'add',kind:'tracks',url:catalog.url,title:catalog.title,height,videoUrl:video.url,audioUrl:audio.url,referer:catalog.url,userAgent:navigator.userAgent}};
+ })();
  else if(event.Message==='shiyingPlatformStart')task=platformStart(event);
+ else if(event.Message==='shiyingPlatformSubtitle')task=(async()=>{
+  const catalog=(await chrome.storage.session.get(NATIVE_CATALOG_PREFIX+event.id))[NATIVE_CATALOG_PREFIX+event.id];
+  if(!catalog||Date.now()-catalog.createdAt>20*60*1000)throw new Error('视频信息已过期，请重新读取');
+  const subtitle=(catalog.subtitles||[])[Number(event.index)];if(!subtitle)throw new Error('没有找到这个字幕');
+  const tab=await sourceTab({url:catalog.url},event.tabId);
+  const [result]=await chrome.scripting.executeScript({target:{tabId:tab.id},world:'MAIN',func:ShiyingPlatform.readSubtitle,args:[subtitle.url]});
+  if(!result?.result||result.result.error)throw new Error(result?.result?.error||'字幕读取失败，请刷新视频网页后重试');
+  const srt=ShiyingPlatform.subtitleSRT(result.result.data);
+  const name=String(catalog.title||'字幕').replace(/[<>:"/\\|?*\u0000-\u001f]/g,'_').replace(/[.\s]+$/g,'').slice(0,90)||'字幕';
+  const downloadId=await chrome.downloads.download({url:'data:application/x-subrip;charset=utf-8,'+encodeURIComponent('\ufeff'+srt),filename:'Ruxget/'+name+'.'+(subtitle.lang||'sub').replace(/[^\w-]/g,'_')+'.srt',saveAs:event.saveAs===true,conflictAction:'uniquify'});
+  return {downloadId};
+ })();
  else if(event.Message==='shiyingPlatformJob')task=jobSnapshot(event.id);
- else if(event.Message==='shiyingPlatformCancel')task=(async()=>{const job=await jobRead(event.id);if(['complete','error','cancelled'].includes(job.status))return job;await engineSend({Message:'shiyingEngineCancel',id:event.id});if(Number.isInteger(job.downloadId))await chrome.downloads.cancel(job.downloadId).catch(()=>{});return jobUpdate(event.id,{status:'cancelled',stage:'已取消',error:null})})();
+ else if(event.Message==='shiyingPlatformCancel')task=cancelPlatformJob(event.id);
  else if(event.Message==='shiyingPlatformOpen')task=jobRead(event.id).then(job=>{if(job.status!=='complete'||!Number.isInteger(job.downloadId))throw new Error('文件还没保存完成');chrome.downloads.show(job.downloadId);return {}});
  else if(event.Message==='shiyingEngineUpdate'&&sender.url===chrome.runtime.getURL('shiying-engine.html'))task=jobUpdate(event.id,event.values);
  else if(event.Message==='shiyingEngineSave'&&sender.url===chrome.runtime.getURL('shiying-engine.html'))task=engineSave(event);
+ else if(event.Message==='ruxgetLocaleCatalog')task=loadLocaleCatalog(event.lang);
  else return;
  Promise.resolve(task).then(result=>respond({ok:true,...result}),error=>respond({ok:false,error:error.message||String(error)}));return true;
 });
@@ -146,3 +226,5 @@ chrome.runtime.onMessage.addListener((event, sender, respond) => {
     task.then(result => respond({ok:true, ...result}), error => respond({ok:false, error:error.message || String(error)}));
     return true;
 });
+
+importScripts('/js/shiying-collection-background.js');

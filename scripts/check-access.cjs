@@ -13,7 +13,10 @@ assert.equal(access.origin('javascript:alert(1)'),null);
 assert(access.matches('https://*.googlevideo.com/*','https://r1.googlevideo.com/video'));
 assert(!access.matches('https://*.googlevideo.com/*','https://googlevideo.com.evil.example/video'));
 assert(!access.matches('https://*.googlevideo.com/*','http://r1.googlevideo.com/video'));
-assert(access.requiredSite('https://www.youtube.com/watch?v=abcdefghijk'));
+// Store edition: YouTube is neither a fixed site nor grantable by hand.
+assert(!access.requiredSite('https://www.youtube.com/watch?v=abcdefghijk'));
+for(const blocked of ['https://www.youtube.com/watch?v=abcdefghijk','https://youtu.be/abcdefghijk','https://rr1.googlevideo.com/videoplayback'])assert.equal(access.origin(blocked),null,blocked);
+assert(access.requiredSite('https://www.bilibili.com/video/BV15z4y1U7HS/'));
 assert(!access.requiredSite('https://other.example/video'));
 (async()=>{
  assert.equal(await access.request(['https://other.example/*','https://cdn.example/*']),false);

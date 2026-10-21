@@ -9,3 +9,12 @@ __pycache__/
 *.pem
 .env
 .env.*
+desktop/bin/
+desktop/data/
+desktop/licenses/
+desktop/*.exe
+desktop/*.ico
+desktop/native-host.json*
+desktop/setup-payload.zip
+build-full/
+desktop/Shiying.Interface.dll

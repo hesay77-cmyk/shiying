@@ -7,7 +7,8 @@ if (typeof G === 'undefined') {
     importScripts("/js/polyfill.js", "/js/function.js", "/js/templates.js", "/js/init.js");
 }
 
-importScripts("/js/shiying-access.js", "/js/shiying-background.js");
+importScripts("/js/shiying-access.js", "/js/shiying-background.js", "/js/shiying-native.js");
+importScripts('/js/shiying-netdisk.js','/js/shiying-netdisk-background.js');
 chrome.permissions.onRemoved.addListener(() => {
     ShiyingAccess.sync().then(() => {
         for (const id of Object.keys(cacheData)) if (Array.isArray(cacheData[id])) {
@@ -354,6 +355,8 @@ function save(tabId) {
  */
 chrome.runtime.onMessage.addListener(function (Message, sender, sendResponse) {
     if (chrome.runtime.lastError) { return; }
+    // Dedicated handlers own these messages, including during legacy initialization.
+    if (typeof Message.Message === 'string' && Message.Message.startsWith('shiying')) return;
     if (!G.initLocalComplete || !G.initSyncComplete) {
         sendResponse("error");
         return true;
@@ -684,7 +687,7 @@ chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
     }
     chrome.sidePanel.setOptions({
         tabId,
-        path: "popup.html?tabId=" + tabId
+        path: "shiying.html?tabId=" + tabId
     });
 });
 
@@ -839,6 +842,10 @@ chrome.commands.onCommand.addListener(function (command) {
  * 监听 右键菜单事件
  */
 chrome.contextMenus.onClicked.addListener((info, tab) => {
+    if(info.menuItemId==='shiying-link-desktop'){
+        let payload;try{payload=ShiyingNative.file(info.linkUrl,info.frameUrl||tab?.url);}catch(error){showLinkDownloadError(error,tab);return;}
+        ShiyingNative.send(()=>payload).catch(error=>{if(!error.cancelled)showLinkDownloadError(error,tab);});return;
+    }
     runCommands(info.menuItemId, info);
 });
 
@@ -1120,12 +1127,12 @@ function clearRedundant() {
     });
 }
 
-// 扩展升级，清空本地储存
+// Only discard detected-media caches on upgrade. Keep tasks, grants and floating preferences.
 chrome.runtime.onInstalled.addListener(function (details) {
     if (details.reason == "update") {
-        chrome.storage.local.clear(function () {
+        chrome.storage.local.remove('MediaData', function () {
             if (chrome.storage.session) {
-                chrome.storage.session.clear(InitOptions);
+                chrome.storage.session.remove('MediaData', InitOptions);
             } else {
                 InitOptions();
             }
@@ -1142,3 +1149,8 @@ chrome.runtime.onInstalled.addListener(function (details) {
 // chrome.storage.session.get(function (data) { console.log("storageSession", data.MediaData) });
 // chrome.declarativeNetRequest.getSessionRules(function (rules) { console.log("sessionRules", rules); });
 // chrome.tabs.query({}, function (tabs) { for (let item of tabs) { console.log("tabId", item.id); } });
+
+// Only an explicit context-menu click reaches the native bridge. Ordinary downloads have no interception listener.
+async function showLinkDownloadError(error,tab){
+    try{await chrome.storage.session.set({shiyingLinkDownloadError:{text:error.message||String(error),createdAt:Date.now()}});if(!/请按新打开/.test(error.message)&&chrome.action.openPopup)await chrome.action.openPopup(Number.isInteger(tab?.windowId)?{windowId:tab.windowId}:{});}catch{/* The message remains available next time the user opens the popup. */}
+}

@@ -9,6 +9,7 @@
   <link rel="stylesheet" type="text/css" href="css/options.css" media="all" />
   <script src="lib/jquery.min.js" defer></script>
   <script src="js/polyfill.js"></script>
+  <script src="js/shiying-locale.js"></script>
   <script src="js/init.js" defer></script>
   <script src="js/function.js" defer></script>
   <script src="js/templates.js" defer></script>
@@ -36,6 +37,7 @@
       <li><a href="#anchorCustomCSS" data-i18n="customCSS" title="customCSS"></a></li>
       <li><a href="#anchorMQTT" data-i18n="MQTT" title="MQTT"></a></li>
       <li><a href="#anchorOperation" data-i18n="operation" title="operation"></a></li>
+      <li><a href="#anchorLanguage" data-i18n="language" title="language"></a></li>
       <li><a href="#anchorAbout" data-i18n="about" title="about"></a></li>
     </ul>
   </nav>
@@ -930,6 +932,23 @@
           <div class="flex-end">
             <button type="button" class="resetOption" data-i18n="resetSettings"></button>
           </div>
+        </div>
+      </div>
+    </section>
+
+    
+    <!-- Language -->
+    <section id="anchorLanguage">
+      <h1 class="optionsTitle" data-i18n="language">语言 / Language</h1>
+      <div class="optionBox">
+        <div class="item">
+          <label for="languageSelect" data-i18n="language">语言</label>
+          <select id="languageSelect" save="false">
+            <option value="auto" data-i18n="languageAuto">跟随浏览器</option>
+            <option value="zh_CN" data-i18n="languageZh">中文</option>
+            <option value="en" data-i18n="languageEn">English</option>
+          </select>
+          <div class="help-text" data-i18n="languageHint">作用于 Ruxget 弹窗、设置页和状态提示。</div>
         </div>
       </div>
     </section>

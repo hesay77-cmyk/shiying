@@ -6,6 +6,9 @@ const ShiyingAccess = (() => {
     function origin(value) {
         try {
             const url = new URL(value);
+            if(url.hostname==='chromewebstore.google.com'||(url.hostname==='chrome.google.com'&&/^\/webstore(?:\/|$)/.test(url.pathname)))return null;
+            // Chrome Web Store policy: the extension never reads or downloads YouTube media, even with a manual grant.
+            if(!globalThis.RuxgetFullEdition&&/(^|\.)(youtube\.com|youtu\.be|youtube-nocookie\.com|googlevideo\.com|ytimg\.com)$/i.test(url.hostname))return null;
             return ['http:', 'https:'].includes(url.protocol) ? `${url.protocol}//${url.hostname}/*` : null;
         } catch { return null; }
     }
