@@ -1,6 +1,12 @@
 // Desktop UI bindings; the explicit native bridge is shared with the link menu.
 const ShiyingDesktop=ShiyingNative;
 document.querySelector('#desktopHelp')?.addEventListener('click',()=>chrome.tabs.create({url:chrome.runtime.getURL('shiying-desktop.html')}));
+// Brings the desktop window forward (starting the app if needed). Not installed or not connected: the shared prompt offers the download page.
+document.querySelector('#openDesktop')?.addEventListener('click',async()=>{
+    const menu=document.querySelector('.menu');if(menu)menu.open=false;
+    try{await ShiyingNative.send(()=>({action:'show'}));window.close();}
+    catch(error){if(!error.cancelled&&typeof notify==='function')notify(error.message||String(error));}
+});
 document.querySelector('#takeoverMenu')?.addEventListener('click',()=>chrome.tabs.create({url:chrome.runtime.getURL('shiying-desktop.html#takeover')}));
 const pick=(zh,en)=>window.RuxgetI18n?RuxgetI18n.pick(zh,en):zh;
 const desktopId=document.querySelector('#desktopExtensionId');

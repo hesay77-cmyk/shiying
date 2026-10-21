@@ -1096,6 +1096,9 @@
   "uiTakeoverMenu": {
     "message": "Take over Chrome downloads…"
   },
+  "uiOpenDesktop": {
+    "message": "Open Ruxget Desktop"
+  },
   "uiAdvanced": {
     "message": "Advanced tools"
   },

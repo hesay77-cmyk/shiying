@@ -1,6 +1,6 @@
 // 只在用户点击时申请 Native Messaging；浏览器不直接访问桌面下载引擎的 RPC。
 const ShiyingNative = {
-    DESKTOP_RELEASE_URL: 'https://github.com/hesay77-cmyk/shiying/releases/latest',
+    DESKTOP_RELEASE_URL: 'https://hidaydream.com/tools/ruxget/#editions',
     file(url,referer='') {
         url=String(url||'').trim();let parsed;
         try{parsed=new URL(url);}catch{throw new Error('请输入完整的 HTTP 或 HTTPS 下载链接');}

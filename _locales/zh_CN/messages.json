@@ -1091,6 +1091,9 @@
   "uiTakeoverMenu": {
     "message": "接管 Chrome 下载…"
   },
+  "uiOpenDesktop": {
+    "message": "打开 Ruxget 桌面版"
+  },
   "uiAdvanced": {
     "message": "高级工具"
   },

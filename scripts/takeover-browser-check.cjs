@@ -23,7 +23,7 @@ const MB=1024*1024;
  const extension=path.join(root,'build');
  const {chromium}=require(process.env.SHIYING_PLAYWRIGHT||'playwright');
  const browser=await chromium.launchPersistentContext(path.join(report,'profile'),{executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true,acceptDownloads:true,downloadsPath:path.join(report,'downloads'),viewport:{width:900,height:900},ignoreDefaultArgs:['--disable-extensions'],args:[`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--no-proxy-server']});
- const errors=[];browser.on('page',p=>p.on('pageerror',e=>errors.push(e.message)));
+ const errors=[];browser.on('page',p=>p.on('pageerror',e=>errors.push(e.message+' @ '+p.url())));
  try{
   const worker=browser.serviceWorkers()[0]||await browser.waitForEvent('serviceworker'),id=new URL(worker.url()).hostname;
   await worker.evaluate(()=>{
@@ -58,6 +58,8 @@ const MB=1024*1024;
   // On, desktop accepts: Chrome's copy disappears and the desktop gets the link and source page.
   await configure({enabled:true,minMB:1,skipHosts:[]});
   let downloadId=await start("big");item=await settle(downloadId);
+  // Chrome reports the cancel a moment before Ruxget erases the entry; give it a couple of seconds, as a person would see it.
+  for(let i=0;item&&i<40;i++){await page.waitForTimeout(100);[item]=await worker.evaluate(id=>chrome.downloads.search({id}),downloadId);item=item||null;}
   assert.equal(item,null,'the accepted download is removed from Chrome');
   const [call]=await worker.evaluate(()=>nativeCalls);
   assert.equal(call.host,'org.shiying.desktop');assert.equal(call.message.action,'takeover');assert.equal(call.message.kind,'file');
@@ -131,6 +133,28 @@ const MB=1024*1024;
   await settings.locator('.takeover-switch').click();await settings.waitForTimeout(200);
   assert.equal((await worker.evaluate(()=>chrome.storage.local.get('ruxgetTakeover'))).ruxgetTakeover.enabled,false);
   check('settings page: switch, size limit and site list are saved; turning it off works');
+
+  // ⋯ → “打开 Ruxget 桌面版” asks the desktop app to show its window.
+  const openPopup=async reply=>{
+   const popup=await browser.newPage();await popup.goto(`chrome-extension://${id}/shiying.html`);
+   await popup.evaluate(reply=>{chrome.runtime.sendNativeMessage=async(host,message)=>{await chrome.storage.session.set({openDesktopSent:{host,message}});if(reply==='missing')throw new Error('Specified native messaging host not found.');return {ok:true,stage:'confirm'};};},reply);
+   await popup.locator('details.menu summary').click();
+   assert.equal(await popup.locator('.menu button').first().innerText(),'打开 Ruxget 桌面版');
+   return popup;
+  };
+  let menuDesktop=await openPopup("ok");
+  await Promise.all([menuDesktop.waitForEvent("close"),menuDesktop.locator("#openDesktop").click()]);
+  assert.deepEqual((await worker.evaluate(()=>chrome.storage.session.get('openDesktopSent'))).openDesktopSent,{host:'org.shiying.desktop',message:{action:'show'}});
+  check('⋯ menu starts with “打开 Ruxget 桌面版”, which asks the desktop app to show its window and closes the popup');
+  // Not installed: the prompt's “下载安装” opens the website's download section.
+  await browser.route('https://hidaydream.com/**',route=>route.request().resourceType()==='document'?route.fulfill({contentType:'text/html',body:'<!doctype html><title>Ruxget</title>'}):route.fulfill({status:204}));
+  menuDesktop=await openPopup("missing");await menuDesktop.locator("#openDesktop").click();
+  await menuDesktop.locator("#desktopConnectPrompt").waitFor({state:'visible'});
+  const [site]=await Promise.all([browser.waitForEvent("page"),menuDesktop.locator("[data-desktop-action=install]").click()]);
+  await site.waitForLoadState();assert.equal(site.url(),'https://hidaydream.com/tools/ruxget/#editions');await site.close();await menuDesktop.close();
+  const wizard=await browser.newPage();await wizard.goto(`chrome-extension://${id}/shiying-desktop.html`);
+  assert.equal(await wizard.locator('.installer-name').getAttribute('href'),'https://hidaydream.com/tools/ruxget/#editions');await wizard.close();
+  check('desktop app missing: “下载安装” and the setup page both go to the website download section');
 
   assert.deepEqual(errors,[]);check('no page errors');
   fs.writeFileSync(path.join(report,'summary.json'),JSON.stringify({ok:true,checks},null,2));console.log('REPORT '+report);

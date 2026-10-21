@@ -83,8 +83,14 @@ const RuxgetTakeover={
         try{reply=await chrome.runtime.sendNativeMessage('org.shiying.desktop',{action:'takeover',kind:'file',url,referer:/^https?:/i.test(item.referrer||'')?item.referrer:'',userAgent:navigator.userAgent,name:RuxgetTakeover.name(item),size:item.totalBytes>0?item.totalBytes:-1});}
         catch(error){reply={ok:false,error:error?.message||String(error)};}
         if(reply?.ok){
+            // Erase only once Chrome has finished cancelling, or a "cancelled" entry stays in its list.
             try{await chrome.downloads.cancel(item.id);}catch{}
-            try{await chrome.downloads.erase({id:item.id});}catch{}
+            for(let attempt=0;attempt<20;attempt++){
+                const [current]=await chrome.downloads.search({id:item.id});
+                if(!current)break;
+                if(current.state!=='in_progress'){try{await chrome.downloads.erase({id:item.id});}catch{}}
+                await new Promise(resolve=>setTimeout(resolve,100));
+            }
             await RuxgetTakeover.remember({url,name:reply.name||RuxgetTakeover.name(item),result:'desktop'});
             return;
         }
