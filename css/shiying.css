@@ -142,3 +142,7 @@ select{color-scheme:dark}select option,select optgroup{background-color:#101d29;
 .recent-downloads li small{font-size:11px;color:var(--muted)}
 .recent-downloads li .recent-open[data-status=complete] small{color:#7fe0a8}
 .recent-downloads li .recent-open[data-status=error] small{color:#f0c27b}
+
+/* 删除文件: quiet until armed, then clearly red. */
+.danger-text{color:#ff9b8f}
+.danger-text.is-armed{padding:3px 10px;border-radius:8px;background:#e5534b;border-color:#e5534b;color:#fff}

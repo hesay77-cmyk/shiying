@@ -61,7 +61,12 @@ const ShiyingPlatformUI = (() => {
         $('#platformPercent').textContent=Math.round(percent)+'%';
         $('#platformProgress').value=percent;
         $('#platformCancel').hidden=['complete','error','cancelled'].includes(job.status);
+        if($('#platformDelete').dataset.armed!==job.id)disarmDelete();
+        $('#platformDelete').hidden=!['complete','error','cancelled'].includes(job.status);
     }
+    // Two clicks: the first only arms the button, so a stray click never deletes a file.
+    let deleteTimer=0;
+    function disarmDelete(){clearTimeout(deleteTimer);const button=$('#platformDelete');delete button.dataset.armed;button.classList.remove('is-armed');button.textContent=currentJob&&currentJob.status!=='complete'?pick('移除记录','Remove'):pick('删除文件','Delete file');}
     async function restoreJob(tab){
         const url=ShiyingPlatform.source(tab.url).url;
         const current=()=>{try{return currentTab?.id===tab.id&&ShiyingPlatform.source(currentTab.url).url===url;}catch{return false;}};
@@ -81,6 +86,14 @@ const ShiyingPlatformUI = (() => {
         if(job)renderJob(job);
     });
     $('#platformDetails').addEventListener('click',()=>{if(currentJob)chrome.tabs.create({url:chrome.runtime.getURL('shiying-task.html?id='+encodeURIComponent(currentJob.id))});});
+    $('#platformDelete').addEventListener('click',async()=>{
+        const button=$('#platformDelete');if(!currentJob)return;
+        if(button.dataset.armed!==currentJob.id){button.dataset.armed=currentJob.id;button.classList.add('is-armed');button.textContent=pick('再点一次确认删除','Click again to delete');clearTimeout(deleteTimer);deleteTimer=setTimeout(disarmDelete,4000);return;}
+        button.disabled=true;
+        try{const hadFile=currentJob.status==='complete',result=await send('shiyingPlatformDelete',{id:currentJob.id,removeFile:hadFile});renderJob(null);if(typeof notify==='function')notify(!hadFile?pick('已移除记录','Removed'):result.removed?pick('已删除文件','File deleted'):pick('文件已不在原位置，已移除记录','The file was already gone; record removed'));}
+        catch(error){$('#platformError').textContent=RuxgetText.tr(error.message);$('#platformError').hidden=false;}
+        finally{button.disabled=false;disarmDelete();}
+    });
     $('#platformCancel').addEventListener('click',async()=>{if(!currentJob)return;$('#platformCancel').disabled=true;try{renderJob(await send('shiyingPlatformCancel',{id:currentJob.id}));}catch(error){$('#platformError').textContent=RuxgetText.tr(error.message);$('#platformError').hidden=false;}finally{$('#platformCancel').disabled=false;}});
     $('#platformChoices').addEventListener('click',()=>{const expanded=document.body.classList.toggle('choices-open');$('#platformChoices').setAttribute('aria-expanded',expanded);});
     async function read() {

@@ -25,6 +25,9 @@ async function refresh() {
         $('#taskPercent').textContent = `${Math.round(progress)}%`;
         const ended = ['complete','error','cancelled'].includes(job.status);
         $('#cancelTask').hidden = ended;
+        $('#deleteTask').hidden = !ended;
+        if (!$('#deleteTask').dataset.armed) $('#deleteTask').textContent = job.status === 'complete' ? pick('删除文件', 'Delete file') : pick('移除记录', 'Remove');
+        $('#deleteTask').dataset.file = job.status === 'complete' ? '1' : '';
         $('#taskResult').hidden = job.status !== 'complete';
         $('#openFile').hidden = job.status !== 'complete';
         if (job.status === 'complete') {
@@ -51,6 +54,23 @@ async function refresh() {
 }
 $('#reconnect').addEventListener('click',refresh);
 $('#cancelTask').addEventListener('click',async()=>{try{await request('shiyingPlatformCancel');await refresh()}catch(error){$('#taskError').textContent=tr(error.message);$('#taskError').hidden=false}});
+// Two clicks, like the popup: the first arms, the second deletes the saved file and its record.
+let deleteTimer = 0;
+function disarmDelete() { clearTimeout(deleteTimer); const button = $('#deleteTask'); delete button.dataset.armed; button.classList.remove('is-armed'); button.textContent = button.dataset.file ? pick('删除文件', 'Delete file') : pick('移除记录', 'Remove'); }
+$('#deleteTask').addEventListener('click', async () => {
+    const button = $('#deleteTask');
+    if (!button.dataset.armed) { button.dataset.armed = '1'; button.classList.add('is-armed'); button.textContent = pick('再点一次确认删除', 'Click again to delete'); clearTimeout(deleteTimer); deleteTimer = setTimeout(disarmDelete, 4000); return; }
+    button.disabled = true;
+    try {
+        const hadFile = !!button.dataset.file, result = await chrome.runtime.sendMessage({Message: 'shiyingPlatformDelete', id, removeFile: hadFile});
+        if (!result?.ok) throw new Error(result?.error || pick('删除没有完成，请重试', 'Couldn’t delete. Try again.'));
+        clearTimeout(timer); document.body.dataset.status = 'deleted';
+        $('#taskLabel').textContent = pick('已删除', 'Deleted'); $('#taskStage').textContent = !hadFile ? pick('已移除记录', 'Removed') : result.removed ? pick('文件已删除', 'File deleted') : pick('文件已不在原位置，已移除记录', 'The file was already gone; record removed');
+        for (const node of ['#openFile', '#deleteTask', '#cancelTask', '#taskResult']) $(node).hidden = true;
+        $('#taskNote').textContent = pick('可以关闭这个页面。', 'You can close this page.');
+    } catch (error) { $('#taskError').textContent = tr(error.message); $('#taskError').hidden = false; }
+    finally { button.disabled = false; disarmDelete(); }
+});
 $('#openFile').addEventListener('click',async()=>{try{await request('shiyingPlatformOpen')}catch(error){$('#taskError').textContent=tr(error.message);$('#taskError').hidden=false}});
 // Wait for the language so the first paint is already in the right language; live progress then overwrites these.
 (window.RuxgetI18n ? RuxgetI18n.ready() : Promise.resolve()).catch(() => {}).then(() => {

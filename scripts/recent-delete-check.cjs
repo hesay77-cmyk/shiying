@@ -54,6 +54,44 @@ const checks=[];function check(name){checks.push(name);console.log('PASS '+name)
   assert.equal(await popup.locator('#recentDownloads').isVisible(),false);
   check('a running download is stopped and deleted; the empty list hides itself');
 
+  await popup.close();
+
+  // The download card on a video page: “删除文件” for a saved file, “移除记录” for a cancelled one; two clicks each.
+  const VIDEO='https://www.bilibili.com/video/BV15z4y1U7HS/';
+  await browser.route('https://www.bilibili.com/**',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><meta charset="utf-8"><title>Fixture</title><video></video>'}));
+  await browser.addInitScript(url=>{if(location.protocol!=='chrome-extension:'||!location.pathname.endsWith('/shiying.html'))return;const send=chrome.runtime.sendMessage.bind(chrome.runtime);chrome.runtime.sendMessage=async message=>{if(message.Message==='shiyingPlatformRead')return {ok:true,id:'catalog',url,title:'卡片里的视频',site:'bilibili',duration:60,choices:[{height:720,label:'720p'}],audioAvailable:true,subtitles:[]};return send(message);};},VIDEO);
+  const site=await browser.newPage();await site.goto(VIDEO);
+  const tabId=await worker.evaluate(async url=>(await chrome.tabs.query({})).find(t=>t.url===url).id,VIDEO),jobUrl=await worker.evaluate(url=>ShiyingPlatform.source(url).url,VIDEO);
+  const c=await saved('card.bin');
+  const setJob=values=>worker.evaluate(({values,jobUrl})=>chrome.storage.local.set({shiyingJobIds:['card'],'shiyingJob:card':{id:'card',url:jobUrl,title:'卡片里的视频',format:'mp4',height:720,...values}}),{values,jobUrl});
+  await setJob({status:'complete',progress:100,stage:'下载完成',downloadId:c.downloadId,file:c.file});
+  let card=await browser.newPage();await card.goto(`chrome-extension://${id}/shiying.html?tabId=${tabId}`);
+  await card.locator('#platformDelete').waitFor({state:'visible'});assert.equal(await card.locator('#platformDelete').innerText(),'删除文件');
+  await card.locator('#platformDelete').click();assert.equal(await card.locator('#platformDelete').innerText(),'再点一次确认删除');assert(fs.existsSync(c.file),'one click only arms the button');
+  await card.screenshot({path:path.join(report,'card-armed.png')});
+  await card.locator('#platformDelete').click();await card.locator('#platformJob').waitFor({state:'hidden'});
+  for(let i=0;i<40&&fs.existsSync(c.file);i++)await card.waitForTimeout(50);assert(!fs.existsSync(c.file),'the saved file is deleted');
+  check('download card: “删除文件” needs a second click, then deletes the file and clears the card');
+  await card.close();
+  await setJob({status:'cancelled',progress:38,stage:'已取消'});
+  card=await browser.newPage();await card.goto(`chrome-extension://${id}/shiying.html?tabId=${tabId}`);
+  await card.locator('#platformDelete').waitFor({state:'visible'});assert.equal(await card.locator('#platformDelete').innerText(),'移除记录');
+  await card.locator('#platformDelete').click();await card.locator('#platformDelete').click();await card.locator('#platformJob').waitFor({state:'hidden'});
+  assert.deepEqual((await worker.evaluate(()=>chrome.storage.local.get('shiyingJobIds'))).shiyingJobIds,[]);
+  check('download card: a cancelled download can be removed (“移除记录”)');
+  await card.close();await site.close();
+
+  // The progress page offers the same.
+  const d=await saved('task.bin');
+  await worker.evaluate(d=>chrome.storage.local.set({shiyingJobIds:['task'],'shiyingJob:task':{id:'task',url:'https://example.test/v',title:'进度页里的视频',format:'mp4',height:720,status:'complete',progress:100,stage:'下载完成',downloadId:d.downloadId,file:d.file,verification:{width:1280,height:720}}}),d);
+  const task=await browser.newPage();await task.goto(`chrome-extension://${id}/shiying-task.html?id=task`);
+  await task.locator('#deleteTask').waitFor({state:'visible'});assert.equal(await task.locator('#deleteTask').innerText(),'删除文件');
+  await task.locator('#deleteTask').click();assert(fs.existsSync(d.file));await task.locator('#deleteTask').click();
+  await task.waitForFunction(()=>document.body.dataset.status==='deleted');
+  for(let i=0;i<40&&fs.existsSync(d.file);i++)await task.waitForTimeout(50);assert(!fs.existsSync(d.file));
+  assert.equal(await task.locator('#taskStage').innerText(),'文件已删除');
+  check('progress page: “删除文件” (two clicks) deletes the file');
+
   assert.deepEqual(errors,[]);check('no page errors');
   fs.writeFileSync(path.join(report,'summary.json'),JSON.stringify({ok:true,checks},null,2));console.log('REPORT '+report);
  }finally{await browser.close();server.close();}
