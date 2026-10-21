@@ -60,6 +60,8 @@ Ruxget 不提供 DRM 解密或付费、会员、登录限制绕过。请只处�
 - [Chrome 商店填写指南](docs/chrome-web-store.md)
 - [版本说明](docs/release-notes.md)
 
+新版可按具体网盘开启独立下载按钮，相关 Cookie 仅在授权后用于对应网盘及本机下载任务，详见隐私说明。网盘适配基于 LinkSwift 1.1.3，保留 AGPL 许可；完整修改源码与第三方说明随当前源码附件提供。
+
 ## 开源与来源
 
 Ruxget 是 [CatCatch](https://github.com/xifangczy/cat-catch) 的独立改版，非猫抓官方产品，采用 GPL-3.0。原作者及第三方版权、许可保留在 [LICENSE](LICENSE)、[NOTICE](NOTICE.md) 和 [第三方声明](lib/third-party-libraries.md)。源码 ZIP 包含插件、构建脚本与第三方来源包。
