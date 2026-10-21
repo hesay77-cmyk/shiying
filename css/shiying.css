@@ -126,9 +126,19 @@ select{color-scheme:dark}select option,select optgroup{background-color:#101d29;
 .recent-downloads summary::after{content:"";width:6px;height:6px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg) translateY(-2px);transition:transform .2s ease}
 .recent-downloads[open] summary::after{transform:rotate(225deg) translateY(-2px)}
 .recent-downloads ul{margin:0;padding:0 6px 6px;list-style:none}
-.recent-downloads li button{display:grid;gap:1px;width:100%;padding:7px 8px;border:0;border-radius:9px;background:transparent;color:var(--ink);text-align:left;cursor:pointer}
-.recent-downloads li button:hover,.recent-downloads li button:focus-visible{background:rgba(102,188,255,.10);outline:none}
+.recent-downloads li{display:flex;align-items:center;gap:2px}
+.recent-downloads li .recent-open{display:grid;flex:1;min-width:0;gap:1px;padding:7px 8px;border:0;border-radius:9px;background:transparent;color:var(--ink);text-align:left;cursor:pointer}
+.recent-downloads li .recent-open:hover,.recent-downloads li .recent-open:focus-visible{background:rgba(102,188,255,.10);outline:none}
+.recent-downloads .recent-delete{display:grid;place-items:center;flex:none;width:30px;height:30px;padding:0;border:0;border-radius:8px;background:transparent;color:var(--muted);cursor:pointer;opacity:.7}
+.recent-downloads .recent-delete svg{width:16px;height:16px}
+.recent-downloads .recent-delete:hover,.recent-downloads .recent-delete:focus-visible{opacity:1;color:#ff9b8f;background:rgba(255,120,100,.12);outline:none}
+.recent-confirm{display:grid;gap:6px;width:100%;padding:8px;border-radius:9px;background:rgba(255,120,100,.08);font-size:12px;color:var(--ink)}
+.recent-confirm-actions{display:flex;flex-wrap:wrap;gap:6px}
+.recent-confirm button{padding:4px 10px;border-radius:8px;font:inherit;font-size:12px;cursor:pointer}
+.recent-confirm .recent-danger{border:0;background:#e5534b;color:#fff}
+.recent-confirm .recent-plain{border:1px solid rgba(195,222,246,.2);background:transparent;color:var(--ink)}
+.recent-confirm button:disabled{opacity:.5;cursor:default}
 .recent-downloads li b{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .recent-downloads li small{font-size:11px;color:var(--muted)}
-.recent-downloads li button[data-status=complete] small{color:#7fe0a8}
-.recent-downloads li button[data-status=error] small{color:#f0c27b}
+.recent-downloads li .recent-open[data-status=complete] small{color:#7fe0a8}
+.recent-downloads li .recent-open[data-status=error] small{color:#f0c27b}

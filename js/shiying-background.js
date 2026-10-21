@@ -79,6 +79,8 @@ async function platformStart(event){
  try{await engineSend({Message:'shiyingEngineRun',catalog,job});if(event.openDetails===true)await chrome.tabs.create({url:chrome.runtime.getURL(`shiying-task.html?id=${job.id}`)});return jobRead(job.id)}catch(error){await jobUpdate(job.id,{status:'error',stage:'下载失败',error:error.message});throw error}
 }
 async function cancelPlatformJob(id){const job=await jobRead(id);if(['complete','error','cancelled'].includes(job.status))return job;await engineSend({Message:'shiyingEngineCancel',id});if(Number.isInteger(job.downloadId))await chrome.downloads.cancel(job.downloadId).catch(()=>{});return jobUpdate(id,{status:'cancelled',stage:'已取消',error:null})}
+// Delete from "最近下载": stop a running download, optionally delete the saved file, and forget the record.
+async function deletePlatformJob(id,removeFile){let job=await jobRead(id);if(!['complete','error','cancelled'].includes(job.status))job=await cancelPlatformJob(id);let removed=false;if(Number.isInteger(job.downloadId)){if(removeFile&&job.status==='complete'){try{await chrome.downloads.removeFile(job.downloadId);removed=true;}catch{/* Already moved or deleted outside Chrome. */}}await chrome.downloads.erase({id:job.downloadId}).catch(()=>{});}const ids=(await chrome.storage.local.get('shiyingJobIds')).shiyingJobIds||[];await chrome.storage.local.set({shiyingJobIds:ids.filter(item=>item!==id)});await chrome.storage.local.remove(NATIVE_JOB_PREFIX+id);return {removed};}
 async function floatingRequest(event,sender){
  if(sender.frameId!==0||!Number.isInteger(sender.tab?.id))throw new Error('请在当前视频页使用 Ruxget');
  const source=ShiyingPlatform.source(sender.url);
@@ -156,6 +158,7 @@ chrome.runtime.onMessage.addListener((event,sender,respond)=>{
  })();
  else if(event.Message==='shiyingPlatformJob')task=jobSnapshot(event.id);
  else if(event.Message==='shiyingPlatformCancel')task=cancelPlatformJob(event.id);
+ else if(event.Message==='shiyingPlatformDelete')task=deletePlatformJob(event.id,event.removeFile===true);
  else if(event.Message==='shiyingPlatformOpen')task=jobRead(event.id).then(job=>{if(job.status!=='complete'||!Number.isInteger(job.downloadId))throw new Error('文件还没保存完成');chrome.downloads.show(job.downloadId);return {}});
  else if(event.Message==='shiyingEngineUpdate'&&sender.url===chrome.runtime.getURL('shiying-engine.html'))task=jobUpdate(event.id,event.values);
  else if(event.Message==='shiyingEngineSave'&&sender.url===chrome.runtime.getURL('shiying-engine.html'))task=engineSave(event);
