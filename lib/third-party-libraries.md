@@ -1,3 +1,19 @@
+js/shiying-netdisk-adapters.js
+Source: https://github.com/hmjz100/LinkSwift
+Authors: Hmjz100 and 油小猴
+Version: 1.1.3, adapted 2026-10-18
+License: AGPL-3.0-or-later, lib/LICENSES/LinkSwift-AGPL-3.0.txt
+Original: third-party-source/LinkSwift-1.1.3.user.js (included in source ZIP)
+Build and modifications: scripts/build-netdisk.py, scripts/netdisk-page.template.js
+Changes: local-only provider adapters, no userscript manager, original UI or automatic OAuth consent; extension permission/message transport and native desktop queue integration.
+
+lib/md5.min.js
+Source: https://github.com/emn178/js-md5
+Author: Chen, Yi-Cyuan
+Version: 0.7.3
+License: MIT, lib/LICENSES/js-md5-MIT.txt
+Exact download URLs and hashes: third-party-source/netdisk-sources.json
+
 lib/mux.min.js
 Source: https://github.com/videojs/mux.js
 License: Apache-2.0 license

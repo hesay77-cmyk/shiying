@@ -8,13 +8,13 @@ root = Path(__file__).resolve().parent.parent
 version = json.loads((root / "manifest.json").read_text(encoding="utf-8"))["version"]
 release = root / "release"
 release.mkdir(exist_ok=True)
-excluded = {".git", "build", "dist", "release", "reports", ".checks", "node_modules", "__pycache__"}
+excluded = {".git", "build", "dist", "release", "reports", ".checks", "node_modules", "__pycache__", "bin", "data"}
 products = []
 for label, base in [("Chrome", root / "build"), ("源码", root)]:
     target = release / f"拾影-{version}-{label}.zip"
     if target.exists():
         raise FileExistsError(f"Preserving existing release: {target}")
-    files = [p for p in base.rglob("*") if p.is_file() and not any(part in excluded for part in p.relative_to(base).parts)]
+    files = [p for p in base.rglob("*") if p.is_file() and p.name != "setup-payload.zip" and not p.name.startswith("native-host.json") and p.suffix.lower() != ".exe" and not any(part in excluded for part in p.relative_to(base).parts)]
     if not files:
         raise RuntimeError("Run node scripts/package.cjs first")
     with zipfile.ZipFile(target, "x", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as output:

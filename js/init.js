@@ -389,6 +389,7 @@ chrome.storage.onChanged.addListener(function (changes, namespace) {
 function contextMenusInit(visible = false) {
     // 注册右键
     chrome.contextMenus.removeAll(() => {
+        chrome.contextMenus.create({id:'shiying-link-desktop',title:(typeof RuxgetI18n!=='undefined'&&RuxgetI18n.t)?RuxgetI18n.t('uiContextDownloadLink'):(i18n.uiContextDownloadLink||'用 Ruxget 下载此链接'),contexts:['link'],targetUrlPatterns:['http://*/*','https://*/*'],documentUrlPatterns:['http://*/*','https://*/*']});
         chrome.contextMenus.create({
             id: "cat-catch",
             title: i18n.catCatch,
@@ -451,3 +452,14 @@ function wildcardToRegex(urlPattern) {
     // 创建正则表达式，确保匹配整个URL
     return new RegExp(`^${regexPattern}$`, 'i'); // 忽略大小写
 }
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message && message.Message === 'ruxgetLocaleChanged') {
+    try {
+      if (typeof contextMenusInit === 'function') {
+        chrome.storage.sync.get('contextMenus', (items) => {
+          contextMenusInit(items && items.contextMenus);
+        });
+      }
+    } catch (e) {}
+  }
+});

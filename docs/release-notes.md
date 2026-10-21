@@ -1,3 +1,13 @@
+# 拾影商店版 0.4.43
+
+Chrome 网上应用店商品 `nlhoddnpmoakgikfpdmdkjmahcaokbcl` 在 2026-10-21 因 Blue Zinc 拒绝了带 YouTube 下载能力的 0.4.42。本版是商店专用构建，不是 GitHub 完整版的功能删减。
+
+- 商店包去掉 YouTube、youtu.be、googlevideo 的安装期主机权限和内容脚本，并拒绝把这些主机加入可选授权。
+- 商店包不包含 YouTube 播放器读取、访客标识或 googlevideo 下载路径。
+- B站清晰度、MP4、MP3，以及其他非 YouTube 网站和网盘功能保留。
+- GitHub 完整包仍按 `node scripts/package.cjs` 构建，版本保持 0.4.42，继续包含 YouTube。
+- 上传文件：`release/Ruxget-0.4.43-Chrome-Web-Store.zip`。
+
 # 拾影 0.3.2
 
 本版针对 Chrome 商店指出的“所有网站权限”收窄访问范围，保留视频、MP3 和其他网站下载。

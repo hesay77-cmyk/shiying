@@ -1,0 +1,1472 @@
+{
+  "catCatch": {
+    "message": "Ruxget"
+  },
+  "description": {
+    "message": "Free and open-source web video downloader. Supports Bilibili and YouTube quality selection, full MP4 and MP3 downloads."
+  },
+  "confirm": {
+    "message": "Confirm"
+  },
+  "currentPage": {
+    "message": "This page"
+  },
+  "otherPage": {
+    "message": "Other pages"
+  },
+  "otherFeatures": {
+    "message": "Other features"
+  },
+  "mediaControl": {
+    "message": "Media controls"
+  },
+  "loadingData": {
+    "message": "Loading data..."
+  },
+  "selectWebpage": {
+    "message": "Select page:"
+  },
+  "selectMedia": {
+    "message": "Select media:"
+  },
+  "noMediaDetected": {
+    "message": "No media found on this page"
+  },
+  "noControllableMediaDetected": {
+    "message": "No controllable media found"
+  },
+  "multiplier": {
+    "message": "Speed:"
+  },
+  "speedPlayback": {
+    "message": "Playback speed"
+  },
+  "play": {
+    "message": "Play"
+  },
+  "normalPlay": {
+    "message": "Normal speed"
+  },
+  "pictureInPicture": {
+    "message": "Picture in picture"
+  },
+  "fullscreen": {
+    "message": "Fullscreen"
+  },
+  "screenshot": {
+    "message": "Screenshot"
+  },
+  "loop": {
+    "message": "Loop"
+  },
+  "mute": {
+    "message": "Mute"
+  },
+  "volume": {
+    "message": "Volume"
+  },
+  "functionEntry": {
+    "message": "Tools"
+  },
+  "downloader": {
+    "message": "Downloader"
+  },
+  "parser": {
+    "message": "Parser"
+  },
+  "m3u8Parser": {
+    "message": "M3U8 parser"
+  },
+  "mpdParser": {
+    "message": "MPD parser"
+  },
+  "jsonFormatter": {
+    "message": "JSON formatter"
+  },
+  "expandAll": {
+    "message": "Expand all"
+  },
+  "expandPlayable": {
+    "message": "Expand playable"
+  },
+  "expandSelected": {
+    "message": "Expand selected"
+  },
+  "collapseAll": {
+    "message": "Collapse all"
+  },
+  "videoRecording": {
+    "message": "Record video"
+  },
+  "closeRecording": {
+    "message": "Stop recording"
+  },
+  "recordWebRTC": {
+    "message": "Record WebRTC"
+  },
+  "screenCapture": {
+    "message": "Screen capture"
+  },
+  "simulateMobile": {
+    "message": "Mobile emulation"
+  },
+  "autoDownload": {
+    "message": "Auto download"
+  },
+  "onlineMerge": {
+    "message": "Online merge"
+  },
+  "download": {
+    "message": "Download"
+  },
+  "copy": {
+    "message": "Copy"
+  },
+  "selectAll": {
+    "message": "Select all"
+  },
+  "invertSelection": {
+    "message": "Invert selection"
+  },
+  "filter": {
+    "message": "Filter"
+  },
+  "clear": {
+    "message": "Clear"
+  },
+  "deepSearch": {
+    "message": "Deep search"
+  },
+  "closeSearch": {
+    "message": "Close search"
+  },
+  "cacheCapture": {
+    "message": "Cache capture"
+  },
+  "closeCapture": {
+    "message": "Close capture"
+  },
+  "moreFeatures": {
+    "message": "More features"
+  },
+  "pause": {
+    "message": "Pause detection"
+  },
+  "settings": {
+    "message": "Settings"
+  },
+  "closeSimulation": {
+    "message": "Close emulation"
+  },
+  "closeDownload": {
+    "message": "Close download"
+  },
+  "enable": {
+    "message": "Enable"
+  },
+  "disable": {
+    "message": "Disable"
+  },
+  "noData": {
+    "message": "No media data yet. Play the video, or refresh the page and try again."
+  },
+  "regularFilterPlaceholder": {
+    "message": "Regex filter resource URL. Leave empty to confirm."
+  },
+  "option": {
+    "message": "Options"
+  },
+  "titleOption": {
+    "message": "Ruxget Settings"
+  },
+  "titleDownload": {
+    "message": "Ruxget · File Download"
+  },
+  "titleM3U8": {
+    "message": "Ruxget · Video Download"
+  },
+  "titleJson": {
+    "message": "Ruxget JSON formatter"
+  },
+  "titledash": {
+    "message": "Ruxget DASH parser"
+  },
+  "suffix": {
+    "message": "Extensions"
+  },
+  "suffixTip": {
+    "message": "Add extensions without a leading dot. Do not start with 0."
+  },
+  "extensionName": {
+    "message": "Extension name"
+  },
+  "filterSize": {
+    "message": "Min size filter"
+  },
+  "delete": {
+    "message": "Delete"
+  },
+  "addSuffix": {
+    "message": "Add extension"
+  },
+  "extension": {
+    "message": "Extension"
+  },
+  "disableAll": {
+    "message": "Disable all"
+  },
+  "enableAll": {
+    "message": "Enable all"
+  },
+  "type": {
+    "message": "MIME types"
+  },
+  "addType": {
+    "message": "Add type"
+  },
+  "typeTip": {
+    "message": "Add a valid content-type. Do not start with 0."
+  },
+  "addTypeError": {
+    "message": "Invalid type format. Please check."
+  },
+  "regexMatch": {
+    "message": "Regex match"
+  },
+  "blockResource": {
+    "message": "Block resources"
+  },
+  "alert": {
+    "message": "Alert"
+  },
+  "regexExpression": {
+    "message": "Regular expression"
+  },
+  "addRegex": {
+    "message": "Add regex"
+  },
+  "regexTest": {
+    "message": "Test regex"
+  },
+  "regex": {
+    "message": "Regex"
+  },
+  "flag": {
+    "message": "Flags"
+  },
+  "result": {
+    "message": "Result"
+  },
+  "match": {
+    "message": "Match"
+  },
+  "noMatch": {
+    "message": "No match"
+  },
+  "blockResourceTip": {
+    "message": "Block unwanted resources"
+  },
+  "flagTip": {
+    "message": "i: case-insensitive, g: global. Can combine."
+  },
+  "regexSuffixTip": {
+    "message": "Assign an extension from the matched URL. Optional; auto-detects if omitted (not always from the URL)."
+  },
+  "regexTip": {
+    "message": "Regex matching for resources. Use carefully."
+  },
+  "copyTip": {
+    "message": "Tags for the third-party copy feature. Customize tags to fill the clipboard template."
+  },
+  "replaceKeywordList": {
+    "message": "Replacement keyword list"
+  },
+  "otherFiles": {
+    "message": "Other files"
+  },
+  "resetCopySettings": {
+    "message": "Reset copy settings"
+  },
+  "autoSetRefererCookieParams": {
+    "message": "Auto set Referer and cookie parameters"
+  },
+  "secretKey": {
+    "message": "Secret key"
+  },
+  "address": {
+    "message": "Address"
+  },
+  "documentation": {
+    "message": "Docs"
+  },
+  "aria2Tip": {
+    "message": "Non-official download tools. See docs for usage."
+  },
+  "m3u8DLTips": {
+    "message": "Non-official m3u8/mpd third-party downloaders. See docs for usage."
+  },
+  "invoke": {
+    "message": "Invoke"
+  },
+  "parameter": {
+    "message": "Parameters"
+  },
+  "parameterSetting": {
+    "message": "Parameter settings"
+  },
+  "test": {
+    "message": "Test"
+  },
+  "replaceTags": {
+    "message": "Replacement tags"
+  },
+  "customSaveFileName": {
+    "message": "Custom save file name"
+  },
+  "userAgentTip": {
+    "message": "Optional custom User Agent for this page"
+  },
+  "alwaysDisableCatCatcher": {
+    "message": "Always disable Ruxget downloader"
+  },
+  "autoClosePageAfterDownload": {
+    "message": "Auto-close page after download"
+  },
+  "openDownloaderPageInBackground": {
+    "message": "Open downloader page in background"
+  },
+  "downloaderTip": {
+    "message": "When a downloadable resource is detected, auto-open the downloader and retry."
+  },
+  "autoDownM3u8Tip": {
+    "message": "Click Download Selected to start an online merge download with the m3u8 parser."
+  },
+  "otherSettings": {
+    "message": "Other settings"
+  },
+  "resetOtherSettings": {
+    "message": "Reset other settings"
+  },
+  "previewMode": {
+    "message": "Use local player to preview videos captured by the extension"
+  },
+  "previewModePlaceholder": {
+    "message": "Optional. Leave empty to use the popup page for preview."
+  },
+  "preview": {
+    "message": "Preview"
+  },
+  "customFilenameOption": {
+    "message": "Use a custom filename when saving (optional for webpage videos)"
+  },
+  "saveAsOption": {
+    "message": "Choose save folder when downloading"
+  },
+  "iconOption": {
+    "message": "Always show the extension icon"
+  },
+  "clearOption": {
+    "message": "Refresh or leave the page: clear current tags"
+  },
+  "doNotClear": {
+    "message": "Do not clear"
+  },
+  "normalClear": {
+    "message": "Normal clear"
+  },
+  "moreFrequent": {
+    "message": "More frequent"
+  },
+  "dopreview": {
+    "message": "In-page preview"
+  },
+  "dopopup": {
+    "message": "Popup preview"
+  },
+  "winpreview": {
+    "message": "Window preview"
+  },
+  "winpopup": {
+    "message": "Window popup"
+  },
+  "excludeDuplicateResources": {
+    "message": "Exclude duplicate resources"
+  },
+  "customCSS": {
+    "message": "Custom CSS"
+  },
+  "MQTT": {
+    "message": "MQTT"
+  },
+  "mqttBroker": {
+    "message": "Broker"
+  },
+  "mqttPath": {
+    "message": "Path"
+  },
+  "mqttProtocol": {
+    "message": "Protocol"
+  },
+  "mqttClientId": {
+    "message": "Client ID"
+  },
+  "mqttTitleLength": {
+    "message": "Title length"
+  },
+  "mqttUsername": {
+    "message": "Username"
+  },
+  "mqttPassword": {
+    "message": "Password"
+  },
+  "mqttTopic": {
+    "message": "Topic"
+  },
+  "mqttQos": {
+    "message": "QoS"
+  },
+  "mqttQos0": {
+    "message": "0 - At most once"
+  },
+  "mqttQos1": {
+    "message": "1 - At least once"
+  },
+  "mqttQos2": {
+    "message": "2 - Exactly once"
+  },
+  "mqttDataFormat": {
+    "message": "Data format"
+  },
+  "mqttDataFormatHelp": {
+    "message": "Message body template. Supports tags."
+  },
+  "mqttDataFormatVars": {
+    "message": "Available variables"
+  },
+  "mqttDataFormatDefault": {
+    "message": "Default format if empty"
+  },
+  "mqttProtocolWss": {
+    "message": "wss"
+  },
+  "mqttProtocolWs": {
+    "message": "ws"
+  },
+  "mqttTitleLengthHelp": {
+    "message": "Max title length in the payload"
+  },
+  "mqttBrokerHelp": {
+    "message": "MQTT broker host"
+  },
+  "mqttPathHelp": {
+    "message": "WebSocket path"
+  },
+  "mqttClientIdHelp": {
+    "message": "Client identifier"
+  },
+  "mqttTopicHelp": {
+    "message": "Publish topic"
+  },
+  "mqttQosHelp": {
+    "message": "Quality of service level"
+  },
+  "mqttCredentialsHelp": {
+    "message": "Optional username and password"
+  },
+  "operation": {
+    "message": "Operations"
+  },
+  "exportSettings": {
+    "message": "Export settings"
+  },
+  "importConfiguration": {
+    "message": "Import settings"
+  },
+  "clearCapturedData": {
+    "message": "Clear captured data"
+  },
+  "resetSettings": {
+    "message": "Reset settings"
+  },
+  "resetAllSettings": {
+    "message": "Reset all settings"
+  },
+  "restartExtension": {
+    "message": "Reload extension"
+  },
+  "about": {
+    "message": "About"
+  },
+  "confirmReset": {
+    "message": "Reset all settings? This cannot be undone."
+  },
+  "invokeProtocolTemplate": {
+    "message": "Invoke protocol template"
+  },
+  "customVLCProtocol": {
+    "message": "Custom VLC protocol"
+  },
+  "systemShare": {
+    "message": "System share"
+  },
+  "default": {
+    "message": "Default"
+  },
+  "goBack": {
+    "message": "Back"
+  },
+  "openDir": {
+    "message": "Open folder"
+  },
+  "downloadDir": {
+    "message": "Download folder"
+  },
+  "sendFfmpeg": {
+    "message": "Send to FFmpeg"
+  },
+  "autoCloserDownload": {
+    "message": "Auto-close after download"
+  },
+  "openInBgDownload": {
+    "message": "Open downloader in background"
+  },
+  "m3u8Placeholder": {
+    "message": "Paste an m3u8 URL"
+  },
+  "m3u8Url": {
+    "message": "M3U8 URL"
+  },
+  "nextLevel": {
+    "message": "Next level"
+  },
+  "nextLevelTip": {
+    "message": "Open nested playlists"
+  },
+  "multipleAudios": {
+    "message": "Multiple audio tracks"
+  },
+  "multipleAudiosTip": {
+    "message": "This stream has multiple audio tracks"
+  },
+  "multipleSubtitles": {
+    "message": "Multiple subtitles"
+  },
+  "multipleSubtitlesTip": {
+    "message": "This stream has multiple subtitle tracks"
+  },
+  "possibleKey": {
+    "message": "Possible key"
+  },
+  "loading": {
+    "message": "Loading"
+  },
+  "waitDownload": {
+    "message": "Waiting to download"
+  },
+  "downloadSegmentList": {
+    "message": "Segment list"
+  },
+  "originalM3u8": {
+    "message": "Original m3u8"
+  },
+  "localM3u8": {
+    "message": "Local m3u8"
+  },
+  "segmentList": {
+    "message": "Segments"
+  },
+  "downloadProgress": {
+    "message": "Download progress"
+  },
+  "getParameters": {
+    "message": "Get parameters"
+  },
+  "restoreGetParameters": {
+    "message": "Restore parameters"
+  },
+  "requestHeaders": {
+    "message": "Request headers"
+  },
+  "setRequestHeaders": {
+    "message": "Set request headers"
+  },
+  "invokeM3u8DL": {
+    "message": "Invoke m3u8DL"
+  },
+  "copyCommand": {
+    "message": "Copy command"
+  },
+  "previewCommand": {
+    "message": "Preview command"
+  },
+  "addSettingParameters": {
+    "message": "Add parameters"
+  },
+  "customKeyPlaceholder": {
+    "message": "Custom key (optional)"
+  },
+  "uploadKey": {
+    "message": "Upload key"
+  },
+  "downloadThreads": {
+    "message": "Download threads"
+  },
+  "ffmpegTranscoding": {
+    "message": "FFmpeg transcoding"
+  },
+  "mp4Format": {
+    "message": "MP4 format"
+  },
+  "downloadWhileSaving": {
+    "message": "Save while downloading"
+  },
+  "audioOnly": {
+    "message": "Audio only"
+  },
+  "saveAs": {
+    "message": "Save as"
+  },
+  "skipDecryption": {
+    "message": "Skip decryption"
+  },
+  "newDownloader": {
+    "message": "New downloader"
+  },
+  "downloadRange": {
+    "message": "Download range"
+  },
+  "recordLive": {
+    "message": "Record live"
+  },
+  "mergeDownloads": {
+    "message": "Merge downloads"
+  },
+  "redownloadFailedItems": {
+    "message": "Retry failed items"
+  },
+  "downloadExistingData": {
+    "message": "Download existing data"
+  },
+  "stopDownload": {
+    "message": "Stop download"
+  },
+  "start": {
+    "message": "Start"
+  },
+  "end": {
+    "message": "End"
+  },
+  "resolution": {
+    "message": "Resolution"
+  },
+  "duration": {
+    "message": "Duration"
+  },
+  "bitrate": {
+    "message": "Bitrate"
+  },
+  "ADTSerror": {
+    "message": "ADTS error"
+  },
+  "m3u8Error": {
+    "message": "m3u8 error"
+  },
+  "noAudio": {
+    "message": "No audio"
+  },
+  "noVideo": {
+    "message": "No video"
+  },
+  "hevcTip": {
+    "message": "HEVC / H.265 may not play in every browser."
+  },
+  "hevcPreviewTip": {
+    "message": "HEVC preview may be unavailable. Download to play locally."
+  },
+  "m3u8Info": {
+    "message": "Stream info",
+    "placeholders": {
+      "num": {
+        "content": "$1"
+      },
+      "time": {
+        "content": "$2"
+      }
+    }
+  },
+  "encryptedHLS": {
+    "message": "Encrypted HLS"
+  },
+  "encryptedSAMPLE": {
+    "message": "SAMPLE-AES encrypted"
+  },
+  "liveHLS": {
+    "message": "Live HLS"
+  },
+  "keyAddress": {
+    "message": "Key URL"
+  },
+  "key": {
+    "message": "Key"
+  },
+  "encryptionAlgorithm": {
+    "message": "Encryption algorithm"
+  },
+  "keyDownloadFailed": {
+    "message": "Key download failed"
+  },
+  "savePrompt": {
+    "message": "Saved to Downloads. Check your download manager."
+  },
+  "close": {
+    "message": "Close"
+  },
+  "blobM3u8DLError": {
+    "message": "blob URLs cannot use m3u8DL download"
+  },
+  "M3U8DLparameterLong": {
+    "message": "m3u8dl parameters are too long. You can still copy and run m3u8DL manually."
+  },
+  "runningCannotChangeSettings": {
+    "message": "Running — settings cannot be changed"
+  },
+  "streamSaverTip": {
+    "message": "Stream-save does not support ffmpeg online conversion, error retry, or partial save."
+  },
+  "stopRecording": {
+    "message": "Stop recording"
+  },
+  "waitingForLiveData": {
+    "message": "Waiting for live data"
+  },
+  "sNumError": {
+    "message": "Invalid sequence"
+  },
+  "startGTend": {
+    "message": "Start is greater than end; results may be empty"
+  },
+  "sNumMax": {
+    "message": "Sequence cannot exceed $num$",
+    "placeholders": {
+      "num": {
+        "content": "$1",
+        "example": "num"
+      }
+    }
+  },
+  "incorrectKey": {
+    "message": "Incorrect key"
+  },
+  "addParameters": {
+    "message": "Add parameters"
+  },
+  "decryptionError": {
+    "message": "Decryption error"
+  },
+  "downloadFailed": {
+    "message": "Download failed"
+  },
+  "retryDownload": {
+    "message": "Retry download"
+  },
+  "recordingDuration": {
+    "message": "Recording duration"
+  },
+  "downloaded": {
+    "message": "Downloaded"
+  },
+  "downloadedVideoLength": {
+    "message": "Downloaded video length"
+  },
+  "downloadComplete": {
+    "message": "Download complete"
+  },
+  "retryingDownload": {
+    "message": "Retrying download"
+  },
+  "merging": {
+    "message": "Merging"
+  },
+  "fileTooLarge": {
+    "message": "File larger than $size$. Online ffmpeg cannot be used. Downloading merged file; if too large please wait.",
+    "placeholders": {
+      "size": {
+        "content": "$1",
+        "example": "size"
+      }
+    }
+  },
+  "fileTooLargeStream": {
+    "message": "File larger than $size$. Enable stream-save?",
+    "placeholders": {
+      "size": {
+        "content": "$1",
+        "example": "size"
+      }
+    }
+  },
+  "formatConversionError": {
+    "message": "Format conversion error. Try mp4 conversion, then retry."
+  },
+  "streamOnbeforeunload": {
+    "message": "Pushing now. Do not close or reload..."
+  },
+  "fileLoading": {
+    "message": "Loading file"
+  },
+  "expandAllNodes": {
+    "message": "Expand all nodes"
+  },
+  "collapseAllNodes": {
+    "message": "Collapse all nodes"
+  },
+  "fileRetrievalFailed": {
+    "message": "Failed to fetch file"
+  },
+  "selectVideo": {
+    "message": "Select video"
+  },
+  "extractSlices": {
+    "message": "Extract slices"
+  },
+  "convertToM3U8": {
+    "message": "Convert to m3u8"
+  },
+  "selectAudio": {
+    "message": "Select audio"
+  },
+  "audio": {
+    "message": "Audio"
+  },
+  "video": {
+    "message": "Video"
+  },
+  "DRMerror": {
+    "message": "Media has DRM. Use another download method."
+  },
+  "regexTitle": {
+    "message": "Regex match and deep search"
+  },
+  "downloadWithRequestHeader": {
+    "message": "Download with custom request headers"
+  },
+  "m3u8Playlist": {
+    "message": "m3u8 playlist"
+  },
+  "copiedToClipboard": {
+    "message": "Copied to clipboard"
+  },
+  "hasSent": {
+    "message": "Sent"
+  },
+  "sendFailed": {
+    "message": "Send failed"
+  },
+  "confirmDownload": {
+    "message": "Download $num$ files?",
+    "placeholders": {
+      "num": {
+        "content": "$1",
+        "example": "num"
+      }
+    }
+  },
+  "confirmLoading": {
+    "message": "Load $num$ resources?",
+    "placeholders": {
+      "num": {
+        "content": "$1",
+        "example": "num"
+      }
+    }
+  },
+  "waitingForMedia": {
+    "message": "Waiting for media... You can close this page."
+  },
+  "exit": {
+    "message": "Exit"
+  },
+  "unknownSize": {
+    "message": "Unknown size"
+  },
+  "saving": {
+    "message": "Saving"
+  },
+  "saveFailed": {
+    "message": "Save failed"
+  },
+  "badgeNumber": {
+    "message": "Show count badge on icon"
+  },
+  "viewSlices": {
+    "message": "View slices and download range"
+  },
+  "send2local": {
+    "message": "Send locally"
+  },
+  "send2MQTT": {
+    "message": "Send to MQTT"
+  },
+  "sendingToMQTT": {
+    "message": "Sending to MQTT service..."
+  },
+  "connectingToMQTT": {
+    "message": "Connecting to MQTT..."
+  },
+  "sendingMessageToMQTT": {
+    "message": "Sending message to MQTT..."
+  },
+  "messageSentToMQTT": {
+    "message": "Message sent to MQTT"
+  },
+  "popup": {
+    "message": "Popup"
+  },
+  "defaultPopup": {
+    "message": "Default popup behavior"
+  },
+  "invokeApp": {
+    "message": "Invoke app"
+  },
+  "onlineServiceAddress": {
+    "message": "Online service URL"
+  },
+  "withinChina": {
+    "message": "China mainland"
+  },
+  "dataFetchFailed": {
+    "message": "Failed to fetch data"
+  },
+  "confirmParameters": {
+    "message": "Confirm parameters"
+  },
+  "searchingForRealKey": {
+    "message": "Searching for real key"
+  },
+  "verifying": {
+    "message": "Verifying"
+  },
+  "realKeyNotFound": {
+    "message": "Real key not found"
+  },
+  "blockUrl": {
+    "message": "Blocked URLs"
+  },
+  "addUrl": {
+    "message": "Add URL"
+  },
+  "wildcards": {
+    "message": "Wildcards"
+  },
+  "blockUrlTips": {
+    "message": "Supports * and ?"
+  },
+  "setWhiteList": {
+    "message": "Configure whitelist sites"
+  },
+  "autoSend": {
+    "message": "Auto send"
+  },
+  "manualSend": {
+    "message": "Manual send"
+  },
+  "requestMethod": {
+    "message": "Request method"
+  },
+  "requestBody": {
+    "message": "Request body"
+  },
+  "sort": {
+    "message": "Sort"
+  },
+  "asc": {
+    "message": "Ascending"
+  },
+  "desc": {
+    "message": "Descending"
+  },
+  "getTime": {
+    "message": "Captured at"
+  },
+  "fileSize": {
+    "message": "File size"
+  },
+  "title": {
+    "message": "Title"
+  },
+  "noKeyIsRequired": {
+    "message": "No key required"
+  },
+  "estimateSize": {
+    "message": "Estimated size"
+  },
+  "retryCount": {
+    "message": "Retry count"
+  },
+  "useSidePanel": {
+    "message": "Use side panel"
+  },
+  "Script": {
+    "message": "Scripts"
+  },
+  "alwaysSearch": {
+    "message": "Always deep-search on open"
+  },
+  "sideurlprotocol": {
+    "message": "Custom m3u8dl protocol"
+  },
+  "deleteDuplicateFilenames": {
+    "message": "Remove duplicate filenames"
+  },
+  "alertimport": {
+    "message": "Import complete"
+  },
+  "isBlockedSite": {
+    "message": "This site requires a restart to take effect"
+  },
+  "onlineFFmpeg": {
+    "message": "Online ffmpeg"
+  },
+  "ffmpegIsNotReady": {
+    "message": "Online ffmpeg is not ready. Please retry later."
+  },
+  "iframeFFmpeg": {
+    "message": "Embedded online ffmpeg"
+  },
+  "send2localTips": {
+    "message": "Send merge data? Click Confirm to merge, or Cancel to send."
+  },
+  "removeFailedPreviewFiles": {
+    "message": "Remove files that failed preview"
+  },
+  "save": {
+    "message": "Save"
+  },
+  "contextMenus": {
+    "message": "Context menus"
+  },
+  "dataPreprocessing": {
+    "message": "Data preprocessing"
+  },
+  "reverse": {
+    "message": "Reverse order"
+  },
+  "hideDownloadedSegments": {
+    "message": "Hide downloaded segments"
+  },
+  "showGroup": {
+    "message": "Show groups"
+  },
+  "groupTime": {
+    "message": "Group interval"
+  },
+  "language": {
+    "message": "Language"
+  },
+  "languageZh": {
+    "message": "中文"
+  },
+  "languageEn": {
+    "message": "English"
+  },
+  "languageAuto": {
+    "message": "Follow browser"
+  },
+  "languageHint": {
+    "message": "Applies to Ruxget popup, options, and status text. Reload the popup after switching if needed."
+  },
+  "languageSaved": {
+    "message": "Language saved"
+  },
+  "uiFloatingToggle": {
+    "message": "Download button"
+  },
+  "uiPauseDetection": {
+    "message": "Pause detection"
+  },
+  "uiOpenDownloads": {
+    "message": "Open download folder"
+  },
+  "uiOrdinaryDownload": {
+    "message": "Regular file download…"
+  },
+  "uiDesktopHelp": {
+    "message": "Desktop app install & connection"
+  },
+  "uiAdvanced": {
+    "message": "Advanced tools"
+  },
+  "uiSiteSettings": {
+    "message": "Manage site permissions"
+  },
+  "uiHelp": {
+    "message": "Help & open-source info"
+  },
+  "uiOpenMenu": {
+    "message": "Open menu"
+  },
+  "uiSaveAsLabel": {
+    "message": "Ask where to save"
+  },
+  "uiSaveAsTitle": {
+    "message": "When a file is ready, Chrome opens the save dialog so you can pick a folder and name"
+  },
+  "uiDefaultLocation": {
+    "message": "Default location…"
+  },
+  "uiDefaultLocationTitle": {
+    "message": "Open Chrome download settings to change the default folder"
+  },
+  "uiReadingPage": {
+    "message": "Reading this page…"
+  },
+  "uiOnlyThisPage": {
+    "message": "Only media from this page"
+  },
+  "uiRefreshList": {
+    "message": "Refresh video list"
+  },
+  "uiNetdiskTitle": {
+    "message": "Ruxget cloud drive download"
+  },
+  "uiNetdiskEnable": {
+    "message": "Enable Ruxget download"
+  },
+  "uiNetdiskDisable": {
+    "message": "Disable on this drive"
+  },
+  "uiBaiduAuth": {
+    "message": "Baidu authorize"
+  },
+  "uiDesktopSetup": {
+    "message": "Install & connect desktop app"
+  },
+  "uiReadVideo": {
+    "message": "Read video"
+  },
+  "uiCurrentDownload": {
+    "message": "Current download"
+  },
+  "uiCancelDownload": {
+    "message": "Cancel download"
+  },
+  "uiViewProgress": {
+    "message": "View progress"
+  },
+  "uiDownloadOptions": {
+    "message": "Download options"
+  },
+  "uiFullVideo": {
+    "message": "Download full video"
+  },
+  "uiQuality": {
+    "message": "Quality"
+  },
+  "uiChooseQuality": {
+    "message": "Choose video quality"
+  },
+  "uiChooseAfterRead": {
+    "message": "Choose after reading succeeds"
+  },
+  "uiDownloadVideo": {
+    "message": "Download video"
+  },
+  "uiAudioOnlySection": {
+    "message": "Download audio only"
+  },
+  "uiMp3Audio": {
+    "message": "MP3 audio"
+  },
+  "uiDownloadMp3": {
+    "message": "Download MP3"
+  },
+  "uiSendDesktop": {
+    "message": "Send to desktop app"
+  },
+  "uiVideoUrl": {
+    "message": "Video URL"
+  },
+  "uiPasteUrl": {
+    "message": "Paste video URL"
+  },
+  "uiRead": {
+    "message": "Read"
+  },
+  "uiSiteAccessNote": {
+    "message": "First time: allow this site and media sources detected on the page."
+  },
+  "uiAllowSite": {
+    "message": "Allow this site"
+  },
+  "uiFoundMedia": {
+    "message": "Found media"
+  },
+  "uiClearList": {
+    "message": "Clear list"
+  },
+  "uiMediaType": {
+    "message": "Media type"
+  },
+  "uiAll": {
+    "message": "All"
+  },
+  "uiSearchPlaceholder": {
+    "message": "Search name or format"
+  },
+  "uiEmptyTitle": {
+    "message": "Play a video on the page first"
+  },
+  "uiEmptyBody": {
+    "message": "Ruxget lists videos it finds here.<br>If one is already playing, refresh the page and try again."
+  },
+  "uiFreeOpen": {
+    "message": "Free & open source, no ads"
+  },
+  "uiCopyAllLinks": {
+    "message": "Copy all links"
+  },
+  "uiLinkHowTitle": {
+    "message": "How should this link download?"
+  },
+  "uiCancel": {
+    "message": "Cancel"
+  },
+  "uiLinkHowNote": {
+    "message": "Clicks still use Chrome by default. Choose desktop only when you want Ruxget."
+  },
+  "uiPasteHttp": {
+    "message": "Paste an HTTP / HTTPS download link"
+  },
+  "uiUseChrome": {
+    "message": "Download with Chrome"
+  },
+  "uiUseRuxget": {
+    "message": "Download with Ruxget"
+  },
+  "uiLinkContextNote": {
+    "message": "You can also right-click a link and choose “Download this link with Ruxget”."
+  },
+  "uiCopyLink": {
+    "message": "Copy link"
+  },
+  "uiViewDetails": {
+    "message": "View details"
+  },
+  "uiDesktopDownload": {
+    "message": "Desktop download"
+  },
+  "uiSaveLocationAria": {
+    "message": "Where new downloads are saved"
+  },
+  "uiSourceAria": {
+    "message": "Current page"
+  },
+  "uiBiliYtAria": {
+    "message": "Bilibili and YouTube download"
+  },
+  "uiDownloadProgressAria": {
+    "message": "Download progress"
+  },
+  "uiMediaListAria": {
+    "message": "Media list"
+  },
+  "uiHelpTagline": {
+    "message": "Keep video and audio on your device"
+  },
+  "uiHelpIntroTitle": {
+    "message": "Video and audio, saved locally."
+  },
+  "uiHelpIntroBody": {
+    "message": "Tap “Download video” or “Download MP3” to save inside Chrome. For large files, torrents, or downloads that continue after you close the browser, install the desktop app and use “Send to desktop app”."
+  },
+  "uiHelpDesktopLink": {
+    "message": "Desktop install guide and connection check"
+  },
+  "uiHelpStartTitle": {
+    "message": "Set up once, download anytime"
+  },
+  "uiClickToDownload": {
+    "message": "Click to choose download"
+  },
+  "uiDragToMove": {
+    "message": "Drag to move"
+  },
+  "uiHideFloating": {
+    "message": "Hide button"
+  },
+  "uiShowFloating": {
+    "message": "Show button",
+    "description": "Popup toolbar: show floating download button"
+  },
+  "uiRestoreFromToolbar": {
+    "message": "Restore from the toolbar"
+  },
+  "uiDownloading": {
+    "message": "Downloading"
+  },
+  "uiDownloadInterrupted": {
+    "message": "Download interrupted"
+  },
+  "uiSaved": {
+    "message": "Saved"
+  },
+  "uiOpenFolder": {
+    "message": "Open folder"
+  },
+  "uiRetry": {
+    "message": "Please try again"
+  },
+  "uiNetdiskShowBtn": {
+    "message": "Show cloud-drive button"
+  },
+  "uiNetdiskBtnOn": {
+    "message": "Button enabled"
+  },
+  "uiNetdiskTurnOn": {
+    "message": "Enable"
+  },
+  "uiBaiduAuthSaved": {
+    "message": "Baidu authorization saved"
+  },
+  "uiBaiduNeedAuth": {
+    "message": "Baidu downloads need authorization first (desktop uses a token, not Baidu cookies — same for public shares)."
+  },
+  "uiUnauthorized": {
+    "message": "Not authorized"
+  },
+  "uiFilesQueued": {
+    "message": "file(s) added to Ruxget download"
+  },
+  "uiBrowserDownload": {
+    "message": "Browser download"
+  },
+  "uiNetdiskDownload": {
+    "message": "Cloud drive download"
+  },
+  "uiDownloadSelected": {
+    "message": "Download selected files"
+  },
+  "uiContextDownloadLink": {
+    "message": "Download this link with Ruxget"
+  },
+  "uiResumeDetection": {
+    "message": "Resume detection"
+  },
+  "uiNetdiskTitleNamed": {
+    "message": "$1 · Ruxget download"
+  },
+  "netdiskNameBaidu": {
+    "message": "Baidu Netdisk"
+  },
+  "netdiskNameAliyun": {
+    "message": "Aliyun Drive"
+  },
+  "netdiskNameMcloud": {
+    "message": "China Mobile Cloud"
+  },
+  "netdiskNameTcloud": {
+    "message": "Tianyi Cloud"
+  },
+  "netdiskNameXunlei": {
+    "message": "Xunlei Cloud"
+  },
+  "netdiskNameQuark": {
+    "message": "Quark Drive"
+  },
+  "netdiskNameUc": {
+    "message": "UC Drive"
+  },
+  "netdiskNamePan123": {
+    "message": "123 Cloud"
+  },
+  "uiNetdiskNoteOff": {
+    "message": "When enabled, a \"Ruxget download\" button appears next to the drive toolbar. First use asks to read this drive login and connect the desktop app."
+  },
+  "uiNetdiskNoteOn": {
+    "message": "Select files in the drive, then click \"Ruxget download\" beside the toolbar. The original download button still works."
+  },
+  "uiNetdiskNoteBaiduNeedAuth": {
+    "message": "Baidu downloads need \"Baidu authorize\" below first. The desktop app uses a token and never sends Baidu cookies - same for public share pages."
+  },
+  "uiNetdiskNoteBaiduReady": {
+    "message": "Baidu authorization saved. Select files in the drive, then click \"Ruxget download\"."
+  },
+  "uiNetdiskAuth": {
+    "message": "Baidu authorize"
+  },
+  "uiNetdiskReauth": {
+    "message": "Re-authorize"
+  },
+  "uiNetdiskSetupHint": {
+    "message": "Install and connect the desktop app from \"Install & connect desktop\" below first."
+  },
+  "uiDesktopMissingConfirm": {
+    "message": "Ruxget desktop downloader was not found. Open GitHub to download it?"
+  },
+  "uiDesktopMissingError": {
+    "message": "Install the Ruxget desktop downloader and try again"
+  },
+  "uiNetdiskNeedDesktop": {
+    "message": "Install Ruxget desktop 0.4.28 or newer before enabling cloud-drive download"
+  },
+  "uiNetdiskDenied": {
+    "message": "Permission denied; the drive own download still works"
+  },
+  "uiNetdiskIncomplete": {
+    "message": "Cloud-drive setup incomplete"
+  },
+  "uiNetdiskBtn": {
+    "message": "Ruxget download"
+  },
+  "uiNetdiskBtnReading": {
+    "message": "Reading…"
+  },
+  "uiNetdiskBtnTitle": {
+    "message": "Download the selected files to the folder remembered by Ruxget"
+  },
+  "uiNetdiskBtnOptions": {
+    "message": "Ruxget download options"
+  },
+  "uiNetdiskBtnAria": {
+    "message": "Ruxget cloud-drive download"
+  },
+  "uiNetdiskMenuFolder": {
+    "message": "Change save folder…"
+  },
+  "uiNetdiskMenuShow": {
+    "message": "View download tasks"
+  },
+  "uiNetdiskMenuHide": {
+    "message": "Hide this button"
+  },
+  "uiNetdiskAdded": {
+    "message": "Added $1 file(s) to Ruxget"
+  },
+  "uiNetdiskNoResponse": {
+    "message": "Ruxget did not respond. Try again."
+  },
+  "uiDesktopConnectionMissing": {
+    "message": "Desktop downloader is not connected"
+  },
+  "uiDesktopConnectionFailed": {
+    "message": "Cannot connect to the desktop downloader"
+  },
+  "uiDesktopConnectionMissingNote": {
+    "message": "If it is not installed, download it below. If it is installed, repair the connection. You can also keep using Chrome."
+  },
+  "uiDesktopConnectionFailedNote": {
+    "message": "Pairing or startup may have failed. Repair the connection first; reinstalling is usually unnecessary."
+  },
+  "uiDesktopInstallAction": {
+    "message": "Download installer"
+  },
+  "uiDesktopRepairAction": {
+    "message": "Already installed? Repair connection"
+  },
+  "uiDesktopChromeAction": {
+    "message": "Continue with Chrome"
+  },
+  "uiDesktopConnectionPending": {
+    "message": "The desktop is not connected. You can continue downloading with Chrome"
+  }
+}

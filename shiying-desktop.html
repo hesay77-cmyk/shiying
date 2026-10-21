@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Ruxget Desktop · Setup</title><link rel="stylesheet" href="css/shiying.css"><link rel="stylesheet" href="css/shiying-desktop.css"><script src="js/shiying-native.js" defer></script><script src="js/shiying-desktop.js" defer></script></head>
+<body class="desktop-guide"><main><img src="img/shiying.svg" width="44" height="44" alt=""><h1>安装并连接 Ruxget 桌面版</h1><p>插件读取网页视频和画质，桌面版接收任务、保存文件，并管理暂停和续传。只使用插件里的「下载视频」或「下载 MP3」时，可以继续在 Chrome 内完成。</p>
+<aside class="release-note" aria-label="安装与下载来源"><strong>桌面下载器需要单独安装和连接</strong><p>尚未安装，请从 <a href="https://github.com/hesay77-cmyk/shiying/releases/latest" target="_blank" rel="noopener">GitHub 下载 Windows 安装包</a>。已经安装但发送失败，请先在下方检查连接或重新配对；无需反复下载安装。只用 Chrome 下载时，不需要安装桌面版。</p></aside>
+<nav class="guide-links" aria-label="安装说明目录"><a href="#install-steps">安装步骤</a><a href="#connection">检查连接</a><a href="#troubleshooting">遇到问题</a><a href="#extension-install">插件安装方法</a></nav>
+<h2 id="install-steps">按顺序完成这四步</h2>
+<ol class="install-steps">
+<li><h3>准备 Windows 安装包</h3><p>在 GitHub 下载页的 Assets 中选择 Windows 安装文件（.exe）；插件 ZIP 和源码 ZIP 不能代替它。已经安装桌面版，可以直接跳到第三步检查连接。</p><a class="installer-name" href="https://github.com/hesay77-cmyk/shiying/releases/latest" target="_blank" rel="noopener">下载 Ruxget Windows 安装包</a><p>安装包适用于 Windows 10/11 64 位电脑。浏览器插件和桌面软件需要分别安装。</p></li>
+<li><h3>运行安装器，点击「安装并连接」</h3><p>如果旧桌面版正在运行，先正常关闭Ruxget，再双击安装器。按默认选项安装即可，无需管理员权限；可选择创建快捷方式和完成后打开Ruxget。</p><p>看到「安装完成」后，安装器会自动登记配套插件的连接。更新安装会保留已有下载记录和组件，不需要先卸载。</p><p>首次下载前，打开桌面版「设置」核对代理地址；不使用代理时，清空代理地址并保存。具体说明见下方「首次下载时还要准备什么」。</p></li>
+<li><h3>回到本页，允许并检查连接</h3><p>在插件右上角「…」菜单中打开「桌面版安装与连接」，点击下方「检查连接」。首次按 Chrome 提示允许本机通信。显示「已连接Ruxget桌面版 0.4.28」即表示配对成功。</p><p>如果已安装但仍未连接，点击「一键重新配对」，按浏览器提示打开Ruxget，完成桌面端的连接确认，再回到这里检查。通常不需要手动填写扩展 ID。</p></li>
+<li><h3>从视频页发送任务</h3><p>打开 YouTube 或 B站视频，点 Chrome 工具栏里的Ruxget图标，确认视频标题并选择画质，然后点「交给桌面版下载」。视频旁的Ruxget浮钮也能就地展开浏览器下载选项。在桌面窗口确认保存位置并开始。只点击本页的「检查连接」不会下载视频。</p><p>下载由桌面版接收后，可以关闭浏览器；请保持桌面版运行。点「迷你窗」可只保留一个小进度窗；在「···」菜单选择「收起到托盘」可隐藏窗口并继续下载，双击托盘里的Ruxget即可恢复。关闭Ruxget窗口会保存并暂停任务，下次启动后可手动继续。</p></li>
+</ol>
+<section id="connection" aria-labelledby="connection-title"><h2 id="connection-title">检查是否已经装好</h2>
+<div class="connection-actions"><button id="checkDesktopConnection" class="download-button">检查连接</button><a id="pairDesktop" class="pair-button">一键重新配对</a></div>
+<p id="desktopConnectionStatus" class="connection-status" role="status" aria-live="polite">正在检查连接…</p>
+</section>
+<h2>网盘怎么交给Ruxget下载？</h2><p>更新两端到 0.4.28 后，在网盘页面点 Chrome 中的Ruxget，再点「开启Ruxget下载」，允许这个网盘的可选权限。原下载按钮旁会出现一个小的「Ruxget下载」按钮。勾选文件再点击，即可使用记住的目录在后台下载，不自动弹出主窗口。按钮的小菜单可以更换目录、查看任务或隐藏；隐藏后从插件内「显示网盘按钮」恢复。百度首次可能需另点「百度授权」并在百度页面确认。无需篡改猴，原下载按钮照常使用。</p><p>本地预览已检查八个网盘的隔离适配数据，尚未完成真实账号下载验收。部分分享页不支持；阿里需列表视图；一次最多 100 个文件。签名地址过期需要回网盘重新取得，不保证突破源站限速。</p>
+<h2>首次下载时还要准备什么？</h2><p>普通文件、网盘和 BT 所需的基础组件随安装包提供。首次下载视频时，桌面版会按需准备视频组件并显示进度，准备完成后再下载内容，不需要手动寻找或安装组件。</p><p>请先检查桌面版的网络设置：当前预览版默认代理为 <code>http://127.0.0.1:7897</code>。如果你的电脑没有在这个地址运行代理，请在桌面版「设置」中清空代理地址并保存；需要代理时，填写你实际使用的地址。插件和桌面版的网络设置分别生效。</p>
+<h2>下载完成后去哪里找？</h2><p>桌面版默认保存到系统「下载」目录下的「Ruxget」文件夹，主窗口底部的「新任务保存到」旁可点「选择文件夹…」更改默认目录，并自动记住；新建或批量下载确认框中的「选文件夹」只改变本次任务的位置。已有任务保留原位置。任务完成后点「打开文件夹」；双击任务可在原窗口展开大小、已下载量、剩余时间、续传和分段进度，再双击或点「收起」关闭详情；完整详情与 BT 文件列表仍可从「···」菜单打开。</p>
+<section id="troubleshooting" aria-labelledby="troubleshooting-title"><h2 id="troubleshooting-title">没有连上或下载没开始？</h2>
+<details><summary>已经安装，仍提示「还未连接」</summary><p>先点「一键重新配对」，按提示打开Ruxget并确认连接，再点「检查连接」。如果配对按钮无法打开程序，正常关闭旧桌面版，重新运行安装器并点击「安装并连接」，然后再检查。</p></details>
+<details><summary>刚才没有允许 Chrome 的连接权限</summary><p>再次点击「检查连接」，按提示允许本机通信。不允许时，仍可以使用插件内原有的下载入口。</p></details>
+<details><summary>组件一直准备失败，或任务没有速度</summary><p>先核对桌面版「设置」中的代理地址；没有本机代理时清空这一项并保存。确认网络能访问视频来源及组件来源后，再继续或重试。BT 下载速度还取决于当前做种节点，安装成功并不保证每个种子都有速度。</p></details>
+<details><summary>只看到几个 KB 的 MP3，或视频地址已过期</summary><p>在Ruxget主面板确认正片标题与清晰度，再发送到桌面版。高级资源列表里的小 MP3 可能只是网页提示音。地址过期时，在原网页重新读取视频后重新发送。</p></details>
+<details><summary>出现多个Ruxget图标或重复浮钮</summary><p>打开 Chrome 扩展管理页，核对各个Ruxget的版本号，只保留你准备使用的版本启用，关闭旧测试版本。更新本地插件后，重新加载扩展，再刷新视频页。</p></details>
+</section>
+<section id="extension-install" aria-labelledby="extension-install-title"><h2 id="extension-install-title">还没装插件？从这里开始</h2><p>已有 Chrome 商店正式版的用户：在原来的Ruxget商店条目安装或更新，不需要开启开发者模式。本文对应的新版功能目前仍为本地预览，尚未作为这次更新发布到商店。</p><p>当前本地预览版的加载方法：</p><ol><li>解压开发者提供的插件包，在 Chrome 地址栏打开 <code>chrome://extensions</code>。</li><li>开启「开发者模式」，点击「加载已解压的扩展程序」。</li><li>选择名为「Chrome插件」的文件夹，或解压包中直接含有 <code>manifest.json</code> 的目录；不要选择源码 ZIP 或桌面 EXE。</li><li>看到Ruxget 0.4.28 后，刷新视频页或网盘页。以后覆盖更新同一文件夹时，点扩展卡片上的「重新加载」，再刷新网页。不要同时启用多份Ruxget。</li></ol></section>
+<details><summary>连接诊断</summary><label for="desktopExtensionId">当前扩展 ID（通常不需要手动填写）</label><div class="desktop-id"><code id="desktopExtensionId"></code><button id="copyDesktopId" class="download-button">复制</button></div></details>
+<p class="quality-note">发送只发生在你点击时。媒体链接、标题、选中的音视频轨和必要的来源信息会交给本机软件；Cookie 和密码不发送。临时视频链接可能过期，失败后请重新读取并发送。</p>
+<p><a href="shiying-help.html">返回使用说明</a></p></main></body></html>

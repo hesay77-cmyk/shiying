@@ -1,9 +1,13 @@
-// 拾影平台入口，GPL-3.0。只处理实际可访问的视频格式。
+// Ruxget平台入口，GPL-3.0。只处理实际可访问的视频格式。
 const ShiyingPlatform = {
     mediaURL(value,site) {
         const url=new URL(value);
-        const allowed=site==='bilibili'?/(^|\.)bilivideo\.(com|cn)$/:/(^|\.)googlevideo\.com$/;
-        if(url.protocol!=='https:'||url.username||url.password||url.port||!allowed.test(url.hostname))throw new Error('原站返回的媒体地址不可用，请重新读取');
+        const bilibili=site==='bilibili'&&/(^|\.)bilivideo\.(com|cn)$/.test(url.hostname);
+        let allowed=bilibili;
+        /* shiying-store-omit */
+        if(site!=='bilibili'&&/(^|\.)googlevideo\.com$/.test(url.hostname))allowed=true;
+        /* shiying-store-omit-end */
+        if(url.protocol!=='https:'||url.username||url.password||url.port||!allowed)throw new Error('原站返回的媒体地址不可用，请重新读取');
         return url.href;
     },
     bilibiliCatalog(source,data) {
@@ -14,6 +18,7 @@ const ShiyingPlatform = {
         if(!video.length||!audio.length)throw new Error('没有取得可合并的画面与声音');
         return {...source,title:String(data.title).slice(0,300),duration:Number(data.duration),video,audio,choices:[...new Set(video.map(item=>item.height))].sort((a,b)=>b-a).map(height=>({height,label:height+'p'}))};
     },
+    /* shiying-store-omit */
     youtubeCatalog(source,data) {
         if(data.playabilityStatus?.status!=='OK')throw new Error('原站暂时不提供这个视频，请确认网页能播放后重新读取');
         if(data.videoDetails?.isLiveContent)throw new Error('目前支持已发布的视频，直播请使用高级工具');
@@ -24,22 +29,37 @@ const ShiyingPlatform = {
         if(!video.length||!audio.length)throw new Error('暂时没读到完整音视频轨，请播放视频后重新读取');
         return {...source,title:String(data.videoDetails.title).slice(0,300),duration:Number(data.videoDetails.lengthSeconds),video,audio,choices:[...new Set(video.map(item=>item.height))].sort((a,b)=>b-a).map(height=>({height,label:height+'p'}))};
     },
+    /* shiying-store-omit-end */
+    pageURLError() {
+        /* shiying-store-omit */
+        return '请输入完整的 B站或 YouTube 视频网址';
+        /* shiying-store-omit-end */
+        return '请输入完整的 B站视频网址';
+    },
+    unsupportedPageError() {
+        /* shiying-store-omit */
+        return '这个入口目前支持 B站和 YouTube 视频';
+        /* shiying-store-omit-end */
+        return '这个入口目前支持 B站视频';
+    },
     source(value) {
         let url;
-        try {url = new URL(value);} catch {throw new Error('请输入完整的 B站或 YouTube 视频网址');}
+        try {url = new URL(value);} catch {throw new Error(this.pageURLError());}
         if (url.protocol !== 'https:') throw new Error('请使用 HTTPS 视频网址');
+        /* shiying-store-omit */
         if (['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be'].includes(url.hostname)) {
             const id = url.hostname === 'youtu.be' ? url.pathname.slice(1) : url.searchParams.get('v') || url.pathname.match(/^\/(?:shorts|live)\/([\w-]+)/)?.[1];
             if (!/^[\w-]{11}$/.test(id || '')) throw new Error('请粘贴单个 YouTube 视频的网址');
             return {site:'youtube', url:`https://www.youtube.com/watch?v=${id}`};
         }
+        /* shiying-store-omit-end */
         if (['www.bilibili.com', 'bilibili.com'].includes(url.hostname)) {
             const id = url.pathname.match(/^\/video\/(BV[\w]+|av\d+)/i)?.[1];
             if (!id) throw new Error('请粘贴 B站视频的 BV 或 av 网址');
             const part = Math.max(1, Math.min(10000, Number(url.searchParams.get('p')) || 1));
             return {site:'bilibili', url:`https://www.bilibili.com/video/${id}/${part > 1 ? `?p=${Math.floor(part)}` : ''}`};
         }
-        throw new Error('这个入口目前支持 B站和 YouTube 视频');
+        throw new Error(this.unsupportedPageError());
     },
     // 注入当前 B站页面：使用页面已有的登录状态，Cookie 不离开浏览器。
     readBilibiliPage: async function(inputURL) {

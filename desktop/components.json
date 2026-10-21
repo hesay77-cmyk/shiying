@@ -1,0 +1,50 @@
+{
+  "date": "2026-10-17",
+  "platform": "Windows x64",
+  "components": [
+    {
+      "name": "aria2c.exe",
+      "version": "1.37.0",
+      "bytes": 5649408,
+      "sha256": "be2099c214f63a3cb4954b09a0becd6e2e34660b886d4c898d260febfe9d70c2",
+      "sourceURL": "https://github.com/aria2/aria2/releases/tag/release-1.37.0",
+      "bundled": true
+    },
+    {
+      "name": "yt-dlp.exe",
+      "version": "2026.08.19",
+      "bytes": 17840399,
+      "sha256": "66674953fe251b89f4d08c5f0e35e0728679bd67ab3d7d05c0562af101dd3e7a",
+      "sourceURL": "https://github.com/yt-dlp/yt-dlp/releases/tag/2026.08.19",
+      "bundled": false,
+      "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.08.19/yt-dlp.exe",
+      "downloadBytes": 17840399,
+      "downloadSha256": "66674953fe251b89f4d08c5f0e35e0728679bd67ab3d7d05c0562af101dd3e7a"
+    },
+    {
+      "name": "ffmpeg.exe",
+      "version": "7.1-essentials_build-www.gyan.dev",
+      "bytes": 87638016,
+      "sha256": "2ce797a0f88d7f067180338fb227f7b1928ea727bd9a4d7a1d022f7c52af71a3",
+      "sourceURL": "https://www.gyan.dev/ffmpeg/builds/",
+      "bundled": false,
+      "url": "https://github.com/GyanD/codexffmpeg/releases/download/7.1/ffmpeg-7.1-essentials_build.zip",
+      "downloadBytes": 92100272,
+      "downloadSha256": "fa7d4d7e795db0e2503f49f105f46ed5852386f0cfdd819899be3b65ebde24fc",
+      "archiveEntry": "ffmpeg-7.1-essentials_build/bin/ffmpeg.exe"
+    },
+    {
+      "name": "node.exe",
+      "version": "22.23.3",
+      "bytes": 86973768,
+      "sha256": "9c9245166b4a8e182e0b797da9c20136117ff24368eaff1fec8343a123c8db0e",
+      "sourceURL": "https://nodejs.org/dist/v22.23.3/win-x64/node.exe",
+      "bundled": false,
+      "url": "https://nodejs.org/dist/v22.23.3/win-x64/node.exe",
+      "downloadBytes": 86973768,
+      "downloadSha256": "9c9245166b4a8e182e0b797da9c20136117ff24368eaff1fec8343a123c8db0e"
+    }
+  ],
+  "cacheReuse": "yt-dlp, FFmpeg and Node reused byte-identical local official component cache; aria2 fetched from upstream release",
+  "sourceNotes": "FFmpeg build configuration is retained from the existing validated component manifest. Public distribution requires matching corresponding source materials."
+}

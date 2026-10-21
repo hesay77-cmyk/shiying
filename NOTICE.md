@@ -1,4 +1,10 @@
-# 拾影 0.3.2
+# 拾影 · 开源组件与修改说明
+
+Chrome 网上应用店版自 0.4.43 起不包含 YouTube 主机权限、内容脚本或清晰度下载。GitHub 完整版插件仍可包含 YouTube。下文 0.2.0 至 0.3.2 记录的是当时版本，不是商店版 0.4.43 的功能清单。
+
+0.4.28 本地复查（2026-10-18）：修复网盘返回部分或重复文件时可能静默漏掉所选文件的问题；缺少百度授权时直接指向插件内的明确授权入口，不在下载点击时隐式请求 OAuth；登录网页或无效 JSON 改为中文重试提示。保留原始 LinkSwift 1.1.3 和 AGPL 许可，修改仍通过同一模板与构建脚本生成。新增多文件、登录失效、处理中关闭、动态工具栏和大批量分段转交的隔离检查，未将模拟数据测试表述为真实网盘账号验收。
+
+本轮真实公开页面检查还补齐 123 的 `*.share.123pan.cn` 分享域名、CSS 模块表格和正常网页 Web v2 下载流程，保留配额与付费限制，不发起付款；允许源站实际返回的两个精确 123295 CDN 域名及 pd1.cjjd19.com 区域线路。动态脚本注册在升级时更新新分享页面匹配规则。公开字体完成下载、跨进程续传与来源 MD5 校验；真实登录账号的验收另行记录。
 
 拾影是 CatCatch 的独立开源改版，非猫抓官方产品。免费提供完整源码，沿用 GPL-3.0。
 
@@ -22,3 +28,7 @@
 公开发行整理：移除 CatCatch 原插件公钥，将项目主页改为拾影独立仓库；补齐隐私说明、商店填写资料与第三方来源。默认下载代码保持 0.3.1 已验收版本原样。
 
 0.3.2：移除默认所有网站主机权限和全站自动内容脚本。B站、YouTube 使用固定站点权限，其他网站和媒体来源经用户操作按具体网站授权，提供撤销入口和缓存访问边界。网络规则改用 declarativeNetRequestWithHostAccess，媒体解析、合并与 MP3 编码保持不变。
+
+0.4.27 本地预览（2026-10-18）：新增按站点开启的内置网盘下载入口，网盘选择/API 适配基于 LinkSwift 1.1.3（Hmjz100、油小猴，AGPL-3.0-or-later，https://github.com/hmjz100/LinkSwift）。保留该组件的 AGPL 许可；原有 GPL 组件保留原许可。原始脚本位于 third-party-source/LinkSwift-1.1.3.user.js，修改模板和可复现提取脚本位于 scripts/netdisk-page.template.js、scripts/build-netdisk.py，输出为 js/shiying-netdisk-adapters.js。改动包括移除脚本管理器依赖、原版 UI 与自动授权，改用本地扩展消息桥、站点权限检查和桌面静默入队；完整修改源码随本地源码 ZIP 提供。许可全文见 lib/LICENSES/LinkSwift-AGPL-3.0.txt。
+
+网盘签名使用未修改的 js-md5 0.7.3（Chen, Yi-Cyuan，MIT），文件 lib/md5.min.js，许可 lib/LICENSES/js-md5-MIT.txt。上游地址、版本、字节数和 SHA-256 见 third-party-source/netdisk-sources.json。内置下载不需要安装篡改猴，也不运行远端脚本。
