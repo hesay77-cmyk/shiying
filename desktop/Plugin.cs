@@ -135,7 +135,7 @@ public partial class MainWindow {
             }else if(command=="uiLanguage"){string lang=Util.Str(data,"value","auto");if(lang!="auto"&&lang!="en"&&lang!="zh_CN")lang="auto";manager.Config.UiLanguage=lang;await Task.Run(()=>manager.SaveSettings());PushPluginState();
             }else if(command=="settingsSave"){
                 var values=data["config"] as Dictionary<string,object>;if(values==null)throw new Exception("设置内容无效");string proxy=Util.Str(values,"Proxy").Trim();Util.CheckProxy(proxy);
-                var next=Util.Json().Deserialize<Settings>(Util.Json().Serialize(values));next.Proxy=proxy;next.Folder=manager.Config.Folder;var previous=Util.Json().Deserialize<Settings>(Util.Json().Serialize(manager.Config));
+                var next=Util.Json().Deserialize<Settings>(Util.Json().Serialize(values));next.Proxy=proxy;next.Folder=manager.Config.Folder;next.FollowBrowser=manager.Config.FollowBrowser;var previous=Util.Json().Deserialize<Settings>(Util.Json().Serialize(manager.Config));
                 Action<Settings> apply=value=>{manager.Config.Proxy=value.Proxy;manager.Config.Connections=value.Connections;manager.Config.FileSlots=value.FileSlots;manager.Config.VideoSlots=value.VideoSlots;manager.Config.RateKiB=value.RateKiB;manager.Config.BtUploadKiB=value.BtUploadKiB;manager.Config.AutoCategorize=value.AutoCategorize;manager.Config.SaveSubtitles=value.SaveSubtitles;manager.Config.UiLanguage=(value.UiLanguage=="en"||value.UiLanguage=="zh_CN"||value.UiLanguage=="auto")?value.UiLanguage:"auto";};
                 try{apply(next);await Task.Run(()=>manager.SaveSettings());}catch{apply(previous);throw;}PluginNotice("设置已保存","settings");
             }

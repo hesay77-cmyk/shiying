@@ -8,6 +8,19 @@ const ShiyingNative = {
         let source='';try{const page=new URL(referer);if(['http:','https:'].includes(page.protocol)&&!page.username&&!page.password)source=referer;}catch{}
         return {action:'add',kind:'file',url,referer:source,userAgent:navigator.userAgent};
     },
+    // Chrome's download folder, known exactly from files Ruxget saved itself (<folder>\Ruxget\<file>).
+    // Never guessed from other downloads: a wrong folder would move where the desktop app saves.
+    chromeFolderFrom(file) {
+        const match=/^(.*)[\\/]Ruxget[\\/][^\\/]+$/i.exec(String(file||''));
+        return match&&/^([a-z]:|\\\\)/i.test(match[1])?match[1]:'';
+    },
+    async learnChromeFolder(file) {
+        const folder=ShiyingNative.chromeFolderFrom(file);
+        if(folder)await chrome.storage.local.set({ruxgetChromeFolder:folder}).catch(()=>{});
+    },
+    async chromeFolder() {
+        try{return (await chrome.storage.local.get('ruxgetChromeFolder')).ruxgetChromeFolder||'';}catch{return '';}
+    },
     msg(key, fallback) {
         try {
             const text = (typeof i18n === 'function' ? i18n(key) : '') || chrome.i18n.getMessage(key) || '';
@@ -64,9 +77,12 @@ const ShiyingNative = {
         const granted=await chrome.permissions.request({permissions:['nativeMessaging']});
         if(!granted)throw new Error('未允许连接桌面版，仍可使用原有下载入口');
         const result=await payloadFactory();
+        // Every hand-off tells the desktop app where Chrome saves, so it can keep its folder beside the extension's.
+        const payload=result.payload||result,folder=await ShiyingNative.chromeFolder();
+        if(folder&&payload&&typeof payload==='object'&&!payload.chromeFolder)payload.chromeFolder=folder;
         let response;
         try {
-            response=await chrome.runtime.sendNativeMessage('org.shiying.desktop',result.payload||result);
+            response=await chrome.runtime.sendNativeMessage('org.shiying.desktop',payload);
         } catch(error) {
             const reason=ShiyingNative.connectionIssue(error);
             if(reason) {

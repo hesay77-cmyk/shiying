@@ -67,3 +67,10 @@ body.desktop-app{background:rgba(10,19,30,.56);background-image:none;}
 @media(max-width:719px){.desktop-toolbar .menu-panel{position:fixed;top:48px;right:12px}}
 .segment-details{margin-top:10px}
 .segment-details summary{color:var(--muted);cursor:pointer;font-size:11px;margin-bottom:6px}
+
+/* Save folder in settings: the full path, and whether it follows Chrome. */
+.settings-folder{display:grid;grid-template-columns:1fr auto;gap:2px 10px;margin:0 0 14px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#ffffff05}
+.settings-folder>span{grid-column:1/-1;font-size:12px;color:var(--muted)}
+.settings-folder code{grid-column:1;font:12.5px/1.5 Consolas,"Cascadia Mono",monospace;color:var(--ink);overflow-wrap:anywhere}
+.settings-folder small{grid-column:1;font-size:11.5px;color:var(--muted)}
+.settings-folder button{grid-column:2;grid-row:2/4;align-self:center}

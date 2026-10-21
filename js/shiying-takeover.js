@@ -80,7 +80,7 @@ const RuxgetTakeover={
         }
         const url=item.finalUrl||item.url;
         let reply;
-        try{reply=await chrome.runtime.sendNativeMessage('org.shiying.desktop',{action:'takeover',kind:'file',url,referer:/^https?:/i.test(item.referrer||'')?item.referrer:'',userAgent:navigator.userAgent,name:RuxgetTakeover.name(item),size:item.totalBytes>0?item.totalBytes:-1});}
+        try{reply=await chrome.runtime.sendNativeMessage('org.shiying.desktop',{action:'takeover',kind:'file',chromeFolder:typeof ShiyingNative!=='undefined'?await ShiyingNative.chromeFolder():'',url,referer:/^https?:/i.test(item.referrer||'')?item.referrer:'',userAgent:navigator.userAgent,name:RuxgetTakeover.name(item),size:item.totalBytes>0?item.totalBytes:-1});}
         catch(error){reply={ok:false,error:error?.message||String(error)};}
         if(reply?.ok){
             // Erase only once Chrome has finished cancelling, or a "cancelled" entry stays in its list.

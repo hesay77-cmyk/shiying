@@ -53,6 +53,22 @@ class TakeoverCheck {
             var bad=Input(server+"/file.bin");bad["userAgent"]="Fixture\r\nX-Injected: 1";Check(Refusal(()=>manager.Takeover(bad))!=null,"a browser name with control characters is refused");
             Check(manager.Snapshot().Count==before,"refused links add no task");
         }
+        // Save folder follows Chrome's download folder (<chrome>\Ruxget) until the user picks one.
+        string chrome=Path.Combine(root,"chrome-downloads");Directory.CreateDirectory(chrome);
+        using(var manager=new Manager(Path.Combine(root,"follow"))){
+            Check(manager.Config.FollowBrowser,"a fresh install follows Chrome");
+            Check(manager.FollowBrowserFolder(chrome)&&manager.Config.Folder==Path.Combine(chrome,"Ruxget"),"the folder becomes <Chrome's folder>\\Ruxget");
+            Check(!manager.FollowBrowserFolder(chrome),"the same hint changes nothing");
+            Check(!manager.FollowBrowserFolder("relative\\path")&&!manager.FollowBrowserFolder(Path.Combine(root,"missing"))&&!manager.FollowBrowserFolder("C:\\bad\npath")&&manager.Config.Folder==Path.Combine(chrome,"Ruxget"),"relative, missing or malformed folders are ignored");
+            manager.Config.FollowBrowser=false;manager.Config.Folder=Path.Combine(root,"mine");manager.SaveSettings();
+            Check(!manager.FollowBrowserFolder(chrome)&&manager.Config.Folder==Path.Combine(root,"mine"),"a folder the user picked is never overridden");
+        }
+        using(var manager=new Manager(Path.Combine(root,"follow")))Check(!manager.Config.FollowBrowser&&manager.Config.Folder==Path.Combine(root,"mine"),"the choice survives a restart");
+        // Settings from before 0.4.52 have no FollowBrowser field.
+        string old=Path.Combine(root,"old-custom");Directory.CreateDirectory(old);File.WriteAllText(Path.Combine(old,"settings.json"),"{\"Folder\":\""+Path.Combine(root,"custom").Replace("\\","\\\\")+"\"}");
+        using(var manager=new Manager(old))Check(!manager.Config.FollowBrowser,"an existing custom folder stays the user's after upgrading");
+        string plain=Path.Combine(root,"old-default");Directory.CreateDirectory(plain);File.WriteAllText(Path.Combine(plain,"settings.json"),"{\"Folder\":\""+new Settings().Folder.Replace("\\","\\\\")+"\"}");
+        using(var manager=new Manager(plain))Check(manager.Config.FollowBrowser,"an untouched default folder starts following Chrome after upgrading");
         File.WriteAllText(Path.Combine(root,"summary.json"),"{\"ok\":true,\"checks\":"+checks.Count+"}");Console.WriteLine("TAKEOVER CHECKS PASSED");return 0;
     }catch(Exception ex){Console.Error.WriteLine("FAIL "+ex.Message);return 1;}}
 }

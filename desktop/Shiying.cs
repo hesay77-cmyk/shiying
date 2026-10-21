@@ -59,6 +59,9 @@ public class Settings {
     public bool SaveSubtitles;
     public string UiLanguage = "auto";
     public int VideoHeight=1080;public string VideoKind="video";
+    // On: Folder is kept as <Chrome's download folder>\Ruxget, so the extension and the app save side by side.
+    // Picking a folder in the app turns it off.
+    public bool FollowBrowser = true;
 }
 static class Util {
     public const string SystemProxyMode="system";
@@ -169,6 +172,8 @@ public partial class Manager : IDisposable {
         dataRoot=directory; Directory.CreateDirectory(dataRoot);
         string config=Path.Combine(dataRoot,"settings.json"), state=Path.Combine(dataRoot,"tasks.json");
         Config = System.IO.File.Exists(config) ? ReadSaved<Settings>(config) : new Settings();
+        // Settings saved before 0.4.52 have no FollowBrowser: a folder the user already chose stays theirs.
+        if(System.IO.File.Exists(config)&&!System.IO.File.ReadAllText(config).Contains("\"FollowBrowser\""))Config.FollowBrowser=String.Equals(Path.GetFullPath(Config.Folder??""),Path.GetFullPath(new Settings().Folder),StringComparison.OrdinalIgnoreCase);
         NormalizeSettings();
         if (System.IO.File.Exists(state)) {
             jobs=ReadSaved<List<Download>>(state);
@@ -176,6 +181,13 @@ public partial class Manager : IDisposable {
         }
         foreach(var job in jobs){job.BtReason="";job.BtAdvice="";}
         PublishSnapshot();
+    }
+    // Chrome's download folder as the extension last saw it. Returns true when the save folder changed.
+    public bool FollowBrowserFolder(string browserFolder){
+        if(String.IsNullOrWhiteSpace(browserFolder)||browserFolder.Length>240||browserFolder.Any(Char.IsControl)||!Path.IsPathRooted(browserFolder))return false;
+        string target;try{target=Path.GetFullPath(Path.Combine(browserFolder,"Ruxget"));}catch{return false;}
+        if(!Directory.Exists(Path.GetDirectoryName(target)))return false;
+        lock(gate){if(!Config.FollowBrowser||String.Equals(Config.Folder,target,StringComparison.OrdinalIgnoreCase))return false;Config.Folder=target;SaveSettings();return true;}
     }
     public void SaveSettings() {
         lock(gate) { NormalizeSettings();if(btAria!=null&&!btAria.HasExited)BtRpc("changeGlobalOption",new Dictionary<string,string>{{"max-overall-upload-limit",Config.BtUploadKiB+"K"}});Util.Atomic(Path.Combine(dataRoot,"settings.json"),Config); }
@@ -494,7 +506,7 @@ static class BrowserBridge {
             if(!((IEnumerable)host["allowed_origins"]).Cast<object>().Select(Convert.ToString).Contains(origin))throw new Exception("这个扩展尚未连接桌面版");
             byte[] frame=ReadFrame(Console.OpenStandardInput());
             var message=Util.Json().Deserialize<Dictionary<string,object>>(Encoding.UTF8.GetString(frame));
-            if(Util.Str(message,"action")=="ping"){WriteFrame(Console.OpenStandardOutput(),Encoding.UTF8.GetBytes(Util.Json().Serialize(new{ok=true,version=Util.Version,paired=true,netdisk=true,netdiskApi=2})));return 0;}
+            if(Util.Str(message,"action")=="ping"){var saved=new Settings();try{string file=Path.Combine(Util.Root,"data","settings.json");if(System.IO.File.Exists(file))saved=Util.Json().Deserialize<Settings>(System.IO.File.ReadAllText(file))??saved;}catch{}WriteFrame(Console.OpenStandardOutput(),Encoding.UTF8.GetBytes(Util.Json().Serialize(new{ok=true,version=Util.Version,paired=true,netdisk=true,netdiskApi=2,folder=saved.Folder,followBrowser=saved.FollowBrowser})));return 0;}
             if(Util.Str(message,"action")=="netdiskSeal"||Util.Str(message,"action")=="netdiskOpen"){
                 string value=Util.Str(message,"value");if(Util.Str(message,"provider")!="baidu"||value.Length<1||value.Length>16384||value.Any(Char.IsControl))throw new Exception("网盘授权信息无效");
                 bool seal=Util.Str(message,"action")=="netdiskSeal";string result=seal?Netdisk.Protect(value):Netdisk.Cookie(new Download{NetdiskCookie=value});
@@ -516,6 +528,7 @@ static class BrowserBridge {
                 server.WaitForConnection();server.ReadMode=PipeTransmissionMode.Byte;
                 var task=Task.Run(()=>ReadFrame(server));if(!task.Wait(5000))continue;
                 var input=Util.Json().Deserialize<Dictionary<string,object>>(Encoding.UTF8.GetString(task.Result));
+                try{window.FollowBrowserFolder(Util.Str(input,"chromeFolder"));}catch{/* A bad hint never blocks the request itself. */}
                 if(Util.Str(input,"action")=="netdisk"){
                     object reply;try{reply=window.AcceptNetdisk(input);}catch(Exception ex){reply=new{ok=false,error=Util.SafeError(ex.Message)};}
                     WriteFrame(server,Encoding.UTF8.GetBytes(Util.Json().Serialize(reply)));continue;

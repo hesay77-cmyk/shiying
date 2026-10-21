@@ -43,6 +43,8 @@ if(connectionStatus){
             const result=await chrome.runtime.sendNativeMessage('org.shiying.desktop',{action:'ping'});
             if(!result?.ok)throw new Error(result?.error||'连接未完成');
             show('done','',result.version?'v'+result.version:'');
+            const where=document.querySelector('#desktopFolder');
+            if(where&&result.folder){where.hidden=false;where.textContent=pick('桌面版保存到：','The desktop app saves to: ')+result.folder+(result.followBrowser?pick('（跟随 Chrome 的下载位置，和插件在同一处）',' (follows Chrome’s download folder, same place as the extension)'):pick('（你在桌面版里选的位置）',' (a folder you chose in the desktop app)'));}
         }catch(error){
             const missing=ShiyingNative.connectionIssue(error)==='missing';
             show(missing?'install':'connect',missing?(requestPermission?pick('还没检测到桌面版。安装完成后，这里会自动进入下一步。','The desktop app isn’t detected yet. This page moves on once it’s installed.'):pick('正在等待安装完成…','Waiting for the installation…')):pick('正在等待连接…','Waiting for the connection…'));

@@ -281,7 +281,8 @@ public partial class MainWindow : Form {
     }
     void OpenFolder(){var j=Selection();if(j==null)return;try{if(!String.IsNullOrEmpty(j.File)&&System.IO.File.Exists(j.File))Process.Start("explorer.exe","/select,"+Util.Quote(j.File));else{string folder=Util.OutputFolder(j);Directory.CreateDirectory(folder);Process.Start("explorer.exe",Util.Quote(folder));}}catch(Exception ex){Alert(ex.Message);}}
     static string PickFolder(IWin32Window owner,string current){using(var picker=new FolderBrowserDialog{Description="选择下载文件夹",SelectedPath=current,ShowNewFolderButton=true})return picker.ShowDialog(owner)==DialogResult.OK?picker.SelectedPath:null;}
-    void SetDefaultFolder(string path){string previous=manager.Config.Folder;try{manager.Config.Folder=Path.GetFullPath(path);manager.SaveSettings();UpdateDefaultFolder();}catch{manager.Config.Folder=previous;throw;}}
+    void SetDefaultFolder(string path){string previous=manager.Config.Folder;bool follow=manager.Config.FollowBrowser;try{manager.Config.Folder=Path.GetFullPath(path);manager.Config.FollowBrowser=false;manager.SaveSettings();UpdateDefaultFolder();}catch{manager.Config.Folder=previous;manager.Config.FollowBrowser=follow;throw;}}
+    internal void FollowBrowserFolder(string browserFolder){if(manager.FollowBrowserFolder(browserFolder)&&!IsDisposed)BeginInvoke(new Action(()=>{if(IsDisposed)return;UpdateDefaultFolder();PushPluginState();}));}
     void UpdateDefaultFolder(){defaultFolder.Text=manager.Config.Folder;segmentTip.SetToolTip(defaultFolder,manager.Config.Folder+"\n用于新任务；开启按类型归档时会创建子文件夹。已有任务保留原位置。");}
     static bool Active(Download j){return new[]{"下载中","等待下载","排队中","正在暂停","准备组件","等待节点"}.Contains(j.Status);}
     bool Matches(Download j){return filter=="all"||filter=="active"&&Active(j)||filter=="complete"&&j.Status=="已完成"||filter=="unfinished"&&(j.Status=="已暂停"||j.Status=="失败"||j.Status=="等待选文件");}

@@ -104,3 +104,5 @@ body:not([data-step="done"]) .takeover-card{display:none}
 .takeover-card .wizard-status:empty{display:none}
 .takeover-card.is-highlight{animation:takeover-flash 1.6s ease 2}
 @keyframes takeover-flash{50%{border-color:var(--blue);box-shadow:0 0 0 4px rgba(102,188,255,.22)}}
+.desktop-folder{margin:12px auto 0!important;font-size:13px!important;overflow-wrap:anywhere}
+.desktop-folder[hidden]{display:none}

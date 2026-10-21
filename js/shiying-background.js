@@ -171,7 +171,7 @@ chrome.downloads.onChanged.addListener(async change=>{
  const ids=(await chrome.storage.local.get('shiyingJobIds')).shiyingJobIds||[];const data=await chrome.storage.local.get(ids.map(id=>NATIVE_JOB_PREFIX+id));const job=Object.values(data).find(job=>job.downloadId===change.id);
  if(!job)return;
  if(change.error)await jobUpdate(job.id,{status:'error',stage:'保存中断',error:'文件保存中断，请重新下载'});
- else if(change.state?.current==='complete'){const [download]=await chrome.downloads.search({id:change.id});await jobUpdate(job.id,{status:'complete',stage:'下载完成，文件和声音已检查',progress:100,file:download.filename});}
+ else if(change.state?.current==='complete'){const [download]=await chrome.downloads.search({id:change.id});await ShiyingNative.learnChromeFolder(download?.filename);await jobUpdate(job.id,{status:'complete',stage:'下载完成，文件和声音已检查',progress:100,file:download.filename});}
  if(change.error||change.state?.current==='complete')chrome.runtime.sendMessage({Message:'shiyingEngineRelease',id:job.id}).catch(()=>{});
 });
 let playlistRule = 1500000000;

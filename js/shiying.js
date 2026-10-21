@@ -191,7 +191,14 @@ onClick($('#clear'), async () => { await message('clearData', {type:true}); awai
 onClick($('#downloads'), () => chrome.downloads.showDefaultFolder());
 onClick($('#downloadLocation'), () => chrome.tabs.create({url:'chrome://settings/downloads'}));
 // Say where files actually go instead of a generic "default location" link.
-function showSaveTarget(){$('#downloadLocation').textContent=$('#saveAs').checked?RuxgetI18n.pick('每次手动选择 ›','Choose each time ›'):RuxgetI18n.pick('下载目录 / Ruxget ›','Downloads / Ruxget ›');}
+async function showSaveTarget(){
+    const button=$('#downloadLocation'),folder=await ShiyingNative.chromeFolder();
+    if($('#saveAs').checked){button.textContent=RuxgetI18n.pick('每次手动选择 ›','Choose each time ›');return;}
+    if(!folder){button.textContent=RuxgetI18n.pick('下载目录 / Ruxget ›','Downloads / Ruxget ›');return;}
+    const full=folder.replace(/[\\/]+$/,'')+'\\Ruxget',parts=full.split(/[\\/]/);
+    button.textContent=(parts.length>3?'…\\'+parts.slice(-2).join('\\'):full)+' ›';
+    button.title=RuxgetI18n.pick('插件和桌面版都保存到：','The extension and desktop app save to: ')+full+RuxgetI18n.pick('（点击可在 Chrome 设置中更改）',' (click to change it in Chrome settings)');
+}
 document.addEventListener('ruxget-i18n-applied',showSaveTarget);
 onClick($('#help'), () => chrome.tabs.create({url:chrome.runtime.getURL('shiying-help.html')}));
 onClick($('#advanced'), () => chrome.tabs.create({url:chrome.runtime.getURL(`popup.html?tabId=${tabId}`)}));
@@ -233,7 +240,7 @@ floatingToggle.addEventListener('click', async () => {
     }catch(error){notify('浮钮设置未保存，请重试：'+error.message);}
     finally{changingFloating=false;floatingToggle.disabled=false;}
 });
-chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&changes.shiyingFloating)showFloatingSetting(changes.shiyingFloating.newValue);if(area==='sync'&&changes.saveAs){$('#saveAs').checked=changes.saveAs.newValue===true;showSaveTarget();}});
+chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&changes.ruxgetChromeFolder)showSaveTarget();if(area==='local'&&changes.shiyingFloating)showFloatingSetting(changes.shiyingFloating.newValue);if(area==='sync'&&changes.saveAs){$('#saveAs').checked=changes.saveAs.newValue===true;showSaveTarget();}});
 $('#search').addEventListener('input', render);
 for (const button of document.querySelectorAll('[data-filter]')) onClick(button, () => {
     filter = button.dataset.filter;
