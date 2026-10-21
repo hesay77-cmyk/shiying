@@ -42,3 +42,30 @@ if(connectionStatus){
     // Wait for the language so the first status line is already translated.
     (window.RuxgetI18n?RuxgetI18n.ready():Promise.resolve()).catch(()=>{}).then(()=>checkConnection());
 }
+const takeoverSwitch=document.querySelector('#takeoverEnabled');
+if(takeoverSwitch&&chrome.storage?.local){
+    // Takeover settings live in storage.local under ruxgetTakeover; js/shiying-takeover.js reads them per download.
+    const KEY='ruxgetTakeover',LOG='ruxgetTakeoverLog',options=document.querySelector('#takeoverOptions'),status=document.querySelector('#takeoverStatus');
+    const min=document.querySelector('#takeoverMin'),skip=document.querySelector('#takeoverSkip'),log=document.querySelector('#takeoverLog');
+    const read=async()=>Object.assign({enabled:false,minMB:1,skipHosts:[]},(await chrome.storage.local.get(KEY))[KEY]||{});
+    const save=async patch=>chrome.storage.local.set({[KEY]:Object.assign(await read(),patch)});
+    const hosts=text=>[...new Set(text.split(/[\s,，]+/).map(entry=>entry.trim().toLowerCase().replace(/^https?:\/\//,'').replace(/[/:].*$/,'')).filter(Boolean))].slice(0,200);
+    async function render(){
+        const config=await read();
+        takeoverSwitch.checked=!!config.enabled;options.hidden=!config.enabled;
+        if(document.activeElement!==min)min.value=config.minMB;
+        if(document.activeElement!==skip)skip.value=(config.skipHosts||[]).join('\n');
+        let entries=[];try{entries=(await chrome.storage.session.get(LOG))[LOG]||[];}catch{}
+        log.replaceChildren(...entries.map(entry=>{const item=document.createElement('li');item.className=entry.result==='desktop'?'is-desktop':'';item.textContent=(entry.result==='desktop'?pick('已交给桌面版：','Sent to the desktop app: '):pick('留在 Chrome：','Kept in Chrome: '))+(entry.name||entry.url);item.title=entry.url;return item;}));
+    }
+    takeoverSwitch.addEventListener('change',async()=>{
+        const on=takeoverSwitch.checked;status.textContent='';
+        // Chrome only shows the permission prompt inside the click, so ask before anything awaits.
+        if(on&&!await chrome.permissions.request({permissions:['nativeMessaging']})){takeoverSwitch.checked=false;status.textContent=pick('没有允许连接桌面版，接管未打开。','The connection wasn’t allowed, so takeover is still off.');return;}
+        await save({enabled:on});status.textContent=on?pick('已打开。网页上的下载会交给桌面版。','On. Downloads from web pages now go to the desktop app.'):pick('已关闭。下载回到 Chrome。','Off. Downloads stay in Chrome.');render();
+    });
+    min.addEventListener('change',()=>{const value=Math.min(1024,Math.max(0,Math.round(Number(min.value)||0)));min.value=value;save({minMB:value});});
+    skip.addEventListener('change',()=>{const list=hosts(skip.value);skip.value=list.join('\n');save({skipHosts:list});});
+    chrome.storage.onChanged.addListener((changes,area)=>{if(changes[KEY]||changes[LOG])render();});
+    render();
+}

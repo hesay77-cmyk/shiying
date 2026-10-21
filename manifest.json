@@ -3,7 +3,10 @@
     "service_worker": "js/background.js"
   },
   "action": {
-    "default_icon": "img/icon.png",
+    "default_icon": {
+      "16": "img/icon16.png",
+      "32": "img/icon32.png"
+    },
     "default_title": "Ruxget",
     "default_popup": "shiying.html"
   },
@@ -12,6 +15,9 @@
   },
   "description": "免费开源、无广告：B站、抖音、快手、小红书视频一键保存为 MP4 或 MP3，B站还能下载字幕；网盘和 BT 可交给配套桌面版。",
   "icons": {
+    "16": "/img/icon16.png",
+    "32": "/img/icon32.png",
+    "48": "/img/icon48.png",
     "64": "/img/icon.png",
     "128": "/img/icon128.png"
   },
@@ -98,8 +104,8 @@
     }
   ],
   "default_locale": "zh_CN",
-  "version": "0.4.50",
-  "version_name": "0.4.50",
+  "version": "0.4.51",
+  "version_name": "0.4.51",
   "optional_permissions": [
     "nativeMessaging",
     "cookies"

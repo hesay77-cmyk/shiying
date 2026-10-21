@@ -65,7 +65,7 @@ static class Util {
     // Windows proxy for HTTPS traffic, as http://host:port, or "" when the system proxy is off or uses only a PAC script.
     public static string SystemProxy(){try{using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Internet Settings")){if(key==null||Convert.ToInt32(key.GetValue("ProxyEnable",0))!=1)return "";string server=Convert.ToString(key.GetValue("ProxyServer","")).Trim();if(server.Contains("=")){var parts=server.Split(';').Select(p=>p.Split(new[]{'='},2)).Where(p=>p.Length==2).ToDictionary(p=>p[0].Trim().ToLowerInvariant(),p=>p[1].Trim());server=parts.ContainsKey("https")?parts["https"]:parts.ContainsKey("http")?parts["http"]:"";}if(server.Length==0)return "";if(!server.Contains("://"))server="http://"+server;Uri uri;return Uri.TryCreate(server,UriKind.Absolute,out uri)&&(uri.Scheme=="http"||uri.Scheme=="https"||uri.Scheme.StartsWith("socks"))?server:"";}}catch{return "";}}
     public static void CheckProxy(string value){if(value.Length>0&&value!=SystemProxyMode)Url(value);}
-    public const string Version="0.4.50";
+    public const string Version="0.4.51";
     public static readonly string Root = AppDomain.CurrentDomain.BaseDirectory;
     public static readonly string PipeName = "shiying.desktop.v1." + WindowsIdentity.GetCurrent().User.Value.Replace('-', '_');
     public static JavaScriptSerializer Json() { return new JavaScriptSerializer { MaxJsonLength = 8 * 1024 * 1024 }; }
@@ -190,6 +190,24 @@ public partial class Manager : IDisposable {
         lock(gate) {
             CanAdd(1);var job=CreateDownload(url,kind,title,height,folder,input,autoCategorize);jobs.Add(job);try{Save();}catch{jobs.Remove(job);PublishSnapshot();throw;}return job;
         }
+    }
+    // A download the browser handed over. Chrome's paused copy is only cancelled when this returns, so the link is
+    // probed first: a refusal, a login page or an unreachable server goes back to Chrome instead of failing here.
+    public Download Takeover(IDictionary<string,object> input){
+        string url=Util.Url(Util.Str(input,"url")),referer=Util.Str(input,"referer"),agent=Util.Str(input,"userAgent");
+        if(referer.Length>0)referer=Util.Url(referer);if(agent.Length>512||agent.Any(Char.IsControl))throw new Exception("浏览器信息无效");
+        var request=(HttpWebRequest)WebRequest.Create(url);request.Method="GET";request.AddRange(0,0);request.Timeout=8000;request.ReadWriteTimeout=8000;request.KeepAlive=false;request.AllowAutoRedirect=true;
+        request.UserAgent=agent.Length>0?agent:"aria2/1.37.0";if(referer.Length>0)request.Referer=referer;
+        request.Proxy=new Uri(url).IsLoopback||ProxyUrl.Length==0?null:new WebProxy(ProxyUrl);
+        try{using(var response=(HttpWebResponse)request.GetResponse()){
+            if(response.StatusCode!=HttpStatusCode.OK&&response.StatusCode!=HttpStatusCode.PartialContent)throw new Exception("服务器没有直接给出文件");
+            if((response.ContentType??"").StartsWith("text/html",StringComparison.OrdinalIgnoreCase))throw new Exception("这个链接需要网页登录或验证，交回 Chrome 下载");
+        }}catch(WebException ex){using(var response=ex.Response as HttpWebResponse){
+            // An empty file answers a byte-range request with 416; that is still a real file.
+            if(response==null||response.StatusCode!=HttpStatusCode.RequestedRangeNotSatisfiable)throw new Exception("桌面版无法直接访问这个链接，交回 Chrome 下载");
+        }}finally{request.Abort();}
+        string name=Util.Str(input,"name");if(name.Length>0)name=Util.Name(name);
+        return Add(url,"file",name,1080,null,new Dictionary<string,object>{{"referer",referer},{"userAgent",agent}});
     }
     public int AddMany(string text,string kind,string folder,int height=1080,bool? autoCategorize=null){
         lock(gate){
@@ -482,9 +500,10 @@ static class BrowserBridge {
                 bool seal=Util.Str(message,"action")=="netdiskSeal";string result=seal?Netdisk.Protect(value):Netdisk.Cookie(new Download{NetdiskCookie=value});
                 WriteFrame(Console.OpenStandardOutput(),Encoding.UTF8.GetBytes(Util.Json().Serialize(new{ok=true,value=result})));return 0;
             }
-            string action=Util.Str(message,"action");if(!new[]{"add","netdisk","netdiskFolder","show"}.Contains(action))throw new Exception("不支持的浏览器操作");if(action=="add")Util.Url(Util.Str(message,"url"));
+            string action=Util.Str(message,"action");if(!new[]{"add","takeover","netdisk","netdiskFolder","show"}.Contains(action))throw new Exception("不支持的浏览器操作");if(action=="add"||action=="takeover")Util.Url(Util.Str(message,"url"));
             using(var pipe=new NamedPipeClientStream(".",Util.PipeName,PipeDirection.InOut)){
-                try{pipe.Connect(300);}catch(TimeoutException){Process.Start(new ProcessStartInfo(Application.ExecutablePath,action=="netdisk"?"--background":""){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=Util.Root});pipe.Connect(10000);}
+                // Netdisk and taken-over downloads start the app in the tray instead of opening its window.
+                try{pipe.Connect(300);}catch(TimeoutException){Process.Start(new ProcessStartInfo(Application.ExecutablePath,action=="netdisk"||action=="takeover"?"--background":""){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=Util.Root});pipe.Connect(10000);}
                 WriteFrame(pipe,frame);response=Util.Json().DeserializeObject(Encoding.UTF8.GetString(ReadFrame(pipe)));
             }
         }catch(Exception ex){response=new{ok=false,error=Util.SafeError(ex.Message)};}
@@ -499,6 +518,10 @@ static class BrowserBridge {
                 var input=Util.Json().Deserialize<Dictionary<string,object>>(Encoding.UTF8.GetString(task.Result));
                 if(Util.Str(input,"action")=="netdisk"){
                     object reply;try{reply=window.AcceptNetdisk(input);}catch(Exception ex){reply=new{ok=false,error=Util.SafeError(ex.Message)};}
+                    WriteFrame(server,Encoding.UTF8.GetBytes(Util.Json().Serialize(reply)));continue;
+                }
+                if(Util.Str(input,"action")=="takeover"){
+                    object reply;try{reply=window.AcceptTakeover(input);}catch(Exception ex){reply=new{ok=false,error=Util.SafeError(ex.Message)};}
                     WriteFrame(server,Encoding.UTF8.GetBytes(Util.Json().Serialize(reply)));continue;
                 }
                 if(Util.Str(input,"action")=="netdiskFolder"){window.BeginInvoke(new Action(window.PickNetdiskFolder));WriteFrame(server,Encoding.UTF8.GetBytes("{\"ok\":true,\"stage\":\"folder\"}"));continue;}

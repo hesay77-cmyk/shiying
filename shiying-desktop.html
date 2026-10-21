@@ -66,6 +66,23 @@
   <p id="desktopConnectionStatus" class="wizard-status" role="status" aria-live="polite"></p>
 </section>
 
+<section id="takeover" class="takeover-card" aria-labelledby="takeoverTitle">
+  <label class="takeover-switch">
+    <span class="takeover-text">
+      <strong id="takeoverTitle" data-en="Download with Ruxget instead of Chrome">用 Ruxget 接管 Chrome 下载</strong>
+      <span data-en="Ordinary downloads on web pages go straight to the desktop app, with pause and resume. When the app isn’t running or can’t take a file, Chrome downloads it as usual.">网页上的普通下载会直接交给桌面版，可以暂停续传。桌面版没开或接不了的文件，照常由 Chrome 下载。</span>
+    </span>
+    <input id="takeoverEnabled" type="checkbox" role="switch">
+    <span class="switch-track" aria-hidden="true"></span>
+  </label>
+  <div id="takeoverOptions" class="takeover-options" hidden>
+    <label class="takeover-row"><span data-en="Leave files smaller than this to Chrome">小于这个大小的文件留给 Chrome</span><span class="takeover-size"><input id="takeoverMin" type="number" min="0" max="1024" step="1" inputmode="numeric"> MB</span></label>
+    <label class="takeover-row takeover-sites"><span data-en="Never take over on these sites (one per line)">这些网站不接管（每行一个）</span><textarea id="takeoverSkip" rows="3" spellcheck="false" placeholder="example.com" data-en-placeholder="example.com"></textarea></label>
+    <ul id="takeoverLog" class="takeover-log" aria-live="polite"></ul>
+  </div>
+  <p id="takeoverStatus" class="wizard-status" role="status" aria-live="polite"></p>
+</section>
+
 <section class="wizard-more" aria-labelledby="moreTitle">
   <h2 id="moreTitle" data-en="More help">更多帮助</h2>
 
@@ -124,7 +141,7 @@
   </details>
 </section>
 
-<p class="wizard-privacy" data-en="Nothing is sent until you click. The media link, title, chosen tracks and needed source details go to the app on this computer; cookies and passwords are not sent. Video links can expire; if a send fails, read the video again.">发送只发生在你点击时。媒体链接、标题、选中的音视频轨和必要的来源信息会交给本机软件；Cookie 和密码不发送。临时视频链接可能过期，失败后请重新读取并发送。</p>
+<p class="wizard-privacy" data-en="Nothing is sent until you click, or until a download starts while takeover is on. The media link, title, chosen tracks and needed source details go to the app on this computer; cookies and passwords are not sent. Video links can expire; if a send fails, read the video again.">只在你点击时，或打开接管后有新下载开始时发送。媒体链接、标题、选中的音视频轨和必要的来源信息会交给本机软件；Cookie 和密码不发送。临时视频链接可能过期，失败后请重新读取并发送。</p>
 <p class="wizard-back"><a href="shiying-help.html" data-en="← Back to help">← 返回使用说明</a></p>
 </main>
 </body>

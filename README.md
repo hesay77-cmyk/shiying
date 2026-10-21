@@ -4,7 +4,7 @@
 
 免费、开源、无广告的中文网页视频下载插件。打开视频，点一下保存。
 
-当前插件与桌面版均为 **0.4.50**：新增抖音、快手、小红书视频一键下载（插件弹窗，MP4 / MP3）；商店版插件不再包含 YouTube（另提供 GitHub 完整版）；新增 B站字幕、MP3 歌名/作者/封面、浮钮一键下载、最近下载列表，分 P 最多 1000 项；统一改名为 Ruxget；下载按钮旁的 ▾ 可选择用浏览器或桌面版下载并记住选择；桌面版安装与连接改为三步向导；安装器重新设计；代理默认跟随系统设置；插件、向导、进度页和安装器支持中英文。网盘、BT、续传、任务详情及主窗口 / 迷你窗保留。安装与验证范围见 [桌面版说明](desktop/README.md)。Chrome 商店更新须经过审核，以商店实际显示的版本为准。
+当前插件与桌面版均为 **0.4.51**：新增可选的「用 Ruxget 接管 Chrome 下载」（默认关闭，在桌面版连接页打开），网页上的普通下载可直接交给桌面版断点续传，桌面版接不了时自动退回 Chrome。0.4.50 起：新增抖音、快手、小红书视频一键下载（插件弹窗，MP4 / MP3）；商店版插件不再包含 YouTube（另提供 GitHub 完整版）；新增 B站字幕、MP3 歌名/作者/封面、浮钮一键下载、最近下载列表，分 P 最多 1000 项；统一改名为 Ruxget；下载按钮旁的 ▾ 可选择用浏览器或桌面版下载并记住选择；桌面版安装与连接改为三步向导；安装器重新设计；代理默认跟随系统设置；插件、向导、进度页和安装器支持中英文。网盘、BT、续传、任务详情及主窗口 / 迷你窗保留。安装与验证范围见 [桌面版说明](desktop/README.md)。Chrome 商店更新须经过审核，以商店实际显示的版本为准。
 
 ![Ruxget 主面板](docs/assets/panel.png)
 
@@ -17,9 +17,9 @@ Ruxget 有两个插件版本，功能只差 YouTube：
 | 版本 | 从哪里装 | YouTube |
 |---|---|---|
 | 商店版 | Chrome 网上应用店 | 不支持（商店政策不允许） |
-| 完整版 | [Releases](https://github.com/hesay77-cmyk/shiying/releases/latest) 的 `Ruxget-0.4.50-Chrome-full.zip` | 支持，YouTube 视频页上也有浮钮 |
+| 完整版 | [Releases](https://github.com/hesay77-cmyk/shiying/releases/latest) 的 `Ruxget-0.4.51-Chrome-full.zip` | 支持，YouTube 视频页上也有浮钮 |
 
-桌面版（`Ruxget-0.4.50-Windows-Setup.exe`）可以直接粘贴 YouTube、B站、SoundCloud 等常见视频网站的链接下载，与插件版本无关。
+桌面版（`Ruxget-0.4.51-Windows-Setup.exe`）可以直接粘贴 YouTube、B站、SoundCloud 等常见视频网站的链接下载，与插件版本无关。
 
 完整版 ZIP 解压后在 Chrome 打开 `chrome://extensions`，开启“开发者模式”，点击“加载已解压的扩展程序”，选择包含 `manifest.json` 的目录。需要 Chrome 116 或更新版本。
 

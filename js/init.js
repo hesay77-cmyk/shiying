@@ -315,7 +315,7 @@ function InitOptions() {
             }
         });
 
-        chrome.action.setIcon({ path: G.enable ? "/img/icon.png" : "/img/icon-disable.png" });
+        chrome.action.setIcon({ path: G.enable ? { 16: "/img/icon16.png", 32: "/img/icon32.png" } : "/img/icon-disable.png" });
         G.initSyncComplete = true;
     });
     // 读取local配置数据 交给全局变量G

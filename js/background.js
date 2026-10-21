@@ -7,7 +7,7 @@ if (typeof G === 'undefined') {
     importScripts("/js/polyfill.js", "/js/function.js", "/js/templates.js", "/js/init.js");
 }
 
-importScripts("/js/shiying-access.js", "/js/shiying-background.js", "/js/shiying-native.js");
+importScripts("/js/shiying-access.js", "/js/shiying-background.js", "/js/shiying-native.js", "/js/shiying-takeover.js");
 importScripts('/js/shiying-netdisk.js','/js/shiying-netdisk-background.js');
 chrome.permissions.onRemoved.addListener(() => {
     ShiyingAccess.sync().then(() => {
@@ -389,7 +389,7 @@ chrome.runtime.onMessage.addListener(function (Message, sender, sendResponse) {
     if (Message.Message == "enable") {
         G.enable = !G.enable;
         chrome.storage.sync.set({ enable: G.enable });
-        chrome.action.setIcon({ path: G.enable ? "/img/icon.png" : "/img/icon-disable.png" });
+        chrome.action.setIcon({ path: G.enable ? { 16: "/img/icon16.png", 32: "/img/icon32.png" } : "/img/icon-disable.png" });
         sendResponse(G.enable);
         return true;
     }
@@ -795,7 +795,7 @@ const runCommands = (command, data) => {
     } else if (command == "enable") {
         G.enable = !G.enable;
         chrome.storage.sync.set({ enable: G.enable });
-        chrome.action.setIcon({ path: G.enable ? "/img/icon.png" : "/img/icon-disable.png" });
+        chrome.action.setIcon({ path: G.enable ? { 16: "/img/icon16.png", 32: "/img/icon32.png" } : "/img/icon-disable.png" });
     } else if (command == "reboot") {
         chrome.runtime.reload();
     } else if (command == "deepSearch") {
@@ -1150,7 +1150,8 @@ chrome.runtime.onInstalled.addListener(function (details) {
 // chrome.declarativeNetRequest.getSessionRules(function (rules) { console.log("sessionRules", rules); });
 // chrome.tabs.query({}, function (tabs) { for (let item of tabs) { console.log("tabId", item.id); } });
 
-// Only an explicit context-menu click reaches the native bridge. Ordinary downloads have no interception listener.
+// Link downloads reach the native bridge from an explicit context-menu click. Ordinary downloads are only
+// handed over when the user turned on takeover (js/shiying-takeover.js); it is off by default.
 async function showLinkDownloadError(error,tab){
     try{await chrome.storage.session.set({shiyingLinkDownloadError:{text:error.message||String(error),createdAt:Date.now()}});if(!/请按新打开/.test(error.message)&&chrome.action.openPopup)await chrome.action.openPopup(Number.isInteger(tab?.windowId)?{windowId:tab.windowId}:{});}catch{/* The message remains available next time the user opens the popup. */}
 }

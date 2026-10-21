@@ -321,6 +321,13 @@ public partial class MainWindow : Form {
         miniMeta.Text=j==null?"从浏览器发送，或展开窗口添加链接":j.Status+" · "+(miniProgress.Known?j.Progress.ToString("0.#")+"% · ":"")+(j.Status=="下载中"&&!String.IsNullOrEmpty(j.Speed)?j.Speed:TransferData.Remaining(j));
     }
     async Task OperateMini(){var j=manager.Snapshot().FirstOrDefault(item=>item.Id==miniId);if(j==null||batchBusy)return;if(j.Status=="等待选文件"){ChooseBt(j.Id);return;}bool start=CanResume(j);if(!start&&!CanPause(j))return;batchBusy=true;UpdateMini();try{await Task.Run(()=>{if(start)manager.Resume(j.Id);else manager.Pause(j.Id);});}catch(Exception ex){Alert(ex.Message);}finally{batchBusy=false;if(!IsDisposed)RefreshJobs();}}
+    // Taken-over downloads start without opening the window; a hidden app shows its tray icon with a short note.
+    internal object AcceptTakeover(IDictionary<string,object> input){
+        if(closingWindow||IsDisposed)throw new Exception("Ruxget 正在退出，请稍后重试");
+        var job=manager.Takeover(input);
+        BeginInvoke(new Action(()=>{if(closingWindow||IsDisposed)return;if(!Visible&&!preview){hiddenToTray=true;tray.Visible=true;tray.ShowBalloonTip(3000,"Ruxget","已接管下载："+job.Title,ToolTipIcon.None);}RefreshJobs();}));
+        return new{ok=true,id=job.Id,name=job.Title};
+    }
     void HideToTray(){hiddenToTray=true;if(!preview){tray.Visible=true;Hide();}}
     public void RestoreFromTray(){if(closingWindow||IsDisposed)return;bool wasHidden=hiddenToTray;hiddenToTray=false;if(!preview){if(wasHidden||!Visible)Show();if(WindowState==FormWindowState.Minimized)WindowState=FormWindowState.Normal;Activate();tray.Visible=false;}RefreshJobs();}
     static void Rounded(Graphics g,Color color,Rectangle bounds,int radius){using(var path=new GraphicsPath()){int d=radius*2;path.AddArc(bounds.Left,bounds.Top,d,d,180,90);path.AddArc(bounds.Right-d,bounds.Top,d,d,270,90);path.AddArc(bounds.Right-d,bounds.Bottom-d,d,d,0,90);path.AddArc(bounds.Left,bounds.Bottom-d,d,d,90,90);path.CloseFigure();using(var brush=new SolidBrush(color))g.FillPath(brush,path);}}
