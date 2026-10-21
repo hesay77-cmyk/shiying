@@ -10,7 +10,8 @@ async function request(Message) {
 async function refresh() {
     clearTimeout(timer);
     try {
-        const job = await request('shiyingPlatformJob');
+        const job = await request('shiyingPlatformJob').catch(error => { if (/没有找到下载记录/.test(error.message)) return null; throw error; });
+        if (!job) { showDeleted(pick('这个下载已经删除', 'This download was deleted')); return; }
         $('#reconnect').hidden = true;
         $('#taskError').hidden = !job.error;
         $('#taskError').textContent = tr(job.error || '');
@@ -54,6 +55,13 @@ async function refresh() {
 }
 $('#reconnect').addEventListener('click',refresh);
 $('#cancelTask').addEventListener('click',async()=>{try{await request('shiyingPlatformCancel');await refresh()}catch(error){$('#taskError').textContent=tr(error.message);$('#taskError').hidden=false}});
+// Deleted here or elsewhere: no more polling, nothing left to act on.
+function showDeleted(stage) {
+    clearTimeout(timer); document.body.dataset.status = 'deleted';
+    $('#taskLabel').textContent = pick('已删除', 'Deleted'); $('#taskStage').textContent = stage; $('#taskError').hidden = true;
+    for (const node of ['#openFile', '#deleteTask', '#cancelTask', '#taskResult', '#reconnect']) $(node).hidden = true;
+    $('#taskNote').textContent = pick('可以关闭这个页面。', 'You can close this page.');
+}
 // Two clicks, like the popup: the first arms, the second deletes the saved file and its record.
 let deleteTimer = 0;
 function disarmDelete() { clearTimeout(deleteTimer); const button = $('#deleteTask'); delete button.dataset.armed; button.classList.remove('is-armed'); button.textContent = button.dataset.file ? pick('删除文件', 'Delete file') : pick('移除记录', 'Remove'); }
@@ -64,10 +72,7 @@ $('#deleteTask').addEventListener('click', async () => {
     try {
         const hadFile = !!button.dataset.file, result = await chrome.runtime.sendMessage({Message: 'shiyingPlatformDelete', id, removeFile: hadFile});
         if (!result?.ok) throw new Error(result?.error || pick('删除没有完成，请重试', 'Couldn’t delete. Try again.'));
-        clearTimeout(timer); document.body.dataset.status = 'deleted';
-        $('#taskLabel').textContent = pick('已删除', 'Deleted'); $('#taskStage').textContent = !hadFile ? pick('已移除记录', 'Removed') : result.removed ? pick('文件已删除', 'File deleted') : pick('文件已不在原位置，已移除记录', 'The file was already gone; record removed');
-        for (const node of ['#openFile', '#deleteTask', '#cancelTask', '#taskResult']) $(node).hidden = true;
-        $('#taskNote').textContent = pick('可以关闭这个页面。', 'You can close this page.');
+        showDeleted(!hadFile ? pick('已移除记录', 'Removed') : result.removed ? pick('文件已删除', 'File deleted') : pick('文件已不在原位置，已移除记录', 'The file was already gone; record removed'));
     } catch (error) { $('#taskError').textContent = tr(error.message); $('#taskError').hidden = false; }
     finally { button.disabled = false; disarmDelete(); }
 });

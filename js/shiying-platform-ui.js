@@ -82,8 +82,9 @@ const ShiyingPlatformUI = (() => {
     }
     chrome.storage.onChanged.addListener((changes,area)=>{
         if(area!=='local'||!currentJob)return;
-        const job=changes['shiyingJob:'+currentJob.id]?.newValue;
-        if(job)renderJob(job);
+        const change=changes['shiyingJob:'+currentJob.id];if(!change)return;
+        // Deleted elsewhere (recent list, progress page): clear the card instead of showing a stale download.
+        renderJob(change.newValue||null);
     });
     $('#platformDetails').addEventListener('click',()=>{if(currentJob)chrome.tabs.create({url:chrome.runtime.getURL('shiying-task.html?id='+encodeURIComponent(currentJob.id))});});
     $('#platformDelete').addEventListener('click',async()=>{
@@ -98,6 +99,7 @@ const ShiyingPlatformUI = (() => {
     $('#platformChoices').addEventListener('click',()=>{const expanded=document.body.classList.toggle('choices-open');$('#platformChoices').setAttribute('aria-expanded',expanded);});
     async function read() {
         const serial = ++generation;
+        await (window.RuxgetI18n?RuxgetI18n.ready().catch(()=>{}):Promise.resolve());
         catalog = null;
         delete $('#platformTitle').dataset.liveTitle;
         layout(true);

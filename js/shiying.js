@@ -116,6 +116,8 @@ async function initialize() {
     currentSite = tab;
     $('#pageTitle').textContent = tab.title || '当前网页';
     try { $('#pageHost').textContent = new URL(tab.url).hostname || '当前网页'; } catch { $('#pageHost').textContent = '当前网页'; }
+    // Labels below are drawn in the chosen language, so wait for it first.
+    await (window.RuxgetI18n?RuxgetI18n.ready().catch(()=>{}):Promise.resolve());
     const settings = await chrome.storage.sync.get({saveAs:false, enable:true});
     $('#saveAs').checked = settings.saveAs;
     showSaveTarget();
@@ -210,7 +212,7 @@ function showFloatingSetting(settings){
     floatingToggle.title=visible?(window.RuxgetI18n?RuxgetI18n.pick('隐藏网页下载浮钮并收起 Ruxget 右侧栏','Hide the page download button and collapse the side panel'):'隐藏网页下载浮钮并收起 Ruxget 右侧栏'):(window.RuxgetI18n?RuxgetI18n.pick('重新显示网页上的 Ruxget 下载浮钮','Show the Ruxget download button on the page again'):'重新显示网页上的 Ruxget 下载浮钮');
     floatingToggle.dataset.visible=String(visible);floatingToggle.disabled=changingFloating;
 }
-chrome.storage.local.get('shiyingFloating').then(settings=>showFloatingSetting(settings.shiyingFloating)).catch(()=>notify('浮钮设置暂时无法读取，请重新打开插件'));
+(window.RuxgetI18n?RuxgetI18n.ready().catch(()=>{}):Promise.resolve()).then(()=>chrome.storage.local.get('shiyingFloating')).then(settings=>showFloatingSetting(settings.shiyingFloating)).catch(()=>notify('浮钮设置暂时无法读取，请重新打开插件'));
 floatingToggle.addEventListener('click', async () => {
     if(changingFloating)return;
     changingFloating=true;floatingToggle.disabled=true;
@@ -269,6 +271,7 @@ async function refreshLiveI18n() {
       try { $('#pageHost').textContent = new URL(currentSite.url).hostname || ''; } catch (e) {}
     }
     if (typeof setPaused === 'function' && typeof recognitionEnabled !== 'undefined') setPaused(recognitionEnabled);
+    try { const {shiyingFloating} = await chrome.storage.local.get('shiyingFloating'); showFloatingSetting(shiyingFloating); } catch (e) {}
     try { if (window.ShiyingPlatformUI && ShiyingPlatformUI.refreshLiveLabels) await ShiyingPlatformUI.refreshLiveLabels(); } catch (e) {}
     try { document.dispatchEvent(new CustomEvent('ruxget-netdisk-refresh')); } catch (e) {}
   } catch (e) { console.warn(e); }
