@@ -24,7 +24,7 @@ const ShiyingPlatformUI = (() => {
         catch(error){desktopState=ShiyingNative.connectionIssue(error)||'connection';}
         renderMethods();
     }
-    function setMethod(method){preference={...preference,method:method==='desktop'?'desktop':'chrome'};chrome.storage.local.set({shiyingVideoPreference:preference});updateActions();}
+    function setMethod(method){preference={...preference,method:method==='desktop'?'desktop':'chrome'};chrome.storage.local.set({shiyingVideoPreference:preference});updateActions();renderHint();}
     const menuOptions=()=>[...document.querySelectorAll('#methodMenu [role^=menuitem]')];
     function openMethods(){if($('#platformMethod').disabled)return;$('#methodMenu').hidden=false;$('#platformMethod').setAttribute('aria-expanded','true');renderMethods();(menuOptions().find(o=>o.getAttribute('aria-checked')==='true')||menuOptions()[0]).focus();checkDesktop();}
     function closeMethods(focusToggle=true){if($('#methodMenu').hidden)return;$('#methodMenu').hidden=true;$('#platformMethod').setAttribute('aria-expanded','false');if(focusToggle)$('#platformMethod').focus();}
@@ -55,7 +55,7 @@ const ShiyingPlatformUI = (() => {
         currentJob=job;updateActions();
         $('#platformJob').hidden=!job;
         document.body.classList.toggle('has-job',!!job);
-        if(!job)return;
+        if(!job){renderHint();return;}
         const percent=Number.isFinite(job.progress)?Math.max(0,Math.min(100,job.progress)):0;
         $('#platformStage').textContent=RuxgetText.tr(job.error||job.stage);
         $('#platformPercent').textContent=Math.round(percent)+'%';
@@ -63,6 +63,38 @@ const ShiyingPlatformUI = (() => {
         $('#platformCancel').hidden=['complete','error','cancelled'].includes(job.status);
         if($('#platformDelete').dataset.armed!==job.id)disarmDelete();
         $('#platformDelete').hidden=!['complete','error','cancelled'].includes(job.status);
+        renderHint();
+    }
+    // One quiet line under the card, never a pop-up and never something to dismiss:
+    // a desktop suggestion when a download failed or the video is long, else (after 5 finished downloads) a rating link.
+    // The rating line shows in at most 5 popup openings and never again once clicked.
+    const RATE_LIMIT=5,CHROME_STORE='nlhoddnpmoakgikfpdmdkjmahcaokbcl';
+    let rateCounted=false,hintSerial=0;
+    function rateLink(){
+        if(chrome.runtime.id===CHROME_STORE)return {url:'https://chromewebstore.google.com/detail/'+CHROME_STORE+'/reviews',text:pick('用着顺手的话，去商店给 Ruxget 一个好评 ⭐','Enjoying Ruxget? A rating in the store helps ⭐')};
+        return {url:'https://github.com/hesay77-cmyk/shiying',text:pick('用着顺手的话，去 GitHub 给 Ruxget 点个 Star ⭐','Enjoying Ruxget? A star on GitHub helps ⭐')};
+    }
+    function hintLine(text,action,label,onClick){
+        const hint=$('#cardHint'),span=document.createElement('span');span.textContent=text;
+        const nodes=[span];if(action){const link=document.createElement(action);link.className='hint-link';link.textContent=label;if(action==='a'){link.href=onClick.url;link.target='_blank';link.rel='noopener';}link.addEventListener('click',onClick.handler||onClick);nodes.push(link);}
+        hint.replaceChildren(...nodes);hint.hidden=false;
+    }
+    async function renderHint(){
+        const serial=++hintSerial,hint=$('#cardHint');if(!hint)return;
+        const job=currentJob,toDesktop=()=>setMethod('desktop'),onBrowser=preference.method!=='desktop';
+        if(job?.status==='error'&&onBrowser){hintLine(pick('下载没成功？可以改用桌面版下载，支持断点续传。','Didn’t work? The desktop app can download it with pause and resume.'),'button',pick('改用桌面版','Use the desktop app'),toDesktop);return;}
+        if(catalog&&Number(catalog.duration)>=1800&&onBrowser&&(!job||!['complete','error','cancelled'].includes(job.status))){hintLine(pick('视频较长，用桌面版下载更稳，可以暂停续传。','Long video: the desktop app is steadier and can pause and resume.'),'button',pick('改用桌面版','Use the desktop app'),toDesktop);return;}
+        if(job?.status==='complete'){
+            const {ruxgetDoneCount:done=0,ruxgetRate:rate={}}=await chrome.storage.local.get(['ruxgetDoneCount','ruxgetRate']);
+            if(serial!==hintSerial)return;
+            if(done>=5&&!rate.clicked&&(rate.shown||0)<RATE_LIMIT){
+                const link=rateLink();
+                if(!rateCounted){rateCounted=true;chrome.storage.local.set({ruxgetRate:{...rate,shown:(rate.shown||0)+1}});}
+                hintLine('', 'a', link.text, {url:link.url,handler:()=>chrome.storage.local.set({ruxgetRate:{...rate,clicked:true}}).then(()=>{hint.hidden=true;})});
+                return;
+            }
+        }
+        hint.hidden=true;hint.replaceChildren();
     }
     // Two clicks: the first only arms the button, so a stray click never deletes a file.
     let deleteTimer=0;
@@ -124,7 +156,7 @@ const ShiyingPlatformUI = (() => {
             $('#platformTitle').dataset.liveTitle = result.title;
             const duration = Math.max(0,Math.round(result.duration)), minutes = Math.floor(duration / 60), seconds = duration % 60;
             $('#platformMeta').textContent = `${result.siteName?RuxgetText.tr(result.siteName):pick('B站','Bilibili')}　${minutes}:${String(seconds).padStart(2,'0')}`;
-            $('#platformNote').textContent = '';
+            $('#platformNote').textContent = '';renderHint();
             $('#platformQuality').replaceChildren(...result.choices.map(choice => new Option(choice.label, choice.height)));
             await prefsReady;
             if(serial!==generation)return;

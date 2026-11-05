@@ -26,7 +26,7 @@ const checks=[];function check(name){checks.push(name);console.log('PASS '+name)
   await open('permission');
   assert.equal(await step(),'install');assert.equal(await current(),'install');assert.deepEqual(await visiblePanels(),['install']);
   assert.equal(await page.evaluate(()=>requests),0);assert.equal(await page.evaluate(()=>pings),0);
-  assert.equal(await page.locator('.installer-name').getAttribute('href'),'https://hidaydream.com/tools/ruxget/#editions');
+  assert.equal(await page.locator('.installer-name').getAttribute('href'),'https://hidaydream.cloud/?from=wizard#editions');
   await shot('install');
   check('first visit shows only step 1 with the installer link, without asking for permission');
 

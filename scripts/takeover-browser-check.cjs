@@ -147,13 +147,13 @@ const MB=1024*1024;
   assert.deepEqual((await worker.evaluate(()=>chrome.storage.session.get('openDesktopSent'))).openDesktopSent,{host:'org.shiying.desktop',message:{action:'show'}});
   check('⋯ menu starts with “打开 Ruxget 桌面版”, which asks the desktop app to show its window and closes the popup');
   // Not installed: the prompt's “下载安装” opens the website's download section.
-  await browser.route('https://hidaydream.com/**',route=>route.request().resourceType()==='document'?route.fulfill({contentType:'text/html',body:'<!doctype html><title>Ruxget</title>'}):route.fulfill({status:204}));
+  await browser.route('https://hidaydream.cloud/**',route=>route.request().resourceType()==='document'?route.fulfill({contentType:'text/html',body:'<!doctype html><title>Ruxget</title>'}):route.fulfill({status:204}));
   menuDesktop=await openPopup("missing");await menuDesktop.locator("#openDesktop").click();
   await menuDesktop.locator("#desktopConnectPrompt").waitFor({state:'visible'});
   const [site]=await Promise.all([browser.waitForEvent("page"),menuDesktop.locator("[data-desktop-action=install]").click()]);
-  await site.waitForLoadState();assert.equal(site.url(),'https://hidaydream.com/tools/ruxget/#editions');await site.close();await menuDesktop.close();
+  await site.waitForLoadState();assert.equal(site.url(),'https://hidaydream.cloud/?from=ext#editions');await site.close();await menuDesktop.close();
   const wizard=await browser.newPage();await wizard.goto(`chrome-extension://${id}/shiying-desktop.html`);
-  assert.equal(await wizard.locator('.installer-name').getAttribute('href'),'https://hidaydream.com/tools/ruxget/#editions');await wizard.close();
+  assert.equal(await wizard.locator('.installer-name').getAttribute('href'),'https://hidaydream.cloud/?from=wizard#editions');await wizard.close();
   check('desktop app missing: “下载安装” and the setup page both go to the website download section');
 
   assert.deepEqual(errors,[]);check('no page errors');
