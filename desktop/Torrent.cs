@@ -98,7 +98,73 @@ public class TorrentSelectionWindow:Form {
 }
 
 // Bootstrap routers need find_node; a successful ping alone does not make them usable get_peers nodes.
+// Public trackers for ordinary (non-private) BT and magnet downloads (0.4.61). Most magnet links carry only a hash, so
+// without trackers peers come from DHT alone: in a 2026-11-06 test with the same hash-only magnet, the first data
+// arrived after ~10 s instead of 70–90 s, and speed rose from near 0–3.7 MB/s to 8.6–9.9 MB/s.
+// A built-in list always works; once a day a fresh copy of the public "best" list is fetched (nothing about the person
+// or their downloads is sent) and kept in data\bt-network\trackers.txt. Private torrents never get them.
+static class PublicTrackers {
+    internal static readonly string[] BuiltIn={
+        "udp://tracker.opentrackr.org:1337/announce","udp://open.stealth.si:80/announce","udp://tracker.torrent.eu.org:451/announce",
+        "udp://open.demonii.com:1337/announce","udp://exodus.desync.com:6969/announce","udp://open.tracker.cl:1337/announce",
+        "udp://tracker.qu.ax:6969/announce","udp://tracker.corpscorp.online:80/announce","udp://tracker.bittor.pw:1337/announce",
+        "udp://tracker.ducks.party:1984/announce","udp://tracker-udp.gbitt.info:80/announce","udp://explodie.org:6969/announce",
+        "udp://tracker.tryhackx.org:6969/announce","udp://tracker.nyaa.vc:6969/announce","udp://retracker01-msk-virt.corbina.net:80/announce",
+        "http://tracker.dler.com:6969/announce","http://tracker2.dler.org:80/announce","udp://tracker.dler.org:6969/announce",
+        "udp://tracker.gmi.gd:6969/announce","http://tracker.renfei.net:8080/announce"};
+    internal static readonly string[] Sources={"https://cdn.jsdelivr.net/gh/ngosang/trackerslist@master/trackers_best.txt","https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_best.txt"};
+    internal const int Max=50;
+    // One tracker URL per line; anything that isn't a plain udp/http/https announce address is dropped.
+    internal static string[] Parse(string text){
+        var list=new List<string>();
+        foreach(string line in (text??"").Split(new[]{'\r','\n'},StringSplitOptions.RemoveEmptyEntries)){
+            string value=line.Trim();Uri uri;
+            if(value.Length==0||value.Length>512||value.Any(c=>Char.IsControl(c)||Char.IsWhiteSpace(c)||c==','))continue;
+            if(!Uri.TryCreate(value,UriKind.Absolute,out uri)||!new[]{"udp","http","https"}.Contains(uri.Scheme)||String.IsNullOrEmpty(uri.Host)||uri.UserInfo.Length>0)continue;
+            if(!list.Contains(value))list.Add(value);if(list.Count>=Max)break;
+        }
+        return list.ToArray();
+    }
+    static string FilePath(string folder){return Path.Combine(folder,"trackers.txt");}
+    // The fetched list first (it is newer), then the built-in ones it doesn't already have.
+    internal static string[] Current(string folder){
+        string[] fetched=new string[0];
+        try{string path=FilePath(folder);if(System.IO.File.Exists(path)&&new FileInfo(path).Length<=65536)fetched=Parse(System.IO.File.ReadAllText(path,Encoding.UTF8));}catch{}
+        return (fetched.Length>=5?fetched:new string[0]).Concat(BuiltIn).Distinct().Take(Max).ToArray();
+    }
+    internal static bool Stale(string folder){try{string path=FilePath(folder);return !System.IO.File.Exists(path)||DateTime.UtcNow-System.IO.File.GetLastWriteTimeUtc(path)>TimeSpan.FromHours(24);}catch{return true;}}
+    // Best effort: a failure keeps the previous (or built-in) list and is tried again on a later day's first BT start.
+    internal static bool Refresh(string folder,string proxy){
+        foreach(string source in Sources){
+            try{
+                var request=(HttpWebRequest)WebRequest.Create(source);request.Timeout=10000;request.ReadWriteTimeout=10000;request.UserAgent="Ruxget/"+Util.Version;
+                request.Proxy=String.IsNullOrEmpty(proxy)?null:new WebProxy(proxy);
+                string text;using(var response=(HttpWebResponse)request.GetResponse())using(var stream=response.GetResponseStream())using(var reader=new StreamReader(stream,Encoding.UTF8)){var buffer=new char[65536];int read=reader.ReadBlock(buffer,0,buffer.Length);text=new string(buffer,0,read);}
+                var list=Parse(text);if(list.Length<5)continue;
+                Directory.CreateDirectory(folder);string path=FilePath(folder),temp=path+".tmp";System.IO.File.WriteAllText(temp,String.Join("\n",list)+"\n",new UTF8Encoding(false));
+                if(System.IO.File.Exists(path))System.IO.File.Replace(temp,path,null);else System.IO.File.Move(temp,path);
+                return true;
+            }catch{}
+        }
+        return false;
+    }
+    // Before its metadata arrives a magnet's private flag is unknown. A hash-only magnet can't belong to a private tracker
+    // (those work only through their own tracker), so it gets public trackers at once; a magnet that carries its own
+    // trackers waits until the metadata says it isn't private.
+    internal static bool MaybePrivate(Download job){
+        if(job.BtPrivate)return true;
+        return !job.HasMetadata&&(job.Url??"").IndexOf("&tr=",StringComparison.OrdinalIgnoreCase)>=0;
+    }
+    internal static void Apply(Dictionary<string,string> options,bool privateTorrent,bool localOnly,string[] trackers){
+        if(privateTorrent||localOnly||trackers==null||trackers.Length==0)return;
+        options["bt-tracker"]=String.Join(",",trackers);
+    }
+}
 static class DhtBootstrap {
+    // Names first; then the same routers' real addresses (2026-11). Routers that hand out "fake IP" DNS answers
+    // (198.18.0.0/15, Clash/mihomo-style proxies) let TCP through but not this UDP, so with only names a fresh install
+    // could never start DHT: in a 2026-11-06 test 0 of 9 cold starts found a peer, and 3 of 3 did with an address.
+    internal static readonly string[] Routers={"dht.transmissionbt.com:6881","router.bt.ouinet.work:6881","dht.libtorrent.org:25401","185.157.221.247:25401","87.98.162.88:6881","212.129.33.59:6881","67.215.246.10:6881","82.221.103.244:6881"};
     internal static bool PublicIPv4(IPAddress address){
         if(address.AddressFamily!=AddressFamily.InterNetwork)return false;byte[] b=address.GetAddressBytes();
         return b[0]>0&&b[0]<224&&b[0]!=10&&b[0]!=127&&!(b[0]==100&&b[1]>=64&&b[1]<=127)&&!(b[0]==169&&b[1]==254)&&!(b[0]==172&&b[1]>=16&&b[1]<=31)&&!(b[0]==192&&(b[1]==168||b[1]==0&&(b[2]==0||b[2]==2)))&&!(b[0]==198&&(b[1]==18||b[1]==19||b[1]==51&&b[2]==100))&&!(b[0]==203&&b[1]==0&&b[2]==113);
@@ -130,7 +196,8 @@ static class DhtBootstrap {
     }catch{}return null;}
     internal static IPEndPoint Find(IEnumerable<string> routers,int budgetMs,bool localOnly=false){
         var deadline=DateTime.UtcNow.AddMilliseconds(Math.Max(100,Math.Min(3500,budgetMs)));
-        var pending=routers.Take(3).Select(router=>Task.Run(()=>TryRouter(router,deadline,localOnly))).ToList();
+        // All candidates at once within the same budget (0.4.61: the IP fallbacks below must not wait behind the names).
+        var pending=routers.Take(8).Select(router=>Task.Run(()=>TryRouter(router,deadline,localOnly))).ToList();
         while(pending.Count>0){int remaining=(int)(deadline-DateTime.UtcNow).TotalMilliseconds;if(remaining<=0)return null;int completed=Task.WaitAny(pending.Cast<Task>().ToArray(),remaining);if(completed<0)return null;var result=pending[completed].Result;pending.RemoveAt(completed);if(result!=null)return result;}return null;
     }
     internal sealed class PeerResult {public IPEndPoint[] Peers=new IPEndPoint[0];public int Queries,Replies;}
@@ -186,6 +253,13 @@ public partial class Manager {
     sealed class PeerHint {public byte[] Body;public DateTime Expires;public bool Served;}
     readonly Dictionary<string,PeerHint> btPeerHints=new Dictionary<string,PeerHint>();
     TcpListener btPeerTracker;string btPeerToken;
+    Task<bool> trackerRefresh;
+    // Once a day, in the background: the current download already has the cached or built-in list.
+    void RefreshTrackers(){
+        string folder=Path.Combine(dataRoot,"bt-network"),proxy=ProxyUrl;
+        if(BtLocalOnly||trackerRefresh!=null&&!trackerRefresh.IsCompleted||!PublicTrackers.Stale(folder))return;
+        trackerRefresh=Task.Run(()=>PublicTrackers.Refresh(folder,proxy));
+    }
     internal int BtPeerHintRequests;
     void CancelBtSearch(string id){if(btPeerSearchId==id&&btPeerSearchCancel!=null)btPeerSearchCancel.Cancel();}
     bool PrepareBtPeers(Download job){
@@ -269,9 +343,9 @@ public partial class Manager {
     }
     void EnsureBt(){
         if(btAria!=null&&!btAria.HasExited)return;if(!Components.Ready("aria2c.exe"))throw new Exception("核心下载组件损坏，请重新安装 Ruxget");int port=FreePort();btSecret=Guid.NewGuid().ToString("N");btRpcUrl="http://127.0.0.1:"+port+"/jsonrpc";
-        Directory.CreateDirectory(Path.Combine(dataRoot,"bt-network"));int peerPort;do{peerPort=FreePort();}while(peerPort==port);
+        Directory.CreateDirectory(Path.Combine(dataRoot,"bt-network"));RefreshTrackers();int peerPort;do{peerPort=FreePort();}while(peerPort==port);
         if(BtLocalOnly&&BtLocalDhtPort>0)btPeerEntry=new IPEndPoint(IPAddress.Loopback,BtLocalDhtPort);
-        if(!BtLocalOnly&&jobs.Any(job=>TorrentInfo.IsBt(job)&&!job.BtPrivate&&new[]{"排队中","等待下载","下载中","等待节点"}.Contains(job.Status))){var entry=DhtBootstrap.Find(new[]{"dht.transmissionbt.com:6881","router.bt.ouinet.work:6881","dht.libtorrent.org:25401"},3000);btBootstrapVerified=entry!=null;btPeerEntry=entry;btBootstrapEntry=entry==null?null:entry.ToString();}
+        if(!BtLocalOnly&&jobs.Any(job=>TorrentInfo.IsBt(job)&&!job.BtPrivate&&new[]{"排队中","等待下载","下载中","等待节点"}.Contains(job.Status))){var entry=DhtBootstrap.Find(DhtBootstrap.Routers,3000);btBootstrapVerified=entry!=null;btPeerEntry=entry;btBootstrapEntry=entry==null?null:entry.ToString();}
         btAria=Util.Start(Path.Combine(Util.Root,"bin","aria2c.exe"),BtArguments(port,peerPort));btAria.OutputDataReceived+=(s,e)=>{};btAria.ErrorDataReceived+=(s,e)=>{};try{btAria.Start();}catch{btAria.Dispose();btAria=null;throw;}btAria.BeginOutputReadLine();btAria.BeginErrorReadLine();for(int n=0;n<40;n++){try{BtRpc("getVersion");return;}catch{if(btAria.HasExited)break;Thread.Sleep(100);}}Util.KillTree(btAria);throw new Exception("BT 下载内核启动失败");
     }
     string TorrentSource(Download job){return Path.Combine(Work(job),"source.torrent");}
@@ -281,7 +355,7 @@ public partial class Manager {
         lock(gate){CanAdd(1);UniqueBt(info.Hash);var job=new Download{Id=Guid.NewGuid().ToString("N").Substring(0,16),Url=path,Title=info.Name,Kind="torrent",Folder=Path.GetFullPath(folder??Config.Folder),Status="等待选文件",Stage="双击任务，勾选需要下载的文件",Error="",Speed="",AutoCategorize=autoCategorize??Config.AutoCategorize,BtHash=info.Hash,BtPrivate=info.Private,BtFiles=info.Files,ExpectedSize=info.Total,HasMetadata=true};job.Transfer.Resume=true;Directory.CreateDirectory(Work(job));System.IO.File.WriteAllBytes(TorrentSource(job),bytes);jobs.Add(job);try{Save();}catch{jobs.Remove(job);PublishSnapshot();throw;}return job;}
     }
     void ApplyBtInfo(Download job,TorrentInfo info){if(job.BtHash!=info.Hash)throw new Exception("种子哈希与磁力链接不一致，未开始下载");var previous=(job.BtFiles??new TorrentFileInfo[0]).ToDictionary(f=>f.Index);foreach(var file in info.Files){TorrentFileInfo old;if(previous.TryGetValue(file.Index,out old))file.Completed=Math.Min(file.Length,old.Completed);}job.Title=info.Name;job.BtFiles=info.Files;job.BtPrivate=info.Private;job.HasMetadata=true;job.ExpectedSize=info.Total;SyncBtSelection(job);}
-    Dictionary<string,string> BtOptions(Download job,string directory){var options=new Dictionary<string,string>{{"gid",job.Id},{"dir",directory},{"seed-time","0"},{"check-integrity","true"},{"allow-overwrite","false"},{"auto-file-renaming","false"},{"file-allocation","none"},{"bt-stop-timeout","0"},{"bt-max-peers","128"},{"bt-request-peer-speed-limit",(Config.RateKiB>0?Math.Min(5120,Config.RateKiB):5120)+"K"},{"bt-tracker-interval","0"},{"bt-tracker-connect-timeout","10"},{"bt-tracker-timeout","15"},{"all-proxy",ProxyUrl},{"no-proxy","localhost,127.0.0.1,::1"},{"rpc-save-upload-metadata","false"}};if(!BtLocalOnly&&job.HasMetadata&&!job.BtPrivate)options["bt-tracker"]="udp://tracker.opentrackr.org:1337/announce";if(Config.RateKiB>0)options["max-download-limit"]=Config.RateKiB+"K";return options;}
+    Dictionary<string,string> BtOptions(Download job,string directory){var options=new Dictionary<string,string>{{"gid",job.Id},{"dir",directory},{"seed-time","0"},{"check-integrity","true"},{"allow-overwrite","false"},{"auto-file-renaming","false"},{"file-allocation","none"},{"bt-stop-timeout","0"},{"bt-max-peers","128"},{"bt-request-peer-speed-limit",(Config.RateKiB>0?Math.Min(5120,Config.RateKiB):5120)+"K"},{"bt-tracker-interval","0"},{"bt-tracker-connect-timeout","10"},{"bt-tracker-timeout","15"},{"all-proxy",ProxyUrl},{"no-proxy","localhost,127.0.0.1,::1"},{"rpc-save-upload-metadata","false"}};PublicTrackers.Apply(options,PublicTrackers.MaybePrivate(job),BtLocalOnly,PublicTrackers.Current(Path.Combine(dataRoot,"bt-network")));if(Config.RateKiB>0)options["max-download-limit"]=Config.RateKiB+"K";return options;}
     void StartBt(Download job){
         job.BtProgressAt=DateTime.UtcNow;job.BtLastCompleted=-1;job.BtFinishing=false;job.BtReason=job.BtAdvice="";job.BtDiagnosticAt=DateTime.MinValue;job.BtPeerStatus=null;job.BtDownloadLimit=-1;
         if(job.BtAutoWaiting&&btAria!=null&&!btAria.HasExited){BtRpc("unpause",job.Id);job.BtAutoWaiting=false;job.Status="等待下载";return;}job.BtAutoWaiting=false;
