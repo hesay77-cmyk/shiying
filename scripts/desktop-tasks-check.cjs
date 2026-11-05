@@ -2,8 +2,7 @@
 // - the toolbar icon shows "↓N" on every tab while the desktop downloads, "✓" briefly when it finishes, then each tab's
 //   own media count again;
 // - "最近下载" lists the handed-over desktop tasks with progress, and deletes them after an inline confirm;
-// - the quiet takeover hint appears only after a large ordinary Chrome download, at most 3 times, and one click turns
-//   takeover on. No window or pop-up is ever opened.
+// No window or pop-up is ever opened. (The desktop offer that replaced the 0.4.54 hint is checked in offer-check.cjs.)
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),{execFileSync}=require('node:child_process');
 const root=path.resolve(__dirname,'..'),report=fs.mkdtempSync(path.join(process.env.RUXGET_TMP||require('node:os').tmpdir(),'ruxget-desktop-tasks-'));
 const checks=[];function check(name){checks.push(name);console.log('PASS '+name);}
@@ -31,7 +30,7 @@ const A='aaaaaaaaaaaaaaaa',B='bbbbbbbbbbbbbbbb',C='cccccccccccccccc',MB=1024*102
   });
   await worker.evaluate(()=>chrome.storage.local.set({ruxgetUiLanguage:'zh_CN'}));
   // Pages see the same stubbed desktop (they ask the worker, and "show" goes straight to the desktop).
-  await browser.addInitScript(()=>{if(location.protocol!=='chrome-extension:')return;chrome.permissions.contains=async()=>true;globalThis.shown=0;chrome.runtime.sendNativeMessage=async()=>{globalThis.shown++;return {ok:true};};});
+  await browser.addInitScript(()=>{if(location.protocol!=='chrome-extension:')return;chrome.permissions.contains=async()=>true;globalThis.shown=0;chrome.runtime.sendNativeMessage=async(host,message)=>{if(message?.action==='show')globalThis.shown++;return {ok:true};};});
   const site=await browser.newPage();await site.goto('about:blank');
   const tabId=await worker.evaluate(async()=>(await chrome.tabs.query({})).find(tab=>tab.url==='about:blank').id);
   const badge=tab=>worker.evaluate(tab=>chrome.action.getBadgeText(tab===undefined?{}:{tabId:tab}),tab);
@@ -122,55 +121,14 @@ const A='aaaaaaaaaaaaaaaa',B='bbbbbbbbbbbbbbbb',C='cccccccccccccccc',MB=1024*102
   check('with the desktop app closed, its task shows as paused and the icon shows no count');
   await popup.close();
 
-  // Quiet hint: only after a large ordinary Chrome download.
-  const note=download=>worker.evaluate(download=>RuxgetDesktopTasks.noteChromeDownload(download),download);
-  const hint=()=>worker.evaluate(()=>chrome.storage.local.get('ruxgetTakeoverHint').then(value=>value.ruxgetTakeoverHint||{}));
-  await note({state:'complete',totalBytes:10*MB,url:'https://files.example.test/small.zip'});
-  await note({state:'complete',totalBytes:80*MB,url:'https://files.example.test/own.mp4',byExtensionId:id});
-  await worker.evaluate(()=>chrome.storage.local.set({ruxgetTakeover:{enabled:true,minMB:1,skipHosts:[]}}));
-  await note({state:'complete',totalBytes:80*MB,url:'https://files.example.test/taken.iso'});
-  assert.deepEqual(await hint(),{});
-  check('no hint for small files, Ruxget’s own saves, or when takeover is already on');
-  await worker.evaluate(()=>chrome.storage.local.set({ruxgetTakeover:{enabled:false,minMB:1,skipHosts:[]}}));
-  await note({state:'complete',totalBytes:80*MB,url:'https://files.example.test/big.iso'});
-  assert.equal((await hint()).pending,true);
-  for(let open=1;open<=3;open++){
-   popup=await browser.newPage();await popup.goto(`chrome-extension://${id}/shiying.html`);
-   await popup.locator('#takeoverHint').waitFor({state:'visible'});
-   assert.match(await popup.locator('#takeoverHint').innerText(),/大文件可以交给桌面版[\s\S]*开启接管[\s\S]*不用了/);
-   if(open===1)await popup.screenshot({path:path.join(report,'hint-zh.png')});
-   await popup.close();
-  }
-  popup=await browser.newPage();await popup.goto(`chrome-extension://${id}/shiying.html`);await popup.waitForTimeout(800);
-  assert.equal(await popup.locator('#takeoverHint').isVisible(),false);await popup.close();
-  assert.deepEqual(browser.pages().map(p=>p.url()).filter(url=>url!=='about:blank'&&!url.endsWith('/shiying-help.html')),[]);
-  check('the hint is one quiet line in the popup, shown on at most 3 openings, with no pop-up');
-  await worker.evaluate(()=>chrome.storage.local.set({ruxgetTakeoverHint:{pending:true,shown:0}}));
-  popup=await browser.newPage();await popup.goto(`chrome-extension://${id}/shiying.html`);
-  await popup.locator('#takeoverHint').getByRole('button',{name:'开启接管'}).click();
-  await popup.locator('#takeoverHint').waitFor({state:'hidden'});
-  assert.deepEqual((await worker.evaluate(()=>chrome.storage.local.get('ruxgetTakeover'))).ruxgetTakeover,{enabled:true,minMB:20,skipHosts:[]});
-  assert.match(await popup.locator('#toast').innerText(),/20 MB 以上[\s\S]*接管 Chrome 下载/);
-  assert.equal((await hint()).clicked,true);
-  await note({state:'complete',totalBytes:80*MB,url:'https://files.example.test/next.iso'});
-  await popup.close();
-  check('“开启接管” turns takeover on in one click, and the hint never returns');
-  await worker.evaluate(()=>chrome.storage.local.set({ruxgetTakeover:{enabled:false,minMB:1,skipHosts:[]},ruxgetTakeoverHint:{pending:true,shown:0}}));
-  popup=await browser.newPage();await popup.goto(`chrome-extension://${id}/shiying.html`);
-  await popup.locator('#takeoverHint').getByRole('button',{name:'不用了'}).click();await popup.locator('#takeoverHint').waitFor({state:'hidden'});
-  assert.equal((await hint()).dismissed,true);assert.equal((await worker.evaluate(()=>chrome.storage.local.get('ruxgetTakeover'))).ruxgetTakeover.enabled,false);
-  await popup.close();
-  check('“不用了” hides the hint for good and changes nothing else');
-
   // English.
-  await worker.evaluate(({A})=>{desk.running=true;desk.jobs=[{id:A,title:'disk-image.iso',state:'active',progress:12,speed:'5 MB/s',error:''}];return Promise.all([chrome.storage.local.set({ruxgetUiLanguage:'en',ruxgetTakeoverHint:{pending:true,shown:0}}),RuxgetDesktopTasks.remember(A,'disk-image.iso')]);},{A});
+  await worker.evaluate(({A})=>{desk.running=true;desk.jobs=[{id:A,title:'disk-image.iso',state:'active',progress:12,speed:'5 MB/s',error:''}];return Promise.all([chrome.storage.local.set({ruxgetUiLanguage:'en'}),RuxgetDesktopTasks.remember(A,'disk-image.iso')]);},{A});
   popup=await browser.newPage();await popup.goto(`chrome-extension://${id}/shiying.html`);
   await item(A).waitFor({state:'visible'});
   assert.match(await item(A).innerText(),/Desktop · 12% · 5 MB\/s/);
-  assert.match(await popup.locator('#takeoverHint').innerText(),/Large files can go to Ruxget Desktop[\s\S]*Turn on[\s\S]*No thanks/);
   await item(A).locator('.recent-delete').click();assert.match(await item(A).innerText(),/Stop and delete this download\?/);
   await popup.screenshot({path:path.join(report,'popup-en.png')});
-  check('English: desktop tasks, the confirm and the hint are in English');
+  check('English: desktop tasks and the confirm are in English');
   await popup.close();
 
   assert.deepEqual(errors,[]);

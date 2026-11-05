@@ -3,7 +3,7 @@
     "message": "Ruxget · Web Video Downloader"
   },
   "extDescription": {
-    "message": "Free, open source, no ads, no pop-ups. Save Bilibili, Douyin, Kuaishou and Xiaohongshu videos as MP4 or MP3 in one click."
+    "message": "Free, open source, no ads, no account. Save Bilibili, Douyin, Kuaishou and Xiaohongshu videos as MP4 or MP3 in one click."
   },
   "catCatch": {
     "message": "Ruxget"
@@ -1359,7 +1359,7 @@
     "message": "Download selected files"
   },
   "uiContextDownloadLink": {
-    "message": "Download this link with Ruxget"
+    "message": "Download this link with Ruxget Desktop"
   },
   "uiResumeDetection": {
     "message": "Resume detection"
@@ -1528,5 +1528,29 @@
   },
   "uiSubtitleLang": {
     "message": "Subtitle language"
+  },
+  "uiDesktopSettings": {
+    "message": "Desktop app settings…"
+  },
+  "uiMenuSites": {
+    "message": "Site access"
+  },
+  "uiMenuHelp": {
+    "message": "Help"
+  },
+  "uiOfferAria": {
+    "message": "Ruxget Desktop"
+  },
+  "uiDesktopRowAria": {
+    "message": "Large files to Ruxget Desktop"
+  },
+  "uiDesktopRowTitle": {
+    "message": "Large files to Ruxget Desktop"
+  },
+  "uiActionTakeover": {
+    "message": "Large files to Ruxget Desktop"
+  },
+  "uiActionDesktop": {
+    "message": "Install or connect Ruxget Desktop…"
   }
 }

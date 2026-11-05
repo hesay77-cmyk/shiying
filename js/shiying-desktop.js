@@ -7,7 +7,6 @@ document.querySelector('#openDesktop')?.addEventListener('click',async()=>{
     try{await ShiyingNative.send(()=>({action:'show'}));window.close();}
     catch(error){if(!error.cancelled&&typeof notify==='function')notify(error.message||String(error));}
 });
-document.querySelector('#takeoverMenu')?.addEventListener('click',()=>chrome.tabs.create({url:chrome.runtime.getURL('shiying-desktop.html#takeover')}));
 const pick=(zh,en)=>window.RuxgetI18n?RuxgetI18n.pick(zh,en):zh;
 const desktopId=document.querySelector('#desktopExtensionId');
 if(desktopId){desktopId.textContent=chrome.runtime.id;document.querySelector('#copyDesktopId').addEventListener('click',async()=>{await navigator.clipboard.writeText(chrome.runtime.id);document.querySelector('#copyDesktopId').textContent=pick('已复制','Copied');});}

@@ -142,7 +142,6 @@ select{color-scheme:dark}select option,select optgroup{background-color:#101d29;
 .recent-downloads li small{font-size:11px;color:var(--muted)}
 .recent-downloads li .recent-open[data-desktop=active] small{color:#9fd3ff}
 .recent-downloads li .recent-bar{display:block;height:2px;margin-top:3px;border-radius:2px;background:linear-gradient(90deg,#66bcff var(--progress,0%),rgba(195,222,246,.14) var(--progress,0%))}
-.card-hint.takeover-hint{margin:0 16px 8px;padding:0 12px}
 .card-hint .hint-quiet{color:var(--muted)}
 .recent-downloads li .recent-open[data-status=complete] small{color:#7fe0a8}
 .recent-downloads li .recent-open[data-status=error] small{color:#f0c27b}
@@ -163,3 +162,38 @@ select{color-scheme:dark}select option,select optgroup{background-color:#101d29;
 .main-tag[hidden]{display:none}
 .media-item.is-minor{opacity:.72}
 .focus-note{margin:8px 0 0}
+/* 0.4.56: a shorter, opaque ⋯ menu; the desktop offer card and the "大文件交给桌面版" row. */
+.menu .menu-panel{background:#0e1a27;backdrop-filter:none}
+.menu-panel .menu-links{display:flex;align-items:center;flex-wrap:wrap;gap:2px 4px;margin:4px 0 0;padding:6px 6px 0;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+.menu-panel .menu-links button{width:auto;min-height:0;padding:4px 4px;border-radius:6px;font-size:12px;color:var(--muted)}
+.menu-panel .menu-links button:hover,.menu-panel .menu-links button:focus-visible{color:var(--ink);background:rgba(102,188,255,.10)}
+.menu-panel .menu-links+.version-note{border-top:0;margin-top:0;padding-top:2px}
+.offer-card{margin:0 0 12px;padding:10px 12px;border:1px solid rgba(95,185,255,.45);border-radius:12px;background:rgba(24,57,88,.55)}
+.offer-card[hidden]{display:none}
+.offer-card p{font-size:12.5px;line-height:1.6;color:var(--ink)}
+.offer-card .offer-name{font-weight:500;word-break:break-all}
+.offer-card .offer-actions{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin-top:8px}
+.offer-card .offer-primary{padding:5px 12px;border-radius:8px;background:var(--blue);color:var(--on-accent);font-size:12.5px;font-weight:500}
+.offer-card .offer-primary:hover{background:var(--hover)}
+.offer-card .offer-quiet{padding:4px 2px;font-size:12px;color:var(--muted)}
+.offer-card .offer-quiet:hover,.offer-card .offer-quiet:focus-visible{color:var(--ink);text-decoration:underline}
+.offer-card .offer-small{margin-top:6px;font-size:11px;color:var(--muted)}
+.desktop-row{margin:0 16px 10px;padding:7px 12px;border:1px solid rgba(195,222,246,.12);border-radius:12px;background:rgba(8,18,30,.35)}
+.desktop-switch{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer}
+.desktop-row-title{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink)}
+.desktop-row-title svg{width:15px;height:15px;color:var(--blue)}
+.desktop-switch input{position:absolute;opacity:0;pointer-events:none}
+.desktop-switch .switch-track{position:relative;flex:none;width:34px;height:20px;border-radius:999px;background:rgba(195,222,246,.22);transition:background .2s ease}
+.desktop-switch .switch-track::after{content:"";position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:#e8f2fc;transition:transform .2s ease}
+.desktop-switch input:checked+.switch-track{background:var(--blue)}
+.desktop-switch input:checked+.switch-track::after{transform:translateX(14px)}
+.desktop-switch input:focus-visible+.switch-track{outline:2px solid var(--blue);outline-offset:2px}
+.desktop-switch input:disabled+.switch-track{opacity:.5}
+.desktop-row-note{margin-top:3px;font-size:11px;line-height:1.6;color:var(--muted)}
+.desktop-row-note[hidden],.chrome-big[hidden]{display:none}
+.desktop-row-note button,.chrome-big button{padding:0;border:0;background:none;color:var(--blue);font:inherit;cursor:pointer}
+.desktop-row-note button:hover,.desktop-row-note button:focus-visible,.chrome-big button:hover,.chrome-big button:focus-visible{text-decoration:underline;outline:none}
+.chrome-big{margin:6px 0 0;padding:6px 0 0;list-style:none;border-top:1px solid rgba(195,222,246,.10)}
+.chrome-big li{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:2px 0;font-size:11.5px;color:var(--muted)}
+.chrome-big li span{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.chrome-big li button{flex:none;font-size:11.5px}

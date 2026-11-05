@@ -18,6 +18,8 @@
   <script src="js/shiying-native.js" defer></script><script src="js/shiying-desktop.js" defer></script><script src="js/shiying-collection-ui.js" defer></script><script src="js/shiying-recent.js" defer></script>
   <script src="js/shiying-focus.js" defer></script>
   <script src="js/shiying.js" defer></script>
+  <script src="js/ruxget-offer.js" defer></script>
+  <script src="js/ruxget-offer-ui.js" defer></script>
   <script src="js/shiying-netdisk.js" defer></script><script src="js/shiying-netdisk-popup.js" defer></script>
 </head>
 <body>
@@ -26,15 +28,13 @@
     <div class="topbar-actions">
     <button id="floatingToggle" class="floating-toggle" type="button" disabled>下载浮钮</button>
     <details class="menu"><summary aria-label="打开设置" data-i18n-aria="uiOpenMenu"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/></svg></summary><div class="menu-panel">
-      <button id="openDesktop" data-i18n="uiOpenDesktop">打开 Ruxget 桌面版</button>
-      <button id="pause" data-i18n="uiPauseDetection" data-i18n-live>暂停识别</button>
       <button id="downloads" data-i18n="uiOpenDownloads">打开下载文件夹</button>
-      <button id="collectionMenu" data-i18n="flowPlaylist">分 P 勾选下载…</button><button id="ordinaryDownload" data-i18n="uiOrdinaryDownload">普通文件下载…</button>
-      <button id="takeoverMenu" data-i18n="uiTakeoverMenu">接管 Chrome 下载…</button>
-      <button id="desktopHelp" data-i18n="uiDesktopHelp">桌面版安装与连接</button>
-      <button id="advanced" data-i18n="uiAdvanced">高级工具</button>
-      <button id="siteSettings" data-i18n="uiSiteSettings">管理网站权限</button>
-      <button id="help" data-i18n="uiHelp">使用说明与开源信息</button>
+      <button id="ordinaryDownload" data-i18n="uiOrdinaryDownload">普通文件下载…</button>
+      <button id="collectionMenu" data-i18n="flowPlaylist">分 P 勾选下载…</button>
+      <button id="pause" data-i18n="uiPauseDetection" data-i18n-live>暂停识别</button>
+      <button id="openDesktop" data-i18n="uiOpenDesktop">打开 Ruxget 桌面版</button>
+      <button id="desktopHelp" data-i18n="uiDesktopSettings">桌面版设置…</button>
+      <p class="menu-links"><button id="siteSettings" data-i18n="uiMenuSites">网站权限</button><span aria-hidden="true">·</span><button id="advanced" data-i18n="uiAdvanced">高级工具</button><span aria-hidden="true">·</span><button id="help" data-i18n="uiMenuHelp">使用说明</button></p>
       <p id="extensionVersion" class="version-note"></p>
     </div></details>
     <button type="button" id="languageSelect" class="floating-toggle language-switch" aria-label="Language" title="A = Auto · 中 = 中文 · EN = English" data-lang="auto">A</button>
@@ -43,6 +43,7 @@
   <section class="save-location" aria-label="新下载保存位置" data-i18n-aria="uiSaveLocationAria"><label title="新下载的文件准备好后，由 Chrome 打开保存窗口，可选择文件夹和文件名" data-i18n-title="uiSaveAsTitle"><input id="saveAs" type="checkbox"><span data-i18n="uiSaveAsLabel">保存时选择文件夹</span></label><button id="downloadLocation" class="text-button" type="button" title="打开 Chrome 下载设置，更改默认保存文件夹" data-i18n-title="uiDefaultLocationTitle">下载目录 / Ruxget ›</button></section>
   <section class="source" aria-label="当前网页" data-i18n-aria="uiSourceAria"><span class="source-dot"></span><div><b id="pageTitle" data-i18n="uiReadingPage" data-i18n-live>正在读取当前网页</b><span id="pageHost" data-i18n="uiOnlyThisPage">只显示这个页面的媒体</span></div><button id="refresh" class="icon-button" aria-label="重新读取视频列表" title="重新读取视频列表" data-i18n-aria="uiRefreshList" data-i18n-title="uiRefreshList"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6 7a7 7 0 0 1 12-1l2 3M4 15l2 3a7 7 0 0 0 12-1"/></svg></button></section>
   <main>
+    <section id="offerCard" class="offer-card" hidden aria-label="Ruxget 桌面版" data-i18n-aria="uiOfferAria"></section>
     <section id="netdiskEntry" class="platform-card netdisk-entry" hidden aria-label="网盘下载" data-i18n-aria="uiNetdiskAria"><h2 id="netdiskTitle" data-i18n-live>Ruxget 网盘下载</h2><p id="netdiskNote" class="quality-note" role="status"></p><div class="netdisk-actions"><button id="netdiskEnable" class="download-button" type="button" data-i18n="uiNetdiskEnable" data-i18n-live>开启 Ruxget 下载</button><button id="netdiskDisable" class="text-button" type="button" hidden data-i18n="uiNetdiskDisable">关闭此网盘</button></div><div class="netdisk-actions"><button id="netdiskAuthorize" class="text-button" type="button" hidden data-i18n="uiBaiduAuth">百度授权</button><button id="netdiskSetup" class="text-button" type="button" data-i18n="uiDesktopSetup">安装与连接桌面版</button></div></section>
     <section id="platformEntry" class="platform-entry" hidden aria-label="B站视频下载" data-i18n-aria="uiBiliYtAria">
       <article id="platformCard" class="platform-card" hidden>
@@ -67,7 +68,11 @@
     <p id="fragmentNote" class="fragment-note" hidden></p>
     </div>
   </main>
-  <p id="takeoverHint" class="card-hint takeover-hint" hidden></p>
+  <section id="desktopRow" class="desktop-row" aria-label="大文件交给桌面版" data-i18n-aria="uiDesktopRowAria">
+    <label class="desktop-switch"><span class="desktop-row-title"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3 5 13.5h6L10 21l8-10.5h-6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg><span data-i18n="uiDesktopRowTitle">大文件交给桌面版</span></span><input id="desktopTakeover" type="checkbox" role="switch"><span class="switch-track" aria-hidden="true"></span></label>
+    <p id="desktopRowNote" class="desktop-row-note" hidden></p>
+    <ul id="chromeBig" class="chrome-big" hidden></ul>
+  </section>
   <details id="recentDownloads" class="recent-downloads" hidden><summary><span>最近下载</span></summary><ul id="recentList"></ul></details>
   <footer><span data-i18n="uiFreeOpen">免费开源，无广告</span><button id="copyAll" class="text-button" disabled data-i18n="uiCopyAllLinks">复制全部链接</button></footer>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>

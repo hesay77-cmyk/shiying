@@ -67,14 +67,19 @@ const RuxgetTakeover={
         const config=await RuxgetTakeover.settings();
         if(RuxgetTakeover.skipReason(item,config,chrome.runtime.id))return;
         if(await RuxgetTakeover.takeOwn([item.url,item.finalUrl].filter(Boolean)))return;
-        if(!await chrome.permissions.contains({permissions:['nativeMessaging']}))return;
+        await RuxgetTakeover.handOver(item);
+    },
+    // Moves one running Chrome download to the desktop: automatic takeover, or "改用桌面版" in the panel.
+    // Returns {result:'desktop'} or {result:'chrome',error}; a file the desktop can't take keeps downloading in Chrome.
+    async handOver(item){
+        if(!await chrome.permissions.contains({permissions:['nativeMessaging']}))return {result:'chrome',error:'not connected'};
         // A brand-new download can refuse a pause while Chrome is still naming it, so retry briefly.
         // A file that finishes in the meantime is simply left to Chrome.
         for(let attempt=0;;attempt++){
             try{await chrome.downloads.pause(item.id);break;}
             catch{
                 const [current]=await chrome.downloads.search({id:item.id});
-                if(attempt>=10||!current||current.state!=='in_progress')return;
+                if(attempt>=10||!current||current.state!=='in_progress')return {result:'chrome',error:'finished'};
                 await new Promise(resolve=>setTimeout(resolve,100));
             }
         }
@@ -93,12 +98,13 @@ const RuxgetTakeover={
             }
             await RuxgetTakeover.remember({url,name:reply.name||RuxgetTakeover.name(item),result:'desktop'});
             if(typeof RuxgetDesktopTasks!=='undefined')await RuxgetDesktopTasks.remember(reply.id,reply.name||RuxgetTakeover.name(item)).catch(()=>{});
-            return;
+            return {result:'desktop',name:reply.name||RuxgetTakeover.name(item)};
         }
         // Back to Chrome: resume the paused copy, or start it again if Chrome can't resume this server.
         try{await chrome.downloads.resume(item.id);}
         catch{try{await chrome.downloads.cancel(item.id);}catch{}try{await chrome.downloads.download({url});}catch{}}
         await RuxgetTakeover.remember({url,name:RuxgetTakeover.name(item),result:'chrome',error:String(reply?.error||'')});
+        return {result:'chrome',error:String(reply?.error||'')};
     }
 };
 if(typeof chrome!=='undefined'&&chrome.downloads){

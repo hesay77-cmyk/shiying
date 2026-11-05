@@ -7,7 +7,7 @@ if (typeof G === 'undefined') {
     importScripts("/js/polyfill.js", "/js/function.js", "/js/templates.js", "/js/init.js");
 }
 
-importScripts("/js/shiying-access.js", "/js/shiying-background.js", "/js/shiying-native.js", "/js/shiying-takeover.js", "/js/shiying-desktop-tasks.js");
+importScripts("/js/shiying-access.js", "/js/shiying-background.js", "/js/shiying-native.js", "/js/shiying-takeover.js", "/js/shiying-desktop-tasks.js", "/js/ruxget-offer.js");
 importScripts('/js/shiying-netdisk.js','/js/shiying-netdisk-background.js');
 chrome.permissions.onRemoved.addListener(() => {
     ShiyingAccess.sync().then(() => {
@@ -846,6 +846,8 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
         let payload;try{payload=ShiyingNative.file(info.linkUrl,info.frameUrl||tab?.url);}catch(error){showLinkDownloadError(error,tab);return;}
         ShiyingNative.send(()=>payload).catch(error=>{if(!error.cancelled)showLinkDownloadError(error,tab);});return;
     }
+    if(info.menuItemId==='ruxget-action-takeover'){RuxgetOffer.fromMenu(!!info.checked).catch(()=>RuxgetOffer.syncMenu());return;}
+    if(info.menuItemId==='ruxget-action-desktop'){chrome.tabs.create({url:chrome.runtime.getURL('shiying-desktop.html#connection')});return;}
     runCommands(info.menuItemId, info);
 });
 

@@ -100,44 +100,11 @@
     chrome.storage.onChanged.addListener((changes, area) => {
         if (area === 'local' && Object.keys(changes).some(key => key === 'shiyingJobIds' || key.startsWith('shiyingJob:'))) later();
         if (area === 'session' && changes.ruxgetDesktopStatus) later();
-        if (area === 'local' && (changes.ruxgetTakeoverHint || changes.ruxgetTakeover)) hint().catch(() => {});
     });
     // Ask the service worker for a fresh desktop status; it keeps polling while something downloads.
     chrome.permissions.contains({permissions: ['nativeMessaging']}).then(granted => { if (granted) chrome.runtime.sendMessage({Message: 'ruxgetDesktopRefresh'}).catch(() => {}); }).catch(() => {});
 
-    // One quiet line after a large ordinary Chrome download, when the desktop app is connected and takeover is off.
-    // It appears on at most 3 popup openings; "开启接管" or "不用了" ends it for good. No pop-up, nothing to close.
-    const HINT_SHOWS = 3;
-    let hintCounted = false;
-    async function hint() {
-        const line = document.querySelector('#takeoverHint');
-        if (!line) return;
-        const {ruxgetTakeoverHint: state = {}, ruxgetTakeover: takeover = {}} = await chrome.storage.local.get(['ruxgetTakeoverHint', 'ruxgetTakeover']);
-        const show = !!state.pending && !state.clicked && !state.dismissed && !takeover.enabled && (state.shown || 0) < HINT_SHOWS + (hintCounted ? 1 : 0);
-        line.hidden = !show;
-        if (!show) return;
-        if (!hintCounted) { hintCounted = true; await chrome.storage.local.set({ruxgetTakeoverHint: Object.assign({}, state, {shown: (state.shown || 0) + 1})}); }
-        const text = document.createElement('span'), on = document.createElement('button'), no = document.createElement('button');
-        text.textContent = pick('大文件可以交给桌面版：断点续传更稳，进度在这里也看得到。', 'Large files can go to Ruxget Desktop: steadier resuming, and progress still shows here.');
-        on.type = no.type = 'button'; on.className = 'hint-link'; no.className = 'hint-link hint-quiet';
-        on.textContent = pick('开启接管', 'Turn on');
-        no.textContent = pick('不用了', 'No thanks');
-        on.addEventListener('click', async () => {
-            const {ruxgetTakeover: current = {}, ruxgetTakeoverHint: latest = {}} = await chrome.storage.local.get(['ruxgetTakeover', 'ruxgetTakeoverHint']);
-            // From this hint "large" means 20 MB and up, unless another size was already chosen on the takeover page.
-            const minMB = Number.isFinite(Number(current.minMB)) && Number(current.minMB) !== 1 ? Number(current.minMB) : 20;
-            await chrome.storage.local.set({ruxgetTakeover: Object.assign({skipHosts: []}, current, {enabled: true, minMB}), ruxgetTakeoverHint: Object.assign({}, latest, {pending: false, clicked: true})});
-            line.hidden = true;
-            if (typeof notify === 'function') notify(pick(`已开启：Chrome 里 ${minMB} MB 以上的文件交给桌面版。可在 ⋯ 菜单「接管 Chrome 下载…」中关闭`, `On: Chrome files over ${minMB} MB now go to Ruxget Desktop. Turn it off under ⋯ → Take over Chrome downloads…`));
-        });
-        no.addEventListener('click', async () => {
-            const {ruxgetTakeoverHint: latest = {}} = await chrome.storage.local.get('ruxgetTakeoverHint');
-            await chrome.storage.local.set({ruxgetTakeoverHint: Object.assign({}, latest, {pending: false, dismissed: true})}); line.hidden = true;
-        });
-        line.replaceChildren(text, on, no);
-    }
-    document.addEventListener('ruxget-i18n-applied', () => hint().catch(() => {}));
     document.addEventListener('ruxget-i18n-applied', later);
     document.addEventListener('keydown', event => { if (event.key === 'Escape' && confirming && !working) { confirming = ''; render().catch(() => {}); } });
-    (window.RuxgetI18n ? RuxgetI18n.ready() : Promise.resolve()).catch(() => {}).then(() => Promise.all([render(), hint()])).catch(() => {});
+    (window.RuxgetI18n ? RuxgetI18n.ready() : Promise.resolve()).catch(() => {}).then(() => render()).catch(() => {});
 })();

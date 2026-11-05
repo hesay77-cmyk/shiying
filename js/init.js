@@ -389,6 +389,10 @@ chrome.storage.onChanged.addListener(function (changes, namespace) {
 function contextMenusInit(visible = false) {
     // 注册右键
     chrome.contextMenus.removeAll(() => {
+        // The toolbar icon's own right-click menu: takeover on/off and the desktop page, always one click away.
+        const label=(key,fallback)=>{try{const text=(typeof RuxgetI18n!=='undefined'&&RuxgetI18n.t)?RuxgetI18n.t(key):i18n[key];return text&&text!==key?text:fallback;}catch{return fallback;}};
+        chrome.contextMenus.create({id:'ruxget-action-takeover',type:'checkbox',checked:false,title:label('uiActionTakeover','大文件交给桌面版'),contexts:['action']});
+        chrome.contextMenus.create({id:'ruxget-action-desktop',title:label('uiActionDesktop','安装或连接桌面版…'),contexts:['action']},()=>{void chrome.runtime.lastError;if(typeof RuxgetOffer!=='undefined')RuxgetOffer.syncMenu();});
         chrome.contextMenus.create({id:'shiying-link-desktop',title:(typeof RuxgetI18n!=='undefined'&&RuxgetI18n.t)?RuxgetI18n.t('uiContextDownloadLink'):(i18n.uiContextDownloadLink||'用 Ruxget 下载此链接'),contexts:['link'],targetUrlPatterns:['http://*/*','https://*/*'],documentUrlPatterns:['http://*/*','https://*/*']});
         chrome.contextMenus.create({
             id: "cat-catch",

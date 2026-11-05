@@ -105,11 +105,13 @@ const MB=1024*1024;
   // Settings page: the switch appears once the desktop is connected and saves the choices.
   await configure({enabled:false,minMB:1,skipHosts:[]});
   await browser.addInitScript(()=>{if(location.protocol!=='chrome-extension:')return;chrome.runtime.sendNativeMessage=async()=>({ok:true,version:'0.4.51'});const contains=chrome.permissions.contains.bind(chrome.permissions);chrome.permissions.contains=async request=>request?.permissions?.includes('nativeMessaging')?true:contains(request);chrome.permissions.request=async()=>true;});
-  // The popup's ⋯ menu names the feature and opens the page at the switch.
+  // The popup's "大文件交给桌面版" row (0.4.56, was ⋯ → 接管 Chrome 下载…): "设置" opens the page at the switch.
+  await configure({enabled:true,minMB:1,skipHosts:[]});
   const menuPopup=await browser.newPage();await menuPopup.goto(`chrome-extension://${id}/shiying.html`);
-  await menuPopup.locator('details.menu summary').click();
-  assert.equal(await menuPopup.locator('#takeoverMenu').innerText(),'接管 Chrome 下载…');
-  const [opened]=await Promise.all([browser.waitForEvent('page'),menuPopup.locator('#takeoverMenu').click()]);
+  assert.equal(await menuPopup.locator('.desktop-row-title').innerText(),'大文件交给桌面版');
+  assert.equal(await menuPopup.locator('#takeoverMenu').count(),0);
+  const rowSettings=menuPopup.locator('#desktopRowNote').getByRole('button',{name:'设置'});await rowSettings.waitFor({state:'visible'});
+  const [opened]=await Promise.all([browser.waitForEvent('page'),rowSettings.click()]);
   await opened.waitForLoadState();assert.match(opened.url(),/shiying-desktop\.html#takeover$/);
   await opened.locator('#takeover.is-highlight').waitFor({state:'visible'});
   await opened.waitForTimeout(600);
@@ -117,7 +119,8 @@ const MB=1024*1024;
   assert(box.y>=0&&box.y+box.height<=viewport.height,'the switch is scrolled into view');
   await opened.screenshot({path:path.join(report,'menu-opens-switch.png')});await opened.close();
   if(!menuPopup.isClosed())await menuPopup.close();
-  check('the ⋯ menu has “接管 Chrome 下载…”, which opens the page with the switch in view');
+  await configure({enabled:false,minMB:1,skipHosts:[]});
+  check('the popup row “大文件交给桌面版” has “设置”, which opens the page with the switch in view');
   const settings=await browser.newPage();await settings.goto(`chrome-extension://${id}/shiying-desktop.html`);
   await settings.locator('#takeover').waitFor({state:'visible'});
   assert.equal(await settings.locator('#takeoverEnabled').isChecked(),false);assert.equal(await settings.locator('#takeoverOptions').isVisible(),false);
@@ -139,7 +142,7 @@ const MB=1024*1024;
    const popup=await browser.newPage();await popup.goto(`chrome-extension://${id}/shiying.html`);
    await popup.evaluate(reply=>{chrome.runtime.sendNativeMessage=async(host,message)=>{await chrome.storage.session.set({openDesktopSent:{host,message}});if(reply==='missing')throw new Error('Specified native messaging host not found.');return {ok:true,stage:'confirm'};};},reply);
    await popup.locator('details.menu summary').click();
-   assert.equal(await popup.locator('.menu button').first().innerText(),'打开 Ruxget 桌面版');
+   assert.equal(await popup.locator('.menu #openDesktop').innerText(),'打开 Ruxget 桌面版');
    return popup;
   };
   let menuDesktop=await openPopup("ok");

@@ -1354,7 +1354,7 @@
     "message": "下载当前勾选的文件"
   },
   "uiContextDownloadLink": {
-    "message": "用 Ruxget 下载此链接"
+    "message": "用 Ruxget 桌面版下载此链接"
   },
   "uiResumeDetection": {
     "message": "恢复识别"
@@ -1523,5 +1523,29 @@
   },
   "uiSubtitleLang": {
     "message": "字幕语言"
+  },
+  "uiDesktopSettings": {
+    "message": "桌面版设置…"
+  },
+  "uiMenuSites": {
+    "message": "网站权限"
+  },
+  "uiMenuHelp": {
+    "message": "使用说明"
+  },
+  "uiOfferAria": {
+    "message": "Ruxget 桌面版"
+  },
+  "uiDesktopRowAria": {
+    "message": "大文件交给桌面版"
+  },
+  "uiDesktopRowTitle": {
+    "message": "大文件交给桌面版"
+  },
+  "uiActionTakeover": {
+    "message": "大文件交给桌面版"
+  },
+  "uiActionDesktop": {
+    "message": "安装或连接桌面版…"
   }
 }

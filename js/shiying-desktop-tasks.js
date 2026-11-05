@@ -5,10 +5,7 @@
 const RuxgetDesktopTasks={
     KNOWN:'ruxgetDesktopJobs',      // local: [{id,name,at}] tasks Chrome handed over, newest first
     STATUS:'ruxgetDesktopStatus',   // session: {at,running,active,jobs:[...]}
-    HINT:'ruxgetTakeoverHint',      // local: {pending,shown,clicked,dismissed}
     LIMIT:20,
-    HINT_MB:50,
-    HINT_SHOWS:3,
     badgeText:'',
     validId(id){return /^[a-f0-9]{16}$/.test(String(id||''));},
     async known(){
@@ -99,21 +96,6 @@ const RuxgetDesktopTasks={
         if(status)await chrome.storage.session.set({[RuxgetDesktopTasks.STATUS]:Object.assign({},status,{jobs:(status.jobs||[]).filter(job=>job.id!==id)})});
         await RuxgetDesktopTasks.poll();
         return {ok:true};
-    },
-    // The quiet hint: a large ordinary Chrome download finished, the desktop app is connected, takeover is off.
-    async noteChromeDownload(download){
-        if(!download||download.state!=='complete'||download.byExtensionId||download.incognito)return;
-        const size=Math.max(Number(download.totalBytes)||0,Number(download.fileSize)||0);
-        if(size<RuxgetDesktopTasks.HINT_MB*1024*1024)return;
-        const {[RuxgetDesktopTasks.HINT]:hint={}}=await chrome.storage.local.get(RuxgetDesktopTasks.HINT);
-        if(hint.clicked||hint.dismissed||(hint.shown||0)>=RuxgetDesktopTasks.HINT_SHOWS)return;
-        if(typeof RuxgetTakeover!=='undefined'&&(await RuxgetTakeover.settings()).enabled)return;
-        const {ruxgetOwnDownloads:own=[]}=await chrome.storage.session.get('ruxgetOwnDownloads');
-        if(own.some(entry=>entry.url===download.url||entry.url===download.finalUrl))return;
-        if(!await chrome.permissions.contains({permissions:['nativeMessaging']}))return;
-        let ping=null;try{ping=await RuxgetDesktopTasks.native({action:'ping'});}catch{return;}
-        if(!ping?.ok)return;
-        await chrome.storage.local.set({[RuxgetDesktopTasks.HINT]:Object.assign({},hint,{pending:true})});
     }
 };
 if(typeof chrome!=='undefined'&&chrome.runtime&&typeof ServiceWorkerGlobalScope!=='undefined'&&self instanceof ServiceWorkerGlobalScope){
@@ -124,10 +106,6 @@ if(typeof chrome!=='undefined'&&chrome.runtime&&typeof ServiceWorkerGlobalScope!
         if(event?.Message==='ruxgetDesktopDelete'){RuxgetDesktopTasks.remove(event.id,event.deleteFiles).then(respond,error=>respond({ok:false,error:error?.message||String(error)}));return true;}
     });
     chrome.alarms.onAlarm.addListener(alarm=>{if(alarm.name==='ruxgetDesktopPoll')RuxgetDesktopTasks.poll();});
-    chrome.downloads.onChanged.addListener(change=>{
-        if(change.state?.current!=='complete')return;
-        chrome.downloads.search({id:change.id}).then(([download])=>RuxgetDesktopTasks.noteChromeDownload(download)).catch(()=>{});
-    });
     // A service-worker restart picks up a download that was running; a browser restart checks once.
     // Otherwise the desktop is only asked while something downloads, or when the popup opens.
     chrome.storage.session.get(RuxgetDesktopTasks.STATUS).then(({[RuxgetDesktopTasks.STATUS]:status})=>{if(status?.active>0)RuxgetDesktopTasks.poll();}).catch(()=>{});
