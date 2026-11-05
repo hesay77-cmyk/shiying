@@ -92,6 +92,7 @@ const RuxgetTakeover={
                 await new Promise(resolve=>setTimeout(resolve,100));
             }
             await RuxgetTakeover.remember({url,name:reply.name||RuxgetTakeover.name(item),result:'desktop'});
+            if(typeof RuxgetDesktopTasks!=='undefined')await RuxgetDesktopTasks.remember(reply.id,reply.name||RuxgetTakeover.name(item)).catch(()=>{});
             return;
         }
         // Back to Chrome: resume the paused copy, or start it again if Chrome can't resume this server.

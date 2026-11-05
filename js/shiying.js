@@ -22,17 +22,34 @@ async function quality(data, card) {
     const field = card.querySelector('.quality');
     const select = field.querySelector('select');
     field.hidden = false;
-    select.replaceChildren(new Option('自动选择 / 在下载页选择', data.url));
+    select.replaceChildren(new Option(RuxgetI18n.pick('自动选择 / 在下载页选择', 'Auto / choose on the download page'), data.url));
     for (const variant of result.variants) select.add(new Option(variant.label, variant.url));
     select.disabled = result.separateAudio || !result.variants.length;
-    field.querySelector('.quality-note').textContent = result.separateAudio ? '这个视频的声音是独立音轨，请在下载页一起选择。' : (result.variants.length ? '选好清晰度后点击下载。' : '这是单一清晰度的视频流。');
+    field.querySelector('.quality-note').textContent = result.separateAudio ? RuxgetI18n.pick('这个视频的声音是独立音轨，请在下载页一起选择。', 'The audio is a separate track; choose it on the download page.') : (result.variants.length ? RuxgetI18n.pick('选好清晰度后点击下载。', 'Pick a quality, then download.') : RuxgetI18n.pick('这是单一清晰度的视频流。', 'This stream has a single quality.'));
 }
+// The page's own players, read when the list loads: they tell the main video apart from ads and previews.
+let pageElements = [], showMinor = false, probeTimer = 0;
+async function probePage() {
+    if (typeof RuxgetFocus === 'undefined' || !tabId) return;
+    const probed = tabId;
+    const found = await RuxgetFocus.read(probed);
+    if (probed !== tabId) return;
+    pageElements = found; render();
+}
+function probeSoon() { clearTimeout(probeTimer); probeTimer = setTimeout(() => probePage().catch(() => {}), 700); }
 function render() {
     const search = $('#search').value.trim().toLowerCase();
     const playable = media.filter(item => !['other', 'fragment'].includes(Shiying.kind(item)));
-    const visible = playable.filter(item => (filter === 'all' || (filter === 'audio' ? Shiying.kind(item) === 'audio' : Shiying.kind(item) !== 'audio')) && `${Shiying.name(item)} ${item.ext || ''}`.toLowerCase().includes(search));
+    const matching = playable.filter(item => (filter === 'all' || (filter === 'audio' ? Shiying.kind(item) === 'audio' : Shiying.kind(item) !== 'audio')) && `${Shiying.name(item)} ${item.ext || ''}`.toLowerCase().includes(search));
+    // Main video first, then the rest; ads, previews and tiny clips fold under one line unless searching.
+    const focus = typeof RuxgetFocus === 'undefined' ? new Map() : RuxgetFocus.classify(playable, pageElements, Shiying.kind);
+    const rank = item => ({main: 0, normal: 1, minor: 2})[focus.get(item.url) || 'normal'];
+    const ordered = matching.map((item, index) => ({item, index})).sort((a, b) => rank(a.item) - rank(b.item) || a.index - b.index).map(entry => entry.item);
+    const minor = ordered.filter(item => focus.get(item.url) === 'minor');
+    const folding = !search && minor.length > 0 && minor.length < ordered.length && !showMinor;
+    const visible = folding ? ordered.filter(item => focus.get(item.url) !== 'minor') : ordered;
     $('#count').textContent = playable.length;
-    $('#copyAll').disabled = !visible.length;
+    $('#copyAll').disabled = !matching.length;
     $('#empty').hidden = !!visible.length;
     document.body.classList.toggle('no-media',!playable.length);
     $('.list-heading').hidden = $('.filters').hidden = $('footer').hidden = !playable.length;
@@ -42,27 +59,49 @@ function render() {
     $('#empty p').textContent = playable.length ? pick('换一个类型，或清空搜索词再试试。','Try another type, or clear the search.') : restricted ? pick('请切换到视频页，或在上方粘贴视频链接。','Switch to a video page, or paste a video link above.') : pick('播放网页里的视频，或在上方粘贴视频链接。','Play the video on the page, or paste a video link above.');
     const fragments = media.filter(item => Shiying.kind(item) === 'fragment').length;
     $('#fragmentNote').hidden = !fragments;
-    $('#fragmentNote').textContent = `另有 ${fragments} 个音视频切片，已折叠。可在高级工具中查看和处理。`;
+    $('#fragmentNote').textContent = pick(`另有 ${fragments} 个音视频切片，已折叠。可在高级工具中查看和处理。`, `${fragments} more media segments are folded. See them in Advanced tools.`);
     const list = $('#mediaList');
     list.replaceChildren();
     const urls = new Set(media.map(item => item.url));
     for (const url of cards.keys()) if (!urls.has(url)) cards.delete(url);
+    const focusNote = $('#focusNote');
+    focusNote.hidden = !minor.length || !!search || minor.length >= ordered.length;
+    if (!focusNote.hidden) {
+        const text = document.createElement('span'), toggle = document.createElement('button');
+        text.textContent = showMinor ? pick(`其中 ${minor.length} 个可能是广告、预览或很小的片段，已放在最后。`, `${minor.length} of these look like ads, previews or tiny clips; they’re listed last.`) : pick(`另有 ${minor.length} 个可能是广告、预览或很小的片段，已收起。`, `${minor.length} more look like ads, previews or tiny clips, so they’re folded.`);
+        toggle.type = 'button'; toggle.className = 'hint-link';
+        toggle.textContent = showMinor ? pick('收起', 'Fold') : pick('展开', 'Show');
+        toggle.addEventListener('click', () => { showMinor = !showMinor; render(); });
+        focusNote.replaceChildren(text, toggle);
+    }
+    const markFocus = (card, data) => {
+        const role = focus.get(data.url) || 'normal';
+        card.classList.toggle('is-main', role === 'main' && playable.length > 1);
+        card.classList.toggle('is-minor', role === 'minor');
+        const tag = card.querySelector('.main-tag');
+        tag.hidden = !(role === 'main' && playable.length > 1);
+        tag.textContent = pick('页面主视频', 'Main video');
+    };
     for (const data of visible) {
-        if (cards.has(data.url)) { list.append(cards.get(data.url)); continue; }
+        if (cards.has(data.url)) { markFocus(cards.get(data.url), data); list.append(cards.get(data.url)); continue; }
         const card = $('#mediaTemplate').content.firstElementChild.cloneNode(true);
         cards.set(data.url, card);
+        markFocus(card, data);
         const kind = Shiying.kind(data);
         card.querySelector('h3').textContent = Shiying.name(data);
         card.querySelector('h3').title = Shiying.name(data);
-        card.querySelector('.format').textContent = kind === 'hls' ? '分段视频' : (kind === 'dash' ? '音画分轨' : (data.ext || kind).toUpperCase());
-        card.querySelector('.size').textContent = ['hls','dash'].includes(kind) ? '下载时合并' : Shiying.size(data.size);
+        card.querySelector('.format').textContent = kind === 'hls' ? pick('分段视频', 'Streaming video') : (kind === 'dash' ? pick('音画分轨', 'Separate audio/video') : (data.ext || kind).toUpperCase());
+        card.querySelector('.size').textContent = ['hls','dash'].includes(kind) ? pick('下载时合并', 'Merged on download') : Shiying.size(data.size);
+        card.querySelector('.copy-button').textContent = pick('复制链接', 'Copy link');
+        card.querySelector('.desktop-button').textContent = pick('桌面下载', 'Desktop');
+        card.querySelector('.detail-button').textContent = pick('查看详情', 'Details');
         const icon = card.querySelector('.file-icon');
         if (kind === 'audio') { icon.textContent = '♫'; icon.classList.add('audio'); }
         const status = card.querySelector('.item-status');
         const button = card.querySelector('.download-button');
-        button.textContent = kind === 'dash' ? '选择音轨' : '下载';
+        button.textContent = kind === 'dash' ? pick('选择音轨', 'Pick tracks') : pick('下载', 'Download');
         button.disabled = !Shiying.validURL(data.url);
-        if (button.disabled) status.textContent = '需要高级工具处理';
+        if (button.disabled) status.textContent = pick('需要高级工具处理', 'Needs Advanced tools');
         onClick(button, async () => {
             button.disabled = true;
             try {
@@ -70,10 +109,10 @@ function render() {
                 const result = await message('shiyingDownload', {data: {...data, url: selectedURL}});
                 if (!result.ok) throw new Error(result.error);
                 if (result.id !== undefined) {
-                    status.textContent = '已开始下载';
+                    status.textContent = pick('已开始下载', 'Started');
                     downloads.set(result.id, status);
-                } else { status.textContent = '已打开下载页'; }
-                notify(result.id === undefined ? '已打开下载页，请保持它打开以完成下载' : '下载已开始，进度可在 Chrome 下载列表查看');
+                } else { status.textContent = pick('已打开下载页', 'Download page opened'); }
+                notify(result.id === undefined ? pick('已打开下载页，请保持它打开以完成下载', 'The download page is open; keep it open until it finishes') : pick('下载已开始，进度可在 Chrome 下载列表查看', 'Download started; see progress in Chrome’s downloads'));
             } finally { button.disabled = false; }
         });
         onClick(card.querySelector('.copy-button'), () => copy(data.url));
@@ -82,7 +121,7 @@ function render() {
                 const headers=Object.fromEntries(Object.entries(data.requestHeaders||{}).map(([key,value])=>[key.toLowerCase(),value]));
                 if(data.cookie||headers.cookie||headers.authorization) throw new Error('这个媒体需要认证信息，请使用原有下载入口');
                 return {action:'add',kind:['hls','dash'].includes(kind)?'video':'file',url:card.querySelector('select').value||data.url,title:Shiying.filename(data).split('/').pop(),referer:headers.referer||data.webUrl||currentSite.url,userAgent:headers['user-agent']||navigator.userAgent};
-            }).then(()=>notify('已交给 Ruxget 桌面版，请在桌面窗口确认下载')).catch(failure);
+            }).then(()=>notify(pick('已交给 Ruxget 桌面版，请在桌面窗口确认下载', 'Sent to Ruxget Desktop; confirm it in the desktop window'))).catch(failure);
         });
         card.querySelector('.resource-url').textContent = data.url;
         let qualityLoaded = false;
@@ -91,11 +130,11 @@ function render() {
             const detail = card.querySelector('.item-details');
             detail.hidden = !detail.hidden;
             detailButton.setAttribute('aria-expanded', !detail.hidden);
-            detailButton.textContent = detail.hidden ? '查看详情' : '收起详情';
+            detailButton.textContent = detail.hidden ? pick('查看详情', 'Details') : pick('收起详情', 'Hide details');
             if (!detail.hidden && kind === 'hls' && !qualityLoaded) {
-                status.textContent = '正在读取清晰度';
+                status.textContent = pick('正在读取清晰度', 'Reading qualities');
                 try { await quality(data, card); qualityLoaded = true; status.textContent = ''; }
-                catch (error) { status.textContent = '可直接在下载页解析'; notify(`清晰度读取失败：${error.message}`); }
+                catch (error) { status.textContent = pick('可直接在下载页解析', 'The download page can read it'); notify(pick('清晰度读取失败：', 'Couldn’t read qualities: ') + RuxgetText.tr(error.message)); }
             }
         });
         list.append(card);
@@ -106,6 +145,8 @@ async function refresh() {
     const result = await message('getData');
     if (result === 'error') throw new Error('识别服务正在启动，请稍后点击刷新');
     media = Array.isArray(result) ? result : [];
+    // Read the page's players first (briefly), so the list opens already sorted instead of jumping.
+    await Promise.race([probePage().catch(() => {}), new Promise(resolve => setTimeout(resolve, 400))]);
     render();
 }
 async function initialize() {
@@ -114,6 +155,7 @@ async function initialize() {
     if (!tab) throw new Error('没有找到当前网页');
     tabId = tab.id;
     currentSite = tab;
+    pageElements = []; showMinor = false;
     $('#pageTitle').textContent = tab.title || '当前网页';
     try { $('#pageHost').textContent = new URL(tab.url).hostname || '当前网页'; } catch { $('#pageHost').textContent = '当前网页'; }
     // Labels below are drawn in the chosen language, so wait for it first.
@@ -169,13 +211,13 @@ function setPaused(enabled) {
 }
 chrome.runtime.onMessage.addListener(event => {
     if (event.Message === 'shiyingAccessRevoked') {cards.clear();refresh().then(updateSiteAccess).catch(failure);return;}
-    if (event.Message === 'popupAddData' && event.data?.tabId === tabId && !media.some(item => item.url === event.data.url)) { media.push(event.data); render(); }
+    if (event.Message === 'popupAddData' && event.data?.tabId === tabId && !media.some(item => item.url === event.data.url)) { media.push(event.data); render(); probeSoon(); }
 });
 chrome.downloads.onChanged.addListener(event => {
     const status = downloads.get(event.id);
     if (!status) return;
-    if (event.error) status.textContent = '下载中断，请在下载列表重试';
-    else if (event.state?.current === 'complete') status.textContent = '下载完成';
+    if (event.error) status.textContent = RuxgetI18n.pick('下载中断，请在下载列表重试', 'Interrupted; retry from Chrome’s downloads');
+    else if (event.state?.current === 'complete') status.textContent = RuxgetI18n.pick('下载完成', 'Done');
 });
 chrome.tabs.onActivated.addListener(event => {
     if (!new URLSearchParams(location.search).has('tabId')) { cards.clear(); downloads.clear(); initialize().catch(failure); }
@@ -281,6 +323,7 @@ async function refreshLiveI18n() {
     try { const {shiyingFloating} = await chrome.storage.local.get('shiyingFloating'); showFloatingSetting(shiyingFloating); } catch (e) {}
     try { if (window.ShiyingPlatformUI && ShiyingPlatformUI.refreshLiveLabels) await ShiyingPlatformUI.refreshLiveLabels(); } catch (e) {}
     try { document.dispatchEvent(new CustomEvent('ruxget-netdisk-refresh')); } catch (e) {}
+    try { cards.clear(); render(); } catch (e) {}
   } catch (e) { console.warn(e); }
 }
 

@@ -52,6 +52,19 @@ class TakeoverCheck {
             Check(Refusal(()=>manager.Takeover(Input("ftp://example.test/a.bin")))!=null&&Refusal(()=>manager.Takeover(Input("https://user:pass@example.test/a.bin")))!=null,"non-HTTP links and links with credentials are refused");
             var bad=Input(server+"/file.bin");bad["userAgent"]="Fixture\r\nX-Injected: 1";Check(Refusal(()=>manager.Takeover(bad))!=null,"a browser name with control characters is refused");
             Check(manager.Snapshot().Count==before,"refused links add no task");
+            // What the extension reads for its badge and recent list.
+            var asked=new Dictionary<string,object>{{"ids",new object[]{job.Id,"ffffffffffffffff"}}};
+            dynamic live=BrowserBridge.StatusReply(manager.Snapshot(),asked,true);
+            var mine=((IEnumerable<dynamic>)live.jobs).FirstOrDefault(item=>item.id==job.Id);
+            Check(live.ok&&live.running&&mine!=null&&mine.title=="Chrome 给的名字.bin"&&mine.state=="active"&&live.active>=1,"status lists a handed-over task as running while the app runs");
+            Check(((IEnumerable<dynamic>)live.jobs).All(item=>item.id!="ffffffffffffffff"),"unknown ids are skipped");
+            dynamic idle=BrowserBridge.StatusReply(manager.Snapshot(),asked,false);
+            mine=((IEnumerable<dynamic>)idle.jobs).First(item=>item.id==job.Id);
+            Check(!idle.running&&idle.active==0&&mine.state=="paused"&&mine.speed=="","with the app closed nothing counts as running");
+            dynamic none=BrowserBridge.StatusReply(manager.Snapshot(),new Dictionary<string,object>(),false);
+            Check(((Array)none.jobs).Length==0,"without ids and with nothing running, status lists nothing");
+            string window=File.ReadAllText(Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(root)),"desktop","Window.cs"),Encoding.UTF8);
+            Check(!window.Contains("已接管下载")&&window.Contains("internal object AcceptForget"),"taking over shows no Windows notification");
         }
         // Save folder follows Chrome's download folder (<chrome>\Ruxget) until the user picks one.
         string chrome=Path.Combine(root,"chrome-downloads");Directory.CreateDirectory(chrome);

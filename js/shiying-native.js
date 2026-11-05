@@ -94,6 +94,9 @@ const ShiyingNative = {
             throw error;
         }
         if(!response?.ok)throw new Error(response?.error||'桌面版未接收任务');
+        // A task handed over by hand shows on the icon once the desktop starts it.
+        // Never lets the hand-off itself fail.
+        if(['add','netdisk'].includes(payload?.action)){try{if(typeof RuxgetDesktopTasks!=='undefined')RuxgetDesktopTasks.watch(60000).catch(()=>{});else chrome.runtime.sendMessage({Message:'ruxgetDesktopWatch'}).catch(()=>{});}catch{}}
         return response;
     }
 };

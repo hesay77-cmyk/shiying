@@ -16,6 +16,7 @@
   <script src="js/shiying-shortvideo.js" defer></script>
   <script src="js/shiying-platform-ui.js" defer></script>
   <script src="js/shiying-native.js" defer></script><script src="js/shiying-desktop.js" defer></script><script src="js/shiying-collection-ui.js" defer></script><script src="js/shiying-recent.js" defer></script>
+  <script src="js/shiying-focus.js" defer></script>
   <script src="js/shiying.js" defer></script>
   <script src="js/shiying-netdisk.js" defer></script><script src="js/shiying-netdisk-popup.js" defer></script>
 </head>
@@ -62,9 +63,11 @@
     <div id="empty" class="empty"><div class="empty-symbol" aria-hidden="true">▷</div><h3 data-i18n="uiEmptyTitle">先播放一下网页里的视频</h3><p data-i18n="uiEmptyBody">Ruxget 会在这里列出找到的视频。<br>如果已经在播放，刷新网页后再试一次。</p></div>
     <p id="error" class="error" role="alert" hidden></p>
     <div id="mediaList" class="media-list" aria-label="媒体列表" data-i18n-aria="uiMediaListAria"></div>
+    <p id="focusNote" class="card-hint focus-note" hidden></p>
     <p id="fragmentNote" class="fragment-note" hidden></p>
     </div>
   </main>
+  <p id="takeoverHint" class="card-hint takeover-hint" hidden></p>
   <details id="recentDownloads" class="recent-downloads" hidden><summary><span>最近下载</span></summary><ul id="recentList"></ul></details>
   <footer><span data-i18n="uiFreeOpen">免费开源，无广告</span><button id="copyAll" class="text-button" disabled data-i18n="uiCopyAllLinks">复制全部链接</button></footer>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
@@ -79,7 +82,7 @@
   </dialog>
   <template id="mediaTemplate">
     <article class="media-item">
-      <div class="media-row"><div class="file-icon" aria-hidden="true">▷</div><div class="media-info"><h3></h3><div class="meta"><span class="format"></span><span class="size"></span></div></div><button class="download-button">下载</button></div>
+      <div class="media-row"><div class="file-icon" aria-hidden="true">▷</div><div class="media-info"><h3></h3><div class="meta"><span class="main-tag" hidden></span><span class="format"></span><span class="size"></span></div></div><button class="download-button">下载</button></div>
       <div class="row-tools"><button class="copy-button text-button">复制链接</button><button class="detail-button text-button" aria-expanded="false" data-i18n="uiViewDetails">查看详情</button><button class="desktop-button text-button" data-i18n="uiDesktopDownload">桌面下载</button><span class="item-status" role="status"></span></div>
       <div class="item-details" hidden><p class="resource-url"></p><div class="quality" hidden><label><span data-i18n="uiQuality">清晰度</span> <select aria-label="选择视频清晰度" data-i18n-aria="uiChooseQuality"></select></label><p class="quality-note"></p></div></div>
     </article>

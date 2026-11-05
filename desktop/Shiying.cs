@@ -68,7 +68,7 @@ static class Util {
     // Windows proxy for HTTPS traffic, as http://host:port, or "" when the system proxy is off or uses only a PAC script.
     public static string SystemProxy(){try{using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Internet Settings")){if(key==null||Convert.ToInt32(key.GetValue("ProxyEnable",0))!=1)return "";string server=Convert.ToString(key.GetValue("ProxyServer","")).Trim();if(server.Contains("=")){var parts=server.Split(';').Select(p=>p.Split(new[]{'='},2)).Where(p=>p.Length==2).ToDictionary(p=>p[0].Trim().ToLowerInvariant(),p=>p[1].Trim());server=parts.ContainsKey("https")?parts["https"]:parts.ContainsKey("http")?parts["http"]:"";}if(server.Length==0)return "";if(!server.Contains("://"))server="http://"+server;Uri uri;return Uri.TryCreate(server,UriKind.Absolute,out uri)&&(uri.Scheme=="http"||uri.Scheme=="https"||uri.Scheme.StartsWith("socks"))?server:"";}}catch{return "";}}
     public static void CheckProxy(string value){if(value.Length>0&&value!=SystemProxyMode)Url(value);}
-    public const string Version="0.4.52";
+    public const string Version="0.4.53";
     public static readonly string Root = AppDomain.CurrentDomain.BaseDirectory;
     public static readonly string PipeName = "shiying.desktop.v1." + WindowsIdentity.GetCurrent().User.Value.Replace('-', '_');
     public static JavaScriptSerializer Json() { return new JavaScriptSerializer { MaxJsonLength = 8 * 1024 * 1024 }; }
@@ -512,14 +512,32 @@ static class BrowserBridge {
                 bool seal=Util.Str(message,"action")=="netdiskSeal";string result=seal?Netdisk.Protect(value):Netdisk.Cookie(new Download{NetdiskCookie=value});
                 WriteFrame(Console.OpenStandardOutput(),Encoding.UTF8.GetBytes(Util.Json().Serialize(new{ok=true,value=result})));return 0;
             }
-            string action=Util.Str(message,"action");if(!new[]{"add","takeover","netdisk","netdiskFolder","show"}.Contains(action))throw new Exception("不支持的浏览器操作");if(action=="add"||action=="takeover")Util.Url(Util.Str(message,"url"));
+            string action=Util.Str(message,"action");
+            // Status never starts the app: when it is not running, the saved task list answers instead.
+            Mutex running;if(action=="status"&&!Mutex.TryOpenExisting("Local\\"+Util.PipeName,out running)){WriteFrame(Console.OpenStandardOutput(),Encoding.UTF8.GetBytes(Util.Json().Serialize(StatusFromDisk(message))));return 0;}
+            if(!new[]{"add","takeover","netdisk","netdiskFolder","show","status","forget"}.Contains(action))throw new Exception("不支持的浏览器操作");if(action=="add"||action=="takeover")Util.Url(Util.Str(message,"url"));
             using(var pipe=new NamedPipeClientStream(".",Util.PipeName,PipeDirection.InOut)){
                 // Netdisk and taken-over downloads start the app in the tray instead of opening its window.
-                try{pipe.Connect(300);}catch(TimeoutException){Process.Start(new ProcessStartInfo(Application.ExecutablePath,action=="netdisk"||action=="takeover"?"--background":""){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=Util.Root});pipe.Connect(10000);}
+                try{pipe.Connect(action=="status"?3000:300);}catch(TimeoutException){if(action=="status")throw new Exception("桌面版正忙，请稍后");Process.Start(new ProcessStartInfo(Application.ExecutablePath,action=="netdisk"||action=="takeover"||action=="forget"?"--background":""){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=Util.Root});pipe.Connect(10000);}
                 WriteFrame(pipe,frame);response=Util.Json().DeserializeObject(Encoding.UTF8.GetString(ReadFrame(pipe)));
             }
         }catch(Exception ex){response=new{ok=false,error=Util.SafeError(ex.Message)};}
         WriteFrame(Console.OpenStandardOutput(),Encoding.UTF8.GetBytes(Util.Json().Serialize(response)));return 0;
+    }
+    static readonly string[] ActiveStatus={"下载中","等待下载","排队中","准备组件","等待节点","正在暂停"};
+    static string State(Download j,bool running){if(j.Status=="已完成")return "done";if(j.Status=="失败")return "failed";if(ActiveStatus.Contains(j.Status))return running?"active":"paused";return "paused";}
+    // Recent desktop tasks for the extension: the ids it asked about (tasks it handed over), plus anything running now.
+    public static object StatusReply(List<Download> jobs,IDictionary<string,object> input,bool running){
+        object raw;var ids=new HashSet<string>(input.TryGetValue("ids",out raw)&&raw is IEnumerable&&!(raw is string)?((IEnumerable)raw).Cast<object>().Select(Convert.ToString).Take(50):new string[0]);
+        var shown=jobs.Where(j=>ids.Contains(j.Id)||State(j,running)=="active").ToList();
+        return new{ok=true,running=running,active=jobs.Count(j=>State(j,running)=="active"),jobs=shown.Select(j=>new{
+            id=j.Id,title=j.Title??"",status=j.Status??"",state=State(j,running),progress=Math.Round(Math.Max(0,Math.Min(100,j.Progress)),1),speed=running?j.Speed??"":"",
+            total=j.Transfer!=null?j.Transfer.Total:-1,completed=j.Transfer!=null?j.Transfer.Completed:-1,error=j.Error??"",file=String.IsNullOrEmpty(j.File)?"":Path.GetFileName(j.File)}).ToArray()};
+    }
+    static object StatusFromDisk(IDictionary<string,object> input){
+        var jobs=new List<Download>();
+        try{string file=Path.Combine(Util.Root,"data","tasks.json");if(System.IO.File.Exists(file))jobs=Util.Json().Deserialize<List<Download>>(System.IO.File.ReadAllText(file,Encoding.UTF8))??jobs;}catch{/* An unreadable list just shows nothing. */}
+        return StatusReply(jobs,input,false);
     }
     public static void Listen(MainWindow window) {
         Task.Run(()=>{while(!window.IsDisposed){try{
@@ -531,6 +549,10 @@ static class BrowserBridge {
                 try{window.FollowBrowserFolder(Util.Str(input,"chromeFolder"));}catch{/* A bad hint never blocks the request itself. */}
                 if(Util.Str(input,"action")=="netdisk"){
                     object reply;try{reply=window.AcceptNetdisk(input);}catch(Exception ex){reply=new{ok=false,error=Util.SafeError(ex.Message)};}
+                    WriteFrame(server,Encoding.UTF8.GetBytes(Util.Json().Serialize(reply)));continue;
+                }
+                if(Util.Str(input,"action")=="status"||Util.Str(input,"action")=="forget"){
+                    object reply;try{reply=Util.Str(input,"action")=="status"?window.BrowserStatus(input):window.AcceptForget(input);}catch(Exception ex){reply=new{ok=false,error=Util.SafeError(ex.Message)};}
                     WriteFrame(server,Encoding.UTF8.GetBytes(Util.Json().Serialize(reply)));continue;
                 }
                 if(Util.Str(input,"action")=="takeover"){

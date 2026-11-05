@@ -7,7 +7,7 @@ if (typeof G === 'undefined') {
     importScripts("/js/polyfill.js", "/js/function.js", "/js/templates.js", "/js/init.js");
 }
 
-importScripts("/js/shiying-access.js", "/js/shiying-background.js", "/js/shiying-native.js", "/js/shiying-takeover.js");
+importScripts("/js/shiying-access.js", "/js/shiying-background.js", "/js/shiying-native.js", "/js/shiying-takeover.js", "/js/shiying-desktop-tasks.js");
 importScripts('/js/shiying-netdisk.js','/js/shiying-netdisk-background.js');
 chrome.permissions.onRemoved.addListener(() => {
     ShiyingAccess.sync().then(() => {
@@ -1006,6 +1006,11 @@ function getRequestHeaders(data) {
 }
 //设置扩展图标
 function SetIcon(obj) {
+    // While Ruxget Desktop downloads, the icon shows its "↓N" on every tab (see shiying-desktop-tasks.js).
+    if (typeof RuxgetDesktopTasks !== 'undefined' && RuxgetDesktopTasks.badgeText) {
+        chrome.action.setBadgeText({ text: RuxgetDesktopTasks.badgeText, tabId: obj?.tabId ?? G.tabId }, function () { if (chrome.runtime.lastError) { return; } });
+        return;
+    }
     if (obj?.number == 0 || obj?.number == undefined) {
         chrome.action.setBadgeText({ text: "", tabId: obj?.tabId ?? G.tabId }, function () { if (chrome.runtime.lastError) { return; } });
         // chrome.action.setTitle({ title: "还没闻到味儿~", tabId: obj.tabId }, function () { if (chrome.runtime.lastError) { return; } });

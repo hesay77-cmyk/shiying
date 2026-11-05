@@ -1,4 +1,5 @@
-// "最近下载": the last few browser downloads, newest first. Click opens the progress page; the bin deletes after a confirm.
+// "最近下载": the last few downloads, newest first: Ruxget's own browser saves plus the files Ruxget Desktop took over
+// (or is downloading now). Click opens the progress page (desktop items: the desktop window); the bin deletes after a confirm.
 (() => {
     const box = document.querySelector('#recentDownloads'), list = document.querySelector('#recentList');
     if (!box || !list) return;
@@ -14,7 +15,12 @@
     async function remove(job, removeFile) {
         working = job.id; render().catch(() => {});
         try {
-            const reply = await chrome.runtime.sendMessage({Message: 'shiyingPlatformDelete', id: job.id, removeFile});
+            const reply = await chrome.runtime.sendMessage(job.desktop ? {Message: 'ruxgetDesktopDelete', id: job.id, deleteFiles: removeFile} : {Message: 'shiyingPlatformDelete', id: job.id, removeFile});
+            if (job.desktop) {
+                if (!reply?.ok) throw new Error(reply?.error || pick('删除没有完成，请重试', 'Couldn’t delete. Try again.'));
+                if (typeof notify === 'function') notify(job.status === 'complete' ? (removeFile ? pick('已删除文件', 'File deleted') : pick('已从列表移除，文件保留', 'Removed from the list; file kept')) : pick('已停止并删除', 'Stopped and deleted'));
+                return;
+            }
             if (!reply?.ok) throw new Error(reply?.error || pick('删除没有完成，请重试', 'Couldn’t delete. Try again.'));
             if (typeof notify === 'function') notify(removeFile ? (reply.removed ? pick('已删除文件', 'File deleted') : pick('文件已不在原位置，已从列表移除', 'The file was already gone; removed from the list')) : job.status === 'complete' ? pick('已从列表移除，文件保留', 'Removed from the list; file kept') : pick('已停止并删除', 'Stopped and deleted'));
         } catch (error) {
@@ -31,17 +37,31 @@
             buttons.append(action(pick('删除文件', 'Delete file'), 'recent-danger', () => remove(job, true)), action(pick('只移除记录', 'Remove from list'), 'recent-plain', () => remove(job, false)), cancel);
         } else if (done(job)) {
             question.textContent = pick('从列表移除？', 'Remove from the list?');
-            buttons.append(action(pick('移除', 'Remove'), 'recent-danger', () => remove(job, false)), cancel);
+            buttons.append(action(pick('移除', 'Remove'), 'recent-danger', () => remove(job, !!job.desktop)), cancel);
         } else {
             question.textContent = pick('停止并删除这个下载？', 'Stop and delete this download?');
-            buttons.append(action(pick('停止并删除', 'Stop and delete'), 'recent-danger', () => remove(job, false)), cancel);
+            buttons.append(action(pick('停止并删除', 'Stop and delete'), 'recent-danger', () => remove(job, !!job.desktop)), cancel);
         }
         row.append(question, buttons); return row;
+    }
+    // Desktop tasks in the same shape as browser jobs. Running ones come first, the rest by when Chrome handed them over.
+    const DESKTOP_STATUS = {active: 'running', done: 'complete', failed: 'error', paused: 'cancelled'};
+    async function desktopJobs() {
+        const {ruxgetDesktopStatus: status} = await chrome.storage.session.get('ruxgetDesktopStatus');
+        return (status?.jobs || []).map(job => ({desktop: true, id: job.id, title: job.title, status: DESKTOP_STATUS[job.state] || 'cancelled', state: job.state, progress: job.progress, speed: job.speed, error: job.error, time: job.state === 'active' ? Date.now() + 1 : Number(job.at) || 0}));
+    }
+    function desktopMeta(job) {
+        const label = pick('桌面版', 'Desktop'), percent = Math.round(Number(job.progress) || 0);
+        if (job.state === 'active') return [label, percent + '%', job.speed].filter(Boolean).join(' · ');
+        if (job.state === 'done') return label + ' · ' + pick('已完成', 'Done');
+        if (job.state === 'failed') return label + ' · ' + (job.error ? tr(job.error) : pick('失败', 'Failed'));
+        return label + ' · ' + pick('已暂停', 'Paused') + ' · ' + percent + '%';
     }
     async function render() {
         const {shiyingJobIds: ids = []} = await chrome.storage.local.get('shiyingJobIds');
         const keys = ids.slice(-SHOWN).reverse().map(id => 'shiyingJob:' + id), records = await chrome.storage.local.get(keys);
-        const jobs = keys.map(key => records[key]).filter(Boolean);
+        const browser = keys.map(key => records[key]).filter(Boolean).map(job => Object.assign({}, job, {time: Date.parse(job.createdAt) || 0}));
+        const jobs = [...browser, ...await desktopJobs()].sort((a, b) => b.time - a.time).slice(0, SHOWN);
         box.hidden = !jobs.length;
         box.querySelector('summary span').textContent = pick('最近下载', 'Recent downloads');
         list.replaceChildren(...jobs.map(job => {
@@ -51,10 +71,18 @@
             button.type = 'button'; button.className = 'recent-open'; button.dataset.status = job.status;
             title.textContent = job.title || pick('网页视频', 'Video'); title.title = job.title || '';
             const percent = Number.isFinite(Number(job.progress)) ? Math.round(Number(job.progress)) : 0;
-            const state = job.status === 'complete' ? pick('已完成', 'Done') : job.status === 'error' ? tr(job.error || job.stage) : job.status === 'cancelled' ? pick('已取消', 'Cancelled') : tr(job.stage) + ' · ' + percent + '%';
-            meta.textContent = (job.format === 'mp3' ? 'MP3' : (job.height ? job.height + 'p' : 'MP4')) + ' · ' + state;
-            button.append(title, meta);
-            button.addEventListener('click', () => chrome.tabs.create({url: chrome.runtime.getURL('shiying-task.html?id=' + encodeURIComponent(job.id))}));
+            if (job.desktop) {
+                meta.textContent = desktopMeta(job); button.dataset.desktop = job.state;
+                button.title = pick('在桌面版中查看', 'Show in Ruxget Desktop');
+                button.append(title, meta);
+                if (job.state === 'active') { const bar = document.createElement('i'); bar.className = 'recent-bar'; bar.style.setProperty('--progress', percent + '%'); button.append(bar); }
+                button.addEventListener('click', () => chrome.runtime.sendNativeMessage('org.shiying.desktop', {action: 'show'}).catch(() => { if (typeof notify === 'function') notify(pick('桌面版没有响应', 'Ruxget Desktop didn’t respond')); }));
+            } else {
+                const state = job.status === 'complete' ? pick('已完成', 'Done') : job.status === 'error' ? tr(job.error || job.stage) : job.status === 'cancelled' ? pick('已取消', 'Cancelled') : tr(job.stage) + ' · ' + percent + '%';
+                meta.textContent = (job.format === 'mp3' ? 'MP3' : (job.height ? job.height + 'p' : 'MP4')) + ' · ' + state;
+                button.append(title, meta);
+                button.addEventListener('click', () => chrome.tabs.create({url: chrome.runtime.getURL('shiying-task.html?id=' + encodeURIComponent(job.id))}));
+            }
             const bin = document.createElement('button');
             bin.type = 'button'; bin.className = 'recent-delete'; bin.disabled = !!working;
             bin.title = bin.ariaLabel = pick('删除', 'Delete');
@@ -62,13 +90,54 @@
             bin.addEventListener('click', () => { confirming = job.id; render().catch(() => {}); });
             item.append(button, bin); return item;
         }));
+        // Open the list by itself only while the desktop app is downloading, so progress is one glance away.
+        if (jobs.some(job => job.desktop && job.state === 'active') && !box.dataset.autoOpened) { box.open = true; box.dataset.autoOpened = '1'; }
         const focus = list.querySelector('.recent-confirm .recent-plain:last-child');
         if (confirming && focus) focus.focus();
     }
     let timer = 0;
     const later = () => { clearTimeout(timer); timer = setTimeout(() => render().catch(() => {}), 150); };
-    chrome.storage.onChanged.addListener((changes, area) => { if (area === 'local' && Object.keys(changes).some(key => key === 'shiyingJobIds' || key.startsWith('shiyingJob:'))) later(); });
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && Object.keys(changes).some(key => key === 'shiyingJobIds' || key.startsWith('shiyingJob:'))) later();
+        if (area === 'session' && changes.ruxgetDesktopStatus) later();
+        if (area === 'local' && (changes.ruxgetTakeoverHint || changes.ruxgetTakeover)) hint().catch(() => {});
+    });
+    // Ask the service worker for a fresh desktop status; it keeps polling while something downloads.
+    chrome.permissions.contains({permissions: ['nativeMessaging']}).then(granted => { if (granted) chrome.runtime.sendMessage({Message: 'ruxgetDesktopRefresh'}).catch(() => {}); }).catch(() => {});
+
+    // One quiet line after a large ordinary Chrome download, when the desktop app is connected and takeover is off.
+    // It appears on at most 3 popup openings; "开启接管" or "不用了" ends it for good. No pop-up, nothing to close.
+    const HINT_SHOWS = 3;
+    let hintCounted = false;
+    async function hint() {
+        const line = document.querySelector('#takeoverHint');
+        if (!line) return;
+        const {ruxgetTakeoverHint: state = {}, ruxgetTakeover: takeover = {}} = await chrome.storage.local.get(['ruxgetTakeoverHint', 'ruxgetTakeover']);
+        const show = !!state.pending && !state.clicked && !state.dismissed && !takeover.enabled && (state.shown || 0) < HINT_SHOWS + (hintCounted ? 1 : 0);
+        line.hidden = !show;
+        if (!show) return;
+        if (!hintCounted) { hintCounted = true; await chrome.storage.local.set({ruxgetTakeoverHint: Object.assign({}, state, {shown: (state.shown || 0) + 1})}); }
+        const text = document.createElement('span'), on = document.createElement('button'), no = document.createElement('button');
+        text.textContent = pick('大文件可以交给桌面版：断点续传更稳，进度在这里也看得到。', 'Large files can go to Ruxget Desktop: steadier resuming, and progress still shows here.');
+        on.type = no.type = 'button'; on.className = 'hint-link'; no.className = 'hint-link hint-quiet';
+        on.textContent = pick('开启接管', 'Turn on');
+        no.textContent = pick('不用了', 'No thanks');
+        on.addEventListener('click', async () => {
+            const {ruxgetTakeover: current = {}, ruxgetTakeoverHint: latest = {}} = await chrome.storage.local.get(['ruxgetTakeover', 'ruxgetTakeoverHint']);
+            // From this hint "large" means 20 MB and up, unless another size was already chosen on the takeover page.
+            const minMB = Number.isFinite(Number(current.minMB)) && Number(current.minMB) !== 1 ? Number(current.minMB) : 20;
+            await chrome.storage.local.set({ruxgetTakeover: Object.assign({skipHosts: []}, current, {enabled: true, minMB}), ruxgetTakeoverHint: Object.assign({}, latest, {pending: false, clicked: true})});
+            line.hidden = true;
+            if (typeof notify === 'function') notify(pick(`已开启：Chrome 里 ${minMB} MB 以上的文件交给桌面版。可在 ⋯ 菜单「接管 Chrome 下载…」中关闭`, `On: Chrome files over ${minMB} MB now go to Ruxget Desktop. Turn it off under ⋯ → Take over Chrome downloads…`));
+        });
+        no.addEventListener('click', async () => {
+            const {ruxgetTakeoverHint: latest = {}} = await chrome.storage.local.get('ruxgetTakeoverHint');
+            await chrome.storage.local.set({ruxgetTakeoverHint: Object.assign({}, latest, {pending: false, dismissed: true})}); line.hidden = true;
+        });
+        line.replaceChildren(text, on, no);
+    }
+    document.addEventListener('ruxget-i18n-applied', () => hint().catch(() => {}));
     document.addEventListener('ruxget-i18n-applied', later);
     document.addEventListener('keydown', event => { if (event.key === 'Escape' && confirming && !working) { confirming = ''; render().catch(() => {}); } });
-    (window.RuxgetI18n ? RuxgetI18n.ready() : Promise.resolve()).catch(() => {}).then(() => render()).catch(() => {});
+    (window.RuxgetI18n ? RuxgetI18n.ready() : Promise.resolve()).catch(() => {}).then(() => Promise.all([render(), hint()])).catch(() => {});
 })();

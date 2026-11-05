@@ -326,8 +326,25 @@ public partial class MainWindow : Form {
     internal object AcceptTakeover(IDictionary<string,object> input){
         if(closingWindow||IsDisposed)throw new Exception("Ruxget 正在退出，请稍后重试");
         var job=manager.Takeover(input);
-        BeginInvoke(new Action(()=>{if(closingWindow||IsDisposed)return;if(!Visible&&!preview){hiddenToTray=true;tray.Visible=true;tray.ShowBalloonTip(3000,"Ruxget","已接管下载："+job.Title,ToolTipIcon.None);}RefreshJobs();}));
+        // Silent on purpose: no balloon, no window. Progress shows in the extension (badge and recent list).
+        BeginInvoke(new Action(()=>{if(closingWindow||IsDisposed)return;if(!Visible&&!preview){hiddenToTray=true;tray.Visible=true;}RefreshJobs();}));
         return new{ok=true,id=job.Id,name=job.Title};
+    }
+    // What the extension shows for desktop tasks: every running task, plus the ones it asked about by id.
+    internal object BrowserStatus(IDictionary<string,object> input){return BrowserBridge.StatusReply(manager.Snapshot(),input,true);}
+    // Delete from the extension: a running task is paused first, and deleting waits (up to 15 s) for the pause to land.
+    internal void ForgetWhenPaused(string id,bool deleteFiles){
+        var job=manager.Snapshot().FirstOrDefault(item=>item.Id==id);if(job==null)return;
+        if(!CanForget(job)&&(CanPause(job)||job.Status=="正在暂停")){if(CanPause(job))manager.Pause(job.Id);for(int i=0;i<150;i++){var now=manager.Snapshot().FirstOrDefault(item=>item.Id==id);if(now==null||CanForget(now))break;System.Threading.Thread.Sleep(100);}}
+        var current=manager.Snapshot().FirstOrDefault(item=>item.Id==id);if(current==null)return;
+        if(!CanForget(current))throw new Exception("暂停还没完成，请稍后再删除");manager.Forget(id,deleteFiles);
+    }
+    internal object AcceptForget(IDictionary<string,object> input){
+        string id=Util.Str(input,"id");if(!System.Text.RegularExpressions.Regex.IsMatch(id,@"^[a-f0-9]{16}$"))throw new Exception("任务标识无效");
+        object choice;if(!input.TryGetValue("deleteFiles",out choice)||!(choice is bool))throw new Exception("请先确认是否删除文件");
+        ForgetWhenPaused(id,(bool)choice);
+        BeginInvoke(new Action(()=>{if(closingWindow||IsDisposed)return;RefreshJobs();}));
+        return new{ok=true,id=id};
     }
     void HideToTray(){hiddenToTray=true;if(!preview){tray.Visible=true;Hide();}}
     public void RestoreFromTray(){if(closingWindow||IsDisposed)return;bool wasHidden=hiddenToTray;hiddenToTray=false;if(!preview){if(wasHidden||!Visible)Show();if(WindowState==FormWindowState.Minimized)WindowState=FormWindowState.Normal;Activate();tray.Visible=false;}RefreshJobs();}

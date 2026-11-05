@@ -140,6 +140,10 @@ select{color-scheme:dark}select option,select optgroup{background-color:#101d29;
 .recent-confirm button:disabled{opacity:.5;cursor:default}
 .recent-downloads li b{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .recent-downloads li small{font-size:11px;color:var(--muted)}
+.recent-downloads li .recent-open[data-desktop=active] small{color:#9fd3ff}
+.recent-downloads li .recent-bar{display:block;height:2px;margin-top:3px;border-radius:2px;background:linear-gradient(90deg,#66bcff var(--progress,0%),rgba(195,222,246,.14) var(--progress,0%))}
+.card-hint.takeover-hint{margin:0 16px 8px;padding:0 12px}
+.card-hint .hint-quiet{color:var(--muted)}
 .recent-downloads li .recent-open[data-status=complete] small{color:#7fe0a8}
 .recent-downloads li .recent-open[data-status=error] small{color:#f0c27b}
 
@@ -153,3 +157,9 @@ select{color-scheme:dark}select option,select optgroup{background-color:#101d29;
 .card-hint span:empty{display:none}
 .card-hint .hint-link{padding:0;border:0;background:none;color:var(--blue,#66bcff);font:inherit;cursor:pointer;text-decoration:none}
 .card-hint .hint-link:hover,.card-hint .hint-link:focus-visible{text-decoration:underline;outline:none}
+
+/* Main video first; ads and previews folded (shiying-focus.js). */
+.main-tag{padding:1px 7px;border-radius:999px;background:rgba(102,188,255,.14);color:#9fd3ff;font-size:11px;line-height:1.6}
+.main-tag[hidden]{display:none}
+.media-item.is-minor{opacity:.72}
+.focus-note{margin:8px 0 0}
