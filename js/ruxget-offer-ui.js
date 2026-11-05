@@ -1,4 +1,4 @@
-// The panel side of the desktop offer (0.4.57):
+// The panel side of the desktop offer (0.4.58):
 // - the card at the top, when a large Chrome download opened the panel (see ruxget-offer.js for the pacing);
 // - the "大文件交给桌面版" row at the bottom: always there, one click turns takeover on or off;
 // - large files Chrome is downloading right now (and not nearly done), each with "改用桌面版".
@@ -27,9 +27,12 @@
     }
     // After a click: Chrome asks once to let Ruxget talk to the desktop app, then a ping says whether it is there.
     // A missing app is answered in place (the card or the row offers the download); nothing opens by itself.
-    async function connect() {
+    // What the click was for is noted first: if Chrome's permission prompt closes the panel, the worker finishes it.
+    async function connect(intent) {
+        await chrome.storage.session.set({[RuxgetOffer.INTENT]: Object.assign({at: Date.now()}, intent)}).catch(() => {});
         let granted = false;
         try { granted = await chrome.permissions.request({permissions: ['nativeMessaging']}); } catch { granted = false; }
+        await chrome.storage.session.remove(RuxgetOffer.INTENT).catch(() => {});
         if (!granted) { toast(pick('没有允许连接桌面版，Chrome 下载照常进行', 'Not connected to Ruxget Desktop; Chrome keeps downloading as usual')); return 'denied'; }
         desk = await RuxgetOffer.desktop();
         if (desk === 'missing') { justMissing = true; toast(pick('还没装桌面版：先下载安装（免费，3 MB）', 'Ruxget Desktop isn’t installed yet: get it first (free, 3 MB)')); }
@@ -42,7 +45,7 @@
     }
     // "改用桌面版" / "以后交给桌面版" on the card, or the switch: takeover on, and the card's running file moves now.
     async function turnOn(offer) {
-        if (await connect() !== 'ready') return false;
+        if (await connect({kind: 'on', card: !!offer, id: offer?.id ?? null}) !== 'ready') return false;
         const minMB = await RuxgetOffer.turnOn();
         if (offer) await RuxgetOffer.answer('yes');
         const moved = offer && offer.id != null ? await handOver(offer.id) : null;
@@ -120,7 +123,7 @@
             line.append(label, button(pick('改用桌面版', 'Use Ruxget Desktop'), '', async () => {
                 if (busy) return; busy = true;
                 try {
-                    if (await connect() !== 'ready') return;
+                    if (await connect({kind: 'move', id: item.id}) !== 'ready') return;
                     const moved = await handOver(item.id);
                     toast(moved.ok ? pick('已交给桌面版', 'Handed to Ruxget Desktop') : pick('这个文件桌面版接不了，仍由 Chrome 下载', 'Ruxget Desktop can’t take this file, so Chrome keeps it'));
                 } finally { busy = false; shownList = ''; render().catch(() => {}); }
@@ -150,6 +153,8 @@
     chrome.downloads.onCreated?.addListener(later);
     document.addEventListener('ruxget-i18n-applied', () => { shownCard = ''; shownList = ''; later(); });
     // Ask the desktop first (a quick local ping) so the card doesn't switch wording after it appears.
+    // A click the worker finished after the panel closed may have found the app missing: say so the same way.
+    chrome.storage.session.get(RuxgetOffer.MISSING).then(value => { if (value[RuxgetOffer.MISSING]) justMissing = true; }).catch(() => {});
     const asked = Promise.race([RuxgetOffer.desktop().then(value => { desk = value; }), new Promise(resolve => setTimeout(resolve, 800))]).catch(() => {});
     Promise.all([asked, window.RuxgetI18n ? RuxgetI18n.ready() : null]).catch(() => {})
         .then(() => render()).then(() => asked).then(() => render()).catch(() => {});

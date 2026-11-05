@@ -31,7 +31,7 @@ const MB=1024*1024,DAY=86400000;
  assert.equal(Offer.early({state:'in_progress',totalBytes:100*MB,bytesReceived:79*MB}),true);
  assert.equal(Offer.early({state:'in_progress',totalBytes:100*MB,bytesReceived:80*MB}),false);
  assert.equal(Offer.early({state:'complete',totalBytes:100*MB,bytesReceived:10*MB}),false);
- assert.equal(Offer.minFor({minMB:1}),50);assert.equal(Offer.minFor({minMB:1,minChosen:true}),1);assert.equal(Offer.minFor({minMB:20}),20);
+ assert.equal(Offer.minFor({minMB:1}),50);assert.equal(Offer.minFor({minMB:1,minChosen:true}),1);assert.equal(Offer.minFor({minMB:20}),20);assert.equal(Offer.minFor({minMB:0}),0);
  delete global.chrome;
  check('pacing: each automatic opening counts; 7 days + 3 large downloads, then 30 days; at most 3; only early downloads');
 }
@@ -193,17 +193,35 @@ const MB=1024*1024,DAY=86400000;
 
   // Files arriving together are counted once each, and the panel opens once.
   await worker.evaluate(()=>{globalThis.opened=0;});await fresh();
-  const same={id:++fakeId,totalBytes:80*MB,bytesReceived:0,url:'https://files.example.test/same.zip',state:'in_progress'};
+  const same={id:++fakeId,totalBytes:80*MB,bytesReceived:0,url:'https://files.example.test/same.zip',filename:'C:\D\same.zip',state:'in_progress'};
   const both=await worker.evaluate(item=>Promise.all([RuxgetOffer.note(item),RuxgetOffer.note(item)]),same);
   assert.deepEqual(both.sort(),[false,true]);assert.equal(await opened(),1);
   await fresh({asked:1,lastAnswerAt:Date.now()-8*DAY});
-  await worker.evaluate(base=>Promise.all([1,2,3].map(n=>RuxgetOffer.note(Object.assign({},base,{id:base.id+n,url:base.url+n})))),{id:++fakeId*10,totalBytes:80*MB,bytesReceived:0,url:'https://files.example.test/together',state:'in_progress'});
+  await worker.evaluate(base=>Promise.all([1,2,3].map(n=>RuxgetOffer.note(Object.assign({},base,{id:base.id+n,url:base.url+n})))),{id:++fakeId*10,totalBytes:80*MB,bytesReceived:0,url:'https://files.example.test/together',filename:'C:\D\together.zip',state:'in_progress'});
   fakeId+=1000;
   const together=await get('ruxgetOffer');assert.equal(together.asked,2);assert.equal(await opened(),2);
   // A nearly finished file only counts.
   await fresh();assert.equal(await fake({bytesReceived:70*MB}),false);assert.equal((await get('ruxgetOffer')).asked,0);
   assert.equal(await fake({state:'complete',bytesReceived:80*MB}),false);
   check('downloads arriving together are counted once each; nearly finished files never open the panel');
+
+  // Chrome couldn't open the panel (window not in front, older Chrome): nothing is counted; the card waits and
+  // counts once answered.
+  await worker.evaluate(()=>{chrome.action.openPopup=async()=>{throw new Error('No active browser window');};});
+  await fresh();assert.equal(await fake(),false);
+  assert.equal((await get('ruxgetOffer')).asked,0);assert.equal((await get('ruxgetOfferCard')).counted,false);
+  popup=await panel();
+  await popup.locator('#offerCard').getByRole('button',{name:'不用了'}).click();await popup.locator('#offerCard').waitFor({state:'hidden'});
+  await popup.close();
+  assert.equal((await get('ruxgetOffer')).asked,1);
+  await worker.evaluate(()=>{chrome.action.openPopup=async()=>{globalThis.opened++;};});
+  // A file whose Save As dialog is still open has no name yet: looked at again once it is named.
+  await fresh();
+  const unnamed={id:++fakeId,totalBytes:80*MB,bytesReceived:0,url:'https://files.example.test/unnamed.zip',filename:'',state:'in_progress'};
+  assert.equal(await worker.evaluate(item=>RuxgetOffer.note(item),unnamed),false);
+  assert.equal((await get('ruxgetOffer')).asked,0);
+  assert.equal(await worker.evaluate(item=>RuxgetOffer.note(item),Object.assign({},unnamed,{filename:'C:\\D\\unnamed.zip'})),true);
+  check('only an opening that worked counts; a file still in Save As waits for its name');
 
   // A size the person chose on the settings page is what the card promises.
   await takeover({enabled:false,minMB:20,minChosen:true,skipHosts:[]});await fresh();assert.equal(await fake(),true);
@@ -252,6 +270,30 @@ const MB=1024*1024,DAY=86400000;
   await popup.close();
   check('first-time user without the desktop: the card becomes “下载桌面版（3 MB）” in place, and only that click opens a page');
   await worker.evaluate(()=>{desk.installed=true;return chrome.storage.session.set({offerUnpermitted:false,offerDeskMissing:false});});
+
+  // Chrome's permission prompt closed the panel mid-click: the worker finishes it and reopens the panel.
+  await takeover({enabled:false,minMB:50,skipHosts:[]});await fresh();
+  const big4=await download('big4.bin');await settle();
+  assert.equal((await get('ruxgetOfferCard')).id,big4);
+  await worker.evaluate(()=>{globalThis.opened=0;});
+  await worker.evaluate(id=>chrome.storage.session.set({ruxgetOfferIntent:{kind:'on',card:true,id,at:Date.now()}}),big4);
+  assert.equal(await worker.evaluate(()=>RuxgetOffer.finishIntent(0)),'ready');
+  assert.equal((await get('ruxgetTakeover')).enabled,true);
+  assert(await worker.evaluate(()=>nativeCalls.some(call=>call.action==='takeover'&&call.url.endsWith('/big4.bin'))));
+  assert.equal(await get('ruxgetOfferCard'),undefined);assert.equal(await opened(),1);
+  // ...and when the app turns out to be missing, the reopened panel says so with "下载桌面版".
+  await takeover({enabled:false,minMB:50,skipHosts:[]});await fresh();assert.equal(await fake(),true);
+  await worker.evaluate(()=>{desk.installed=false;return chrome.storage.session.set({offerDeskMissing:true,ruxgetOfferIntent:{kind:'on',card:true,id:null,at:Date.now()}});});
+  assert.equal(await worker.evaluate(()=>RuxgetOffer.finishIntent(0)),'missing');
+  assert.equal((await get('ruxgetTakeover')).enabled,false);
+  popup=await panel();
+  await popup.locator('#offerCard').getByRole('button',{name:'下载桌面版（3 MB）'}).waitFor({state:'visible'});
+  assert.match(await cardText(),/还没装 Ruxget 桌面版。/);
+  await popup.close();
+  // A click the panel finished itself leaves nothing for the worker.
+  assert.equal(await worker.evaluate(()=>RuxgetOffer.finishIntent(0)),false);
+  await worker.evaluate(()=>{desk.installed=true;return chrome.storage.session.set({offerDeskMissing:false,ruxgetDeskMissing:false});});
+  check('if the permission prompt closes the panel, the worker finishes the click and reopens the panel');
 
   // Someone who said "不用了" to the 0.4.54 hint has been asked once already.
   await worker.evaluate(()=>chrome.storage.local.remove('ruxgetOffer').then(()=>chrome.storage.local.set({ruxgetTakeoverHint:{dismissed:true,shown:1}})));
