@@ -302,7 +302,7 @@ const MB=1024*1024,DAY=86400000;
   check('a “不用了” to the 0.4.54 hint counts as the first time');
 
   // The toolbar icon's right-click entries.
-  assert.equal(await worker.evaluate(async()=>{try{await chrome.contextMenus.update('ruxget-action-takeover',{checked:false});await chrome.contextMenus.update('ruxget-action-desktop',{});await RuxgetOffer.menuTitles();return true;}catch(error){return error.message;}}),true);
+  assert.equal(await worker.evaluate(async()=>{try{await chrome.contextMenus.update('ruxget-action-takeover',{checked:false});await chrome.contextMenus.update('ruxget-action-desktop',{});await chrome.contextMenus.update('ruxget-action-advanced',{});await RuxgetOffer.menuTitles();return true;}catch(error){return error.message;}}),true);
   await worker.evaluate(()=>RuxgetOffer.fromMenu(true));
   assert.equal((await get('ruxgetTakeover')).enabled,true);
   await worker.evaluate(()=>RuxgetOffer.fromMenu(false));
@@ -316,15 +316,23 @@ const MB=1024*1024,DAY=86400000;
    await popup.locator('details.menu summary').click();await popup.waitForTimeout(300);
    const menu=await popup.evaluate(()=>{const panel=document.querySelector('.menu-panel'),box=panel.getBoundingClientRect();return {items:[...panel.querySelectorAll(':scope > button')].map(b=>b.textContent.trim()),links:[...panel.querySelectorAll('.menu-links button')].map(b=>b.textContent.trim()),need:Math.ceil(box.top+panel.scrollHeight),page:document.documentElement.scrollHeight,background:getComputedStyle(panel).backgroundColor};});
    assert.deepEqual(menu.items,['打开下载文件夹','普通文件下载…','暂停识别','打开 Ruxget 桌面版','安装与设置桌面版…']);
-   assert.deepEqual(menu.links,['网站权限','高级工具','使用说明']);
+   assert.deepEqual(menu.links,['帮助与设置']);
    assert(menu.page>=menu.need,`page ${menu.page} < menu ${menu.need}`);
    assert.match(menu.background,/^rgb\(/);
-   if(height===600)await popup.screenshot({path:path.join(report,'menu-zh.png')});
+   if(height===600){
+    await popup.screenshot({path:path.join(report,'menu-zh.png')});
+    // 帮助与设置 opens the help page, which links to 网站权限 near the top.
+    const [help]=await Promise.all([browser.waitForEvent('page'),popup.locator('#help').click()]);
+    await help.waitForLoadState();assert.match(help.url(),/shiying-help\.html$/);
+    assert.equal(await help.locator('.help-intro a[href="#site-access"]').innerText(),'网站权限');
+    assert.equal(await help.locator('#site-access').count(),1);await help.close();
+    await popup.locator('details.menu summary').click();await popup.waitForTimeout(200);await popup.locator('details.menu summary').click();await popup.waitForTimeout(200);
+   }
    await popup.locator('details.menu summary').click();await popup.waitForTimeout(200);
    assert.equal(await popup.evaluate(()=>document.body.style.minHeight),'');
    await popup.close();
   }
-  check('the ⋯ menu: 5 items (no Bilibili-only entry) and one line of links; the page grows to fit it even in a short panel');
+  check('the ⋯ menu: 5 items and one “帮助与设置” link to the help page with 网站权限; the page grows to fit it even in a short panel');
 
   // English.
   await set({ruxgetUiLanguage:'en'});await fresh({asked:1,lastAnswerAt:0,largeSince:3});
@@ -337,7 +345,7 @@ const MB=1024*1024,DAY=86400000;
   await popup.screenshot({path:path.join(report,'card-en.png')});
   await popup.locator('details.menu summary').click();await popup.waitForTimeout(300);
   const english=await popup.evaluate(()=>[...document.querySelectorAll('.menu-panel button')].map(b=>b.textContent.trim()));
-  assert(english.includes('Install & set up Ruxget Desktop…')&&english.includes('Site access')&&english.includes('Help'),english.join('|'));
+  assert(english.includes('Install & set up Ruxget Desktop…')&&english.includes('Help & settings'),english.join('|'));
   assert(!english.some(text=>/[\u4e00-\u9fff]/.test(text)),english.join('|'));
   await popup.screenshot({path:path.join(report,'menu-en.png')});
   // Notices are in English too.

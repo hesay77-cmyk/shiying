@@ -247,8 +247,7 @@ async function showSaveTarget(){
 }
 document.addEventListener('ruxget-i18n-applied',showSaveTarget);
 onClick($('#help'), () => chrome.tabs.create({url:chrome.runtime.getURL('shiying-help.html')}));
-onClick($('#advanced'), () => chrome.tabs.create({url:chrome.runtime.getURL(`popup.html?tabId=${tabId}`)}));
-onClick($('#siteSettings'), () => chrome.tabs.create({url:chrome.runtime.getURL('shiying-help.html#site-access')}));
+// 网站权限 lives on the help page (#site-access); 高级工具 moved to the toolbar icon's right-click menu (0.4.60).
 onClick($('#copyAll'), () => copy([...$('#mediaList').querySelectorAll('.resource-url')].map(element => element.textContent).join('\n')));
 $('#saveAs').addEventListener('change', async () => {const checked=$('#saveAs').checked;showSaveTarget();try{await chrome.storage.sync.set({saveAs:checked});}catch(error){$('#saveAs').checked=!checked;notify('保存位置设置未保存，请重试：'+error.message);}});
 const floatingToggle=$('#floatingToggle');

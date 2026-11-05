@@ -1547,5 +1547,11 @@
   },
   "uiActionDesktop": {
     "message": "安装或连接桌面版…"
+  },
+  "uiMenuHelpSettings": {
+    "message": "帮助与设置"
+  },
+  "uiActionAdvanced": {
+    "message": "高级工具（当前网页）"
   }
 }

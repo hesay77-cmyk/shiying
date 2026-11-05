@@ -847,6 +847,8 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
         ShiyingNative.send(()=>payload).catch(error=>{if(!error.cancelled)showLinkDownloadError(error,tab);});return;
     }
     if(info.menuItemId==='ruxget-action-takeover'){RuxgetOffer.fromMenu(!!info.checked).catch(()=>RuxgetOffer.syncMenu());return;}
+    // The original CatCatch tools for the page the person is on (moved here from the ⋯ menu in 0.4.60).
+    if(info.menuItemId==='ruxget-action-advanced'){chrome.tabs.create({url:chrome.runtime.getURL('popup.html'+(Number.isInteger(tab?.id)?`?tabId=${tab.id}`:''))});return;}
     if(info.menuItemId==='ruxget-action-desktop'){chrome.tabs.create({url:chrome.runtime.getURL('shiying-desktop.html#connection')});return;}
     runCommands(info.menuItemId, info);
 });

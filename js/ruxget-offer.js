@@ -145,7 +145,7 @@ const RuxgetOffer={
             const lang=pref==='en'||pref==='zh_CN'?pref:/^zh/i.test(chrome.i18n.getUILanguage())?'zh_CN':'en';
             const messages=await (await fetch(chrome.runtime.getURL(`_locales/${lang}/messages.json`))).json();
             const text=key=>messages[key]?.message;
-            for(const [id,key] of [['ruxget-action-takeover','uiActionTakeover'],['ruxget-action-desktop','uiActionDesktop'],['shiying-link-desktop','uiContextDownloadLink']])
+            for(const [id,key] of [['ruxget-action-takeover','uiActionTakeover'],['ruxget-action-advanced','uiActionAdvanced'],['ruxget-action-desktop','uiActionDesktop'],['shiying-link-desktop','uiContextDownloadLink']])
                 if(text(key))await chrome.contextMenus.update(id,{title:text(key)}).catch(()=>{});
         }catch{}
     },
