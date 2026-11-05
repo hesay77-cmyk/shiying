@@ -77,7 +77,7 @@ if(takeoverSwitch&&chrome.storage?.local){
         if(on&&!await chrome.permissions.request({permissions:['nativeMessaging']})){takeoverSwitch.checked=false;status.textContent=pick('没有允许连接桌面版，接管未打开。','The connection wasn’t allowed, so takeover is still off.');return;}
         await save({enabled:on});status.textContent=on?pick('已打开。网页上的下载会交给桌面版。','On. Downloads from web pages now go to the desktop app.'):pick('已关闭。下载回到 Chrome。','Off. Downloads stay in Chrome.');render();
     });
-    min.addEventListener('change',()=>{const value=Math.min(1024,Math.max(0,Math.round(Number(min.value)||0)));min.value=value;save({minMB:value});});
+    min.addEventListener('change',()=>{const value=Math.min(1024,Math.max(0,Math.round(Number(min.value)||0)));min.value=value;save({minMB:value,minChosen:true});});
     skip.addEventListener('change',()=>{const list=hosts(skip.value);skip.value=list.join('\n');save({skipHosts:list});});
     chrome.storage.onChanged.addListener((changes,area)=>{if(changes[KEY]||changes[LOG])render();});
     render();

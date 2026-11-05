@@ -130,7 +130,7 @@ const MB=1024*1024;
   await settings.locator('#takeoverSkip').fill('https://Pan.Example.com/s/1\nfoo.test, bar.test');await settings.locator('#takeoverSkip').press('Tab');
   await settings.waitForTimeout(300);
   const saved=(await worker.evaluate(()=>chrome.storage.local.get('ruxgetTakeover'))).ruxgetTakeover;
-  assert.deepEqual(saved,{enabled:true,minMB:5,skipHosts:['pan.example.com','foo.test','bar.test']});
+  assert.deepEqual(saved,{enabled:true,minMB:5,minChosen:true,skipHosts:['pan.example.com','foo.test','bar.test']});
   assert.equal(await settings.locator('#takeoverLog li').count(),3);
   await settings.screenshot({path:path.join(report,'settings-on.png'),fullPage:true});
   await settings.locator('.takeover-switch').click();await settings.waitForTimeout(200);
@@ -148,7 +148,7 @@ const MB=1024*1024;
   let menuDesktop=await openPopup("ok");
   await Promise.all([menuDesktop.waitForEvent("close"),menuDesktop.locator("#openDesktop").click()]);
   assert.deepEqual((await worker.evaluate(()=>chrome.storage.session.get('openDesktopSent'))).openDesktopSent,{host:'org.shiying.desktop',message:{action:'show'}});
-  check('⋯ menu starts with “打开 Ruxget 桌面版”, which asks the desktop app to show its window and closes the popup');
+  check('⋯ menu has “打开 Ruxget 桌面版”, which asks the desktop app to show its window');
   // Not installed: the prompt's “下载安装” opens the website's download section.
   await browser.route('https://hidaydream.cloud/**',route=>route.request().resourceType()==='document'?route.fulfill({contentType:'text/html',body:'<!doctype html><title>Ruxget</title>'}):route.fulfill({status:204}));
   menuDesktop=await openPopup("missing");await menuDesktop.locator("#openDesktop").click();
