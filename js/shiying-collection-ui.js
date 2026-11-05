@@ -33,7 +33,6 @@ window.ShiyingCollectionUI=(()=>{
         if(!$('collectionSheet').open)$('collectionSheet').showModal();
         try{queueView((await send('shiyingCollectionState')).queue);}catch{}
     }
-    $('collectionMenu').onclick=()=>open(ShiyingPlatformUI.url());
     $('collectionOpen').onclick=()=>open(ShiyingPlatformUI.url());
     $('collectionClose').onclick=()=>{$('collectionSheet').close();};
     $('collectionSheet').addEventListener('close',()=>{reading++;$('collectionRead').disabled=false;$('collectionRead').textContent=say('读取列表','Read list');});

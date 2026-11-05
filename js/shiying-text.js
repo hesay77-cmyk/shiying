@@ -2,6 +2,21 @@
 // Translate only at display time: callers keep comparing the original Chinese strings.
 (function (global) {
   const exact = {
+    // Popup notices (shiying.js notify)
+    '链接已复制': 'Link copied',
+    '未授权，已有下载和已允许的网站仍可使用': 'Not allowed. Existing downloads and allowed sites still work',
+    '网页已跳转，请重新打开 Ruxget': 'The page changed. Open Ruxget again',
+    '已允许此网站；需要时刷新网页再播放视频': 'Site allowed. Refresh the page and play the video if needed',
+    '网站已允许，请再允许本页媒体来源': 'Site allowed. Now allow this page’s media sources',
+    '已恢复识别': 'Detection resumed',
+    '已暂停识别，已有列表仍可下载': 'Detection paused. Items already listed can still be downloaded',
+    '已清空当前页面的列表': 'List cleared for this page',
+    '浮钮设置暂时无法读取，请重新打开插件': 'Couldn’t read the download button setting. Open Ruxget again',
+    '已隐藏下载浮钮，可从工具栏 Ruxget 重新显示': 'Download button hidden. Show it again from the Ruxget icon',
+    '已显示网页下载浮钮': 'Download button shown on the page',
+    '下载浮钮已隐藏；右侧栏未能收起，请点侧栏右上角关闭': 'Download button hidden. The side panel didn’t close; close it from its top-right corner',
+    '已交给 Chrome 下载': 'Sent to Chrome downloads',
+    '已发送链接，请在 Ruxget 桌面版确认下载': 'Link sent. Confirm the download in Ruxget Desktop',
     // Download stages
     '正在准备下载': 'Preparing download',
     '正在下载视频画面': 'Downloading video',
@@ -117,7 +132,9 @@
     [/^B站返回 (\d+)，请刷新视频网页后重试$/, 'Bilibili returned $1. Refresh the video page and try again.'],
     [/^原站返回 (\d+)，请重新读取视频$/, 'The site returned $1. Read the video again.'],
     [/^网站返回 (\d+)，请重新播放视频后再试$/, 'The site returned $1. Play the video again and retry.'],
-    [/^播放列表读取失败（HTTP (\d+)）$/, 'Couldn’t read the playlist (HTTP $1)']
+    [/^播放列表读取失败（HTTP (\d+)）$/, 'Couldn’t read the playlist (HTTP $1)'],
+    [/^保存位置设置未保存，请重试：([\s\S]*)$/, 'Save location wasn’t saved. Try again: $1'],
+    [/^浮钮设置未保存，请重试：([\s\S]*)$/, 'Download button setting wasn’t saved. Try again: $1']
   ];
   function tr(text) {
     if (typeof text !== 'string' || !text || !global.RuxgetI18n || global.RuxgetI18n.getLang() !== 'en') return text;

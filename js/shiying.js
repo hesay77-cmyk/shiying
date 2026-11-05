@@ -7,6 +7,8 @@ let tabId, filter = 'all', media = [], toastTimer, currentSite, accessCandidates
 const downloads = new Map();
 const cards = new Map();
 function notify(text) {
+    // Notices are written in Chinese; the English UI shows them through the shared table (shiying-text.js).
+    if (window.RuxgetText) text = RuxgetText.tr(text);
     $('#toast').textContent = text;
     $('#toast').hidden = false;
     clearTimeout(toastTimer);
@@ -157,7 +159,8 @@ async function initialize() {
     currentSite = tab;
     pageElements = []; showMinor = false;
     $('#pageTitle').textContent = tab.title || '当前网页';
-    try { $('#pageHost').textContent = new URL(tab.url).hostname || '当前网页'; } catch { $('#pageHost').textContent = '当前网页'; }
+    const thisPage = window.RuxgetI18n ? RuxgetI18n.pick('当前网页', 'This page') : '当前网页';
+    try { $('#pageHost').textContent = new URL(tab.url).hostname || thisPage; } catch { $('#pageHost').textContent = thisPage; }
     // Labels below are drawn in the chosen language, so wait for it first.
     await (window.RuxgetI18n?RuxgetI18n.ready().catch(()=>{}):Promise.resolve());
     const settings = await chrome.storage.sync.get({saveAs:false, enable:true});
@@ -165,7 +168,8 @@ async function initialize() {
     showSaveTarget();
     setPaused(settings.enable);
     ShiyingPlatformUI.bind(tab).catch(failure);
-    ensureFloatingControl().catch(error=>notify('浮钮暂未恢复：'+error.message));
+    // Bringing the page's download button back is automatic, so a failure stays quiet; clicking 显示浮钮 explains it.
+    ensureFloatingControl().catch(()=>{});
     await refresh();
     await updateSiteAccess();
 }

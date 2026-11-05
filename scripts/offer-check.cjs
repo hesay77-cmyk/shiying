@@ -315,7 +315,7 @@ const MB=1024*1024,DAY=86400000;
    popup=await panel(height);
    await popup.locator('details.menu summary').click();await popup.waitForTimeout(300);
    const menu=await popup.evaluate(()=>{const panel=document.querySelector('.menu-panel'),box=panel.getBoundingClientRect();return {items:[...panel.querySelectorAll(':scope > button')].map(b=>b.textContent.trim()),links:[...panel.querySelectorAll('.menu-links button')].map(b=>b.textContent.trim()),need:Math.ceil(box.top+panel.scrollHeight),page:document.documentElement.scrollHeight,background:getComputedStyle(panel).backgroundColor};});
-   assert.deepEqual(menu.items,['打开下载文件夹','普通文件下载…','分 P 勾选下载…','暂停识别','打开 Ruxget 桌面版','安装与设置桌面版…']);
+   assert.deepEqual(menu.items,['打开下载文件夹','普通文件下载…','暂停识别','打开 Ruxget 桌面版','安装与设置桌面版…']);
    assert.deepEqual(menu.links,['网站权限','高级工具','使用说明']);
    assert(menu.page>=menu.need,`page ${menu.page} < menu ${menu.need}`);
    assert.match(menu.background,/^rgb\(/);
@@ -324,7 +324,7 @@ const MB=1024*1024,DAY=86400000;
    assert.equal(await popup.evaluate(()=>document.body.style.minHeight),'');
    await popup.close();
   }
-  check('the ⋯ menu: 6 items and one line of links; the page grows to fit it even in a short panel');
+  check('the ⋯ menu: 5 items (no Bilibili-only entry) and one line of links; the page grows to fit it even in a short panel');
 
   // English.
   await set({ruxgetUiLanguage:'en'});await fresh({asked:1,lastAnswerAt:0,largeSince:3});
@@ -340,6 +340,12 @@ const MB=1024*1024,DAY=86400000;
   assert(english.includes('Install & set up Ruxget Desktop…')&&english.includes('Site access')&&english.includes('Help'),english.join('|'));
   assert(!english.some(text=>/[\u4e00-\u9fff]/.test(text)),english.join('|'));
   await popup.screenshot({path:path.join(report,'menu-en.png')});
+  // Notices are in English too.
+  await popup.locator('#pause').click();await popup.waitForTimeout(300);
+  assert.match(await popup.locator('#toast').innerText(),/^Detection (paused|resumed)/);
+  if(!await popup.locator('#pause').isVisible())await popup.locator('details.menu summary').click();
+  await popup.locator('#pause').click();await popup.waitForTimeout(300);
+  assert.match(await popup.locator('#toast').innerText(),/^Detection (paused|resumed)/);
   await popup.close();
   check('English: card, row and menu are in English');
 
