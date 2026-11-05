@@ -36,6 +36,7 @@ class TakeoverCheck {
         var listener=new TcpListener(IPAddress.Loopback,0);listener.Start();int port=((IPEndPoint)listener.LocalEndpoint).Port;new Thread(()=>Serve(listener)){IsBackground=true}.Start();
         string server="http://127.0.0.1:"+port;
         using(var manager=new Manager(Path.Combine(root,"state"))){
+            Check((ServicePointManager.SecurityProtocol&(SecurityProtocolType)3072)!=0,"TLS 1.2 is on, so HTTPS links can be probed (SSL3/TLS 1.0 alone fails on today's sites)");
             var job=manager.Takeover(Input(server+"/file.bin","Chrome 给的名字.bin"));
             Check(manager.Snapshot().Any(item=>item.Id==job.Id&&item.Kind=="file"&&item.Url==server+"/file.bin"),"a direct file link is added as a file task");
             Check(job.Title=="Chrome 给的名字.bin","Chrome's file name is kept");
