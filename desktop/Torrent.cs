@@ -104,6 +104,8 @@ public class TorrentSelectionWindow:Form {
 // A built-in list always works; once a day a fresh copy of the public "best" list is fetched (nothing about the person
 // or their downloads is sent) and kept in data\bt-network\trackers.txt. Private torrents never get them.
 static class PublicTrackers {
+    // HTTPS (the list and DNS lookups) needs TLS 1.2 even when this runs before any Manager exists.
+    static PublicTrackers(){ServicePointManager.SecurityProtocol|=(SecurityProtocolType)3072;}
     internal static readonly string[] BuiltIn={
         "udp://tracker.opentrackr.org:1337/announce","udp://open.stealth.si:80/announce","udp://tracker.torrent.eu.org:451/announce",
         "udp://open.demonii.com:1337/announce","udp://exodus.desync.com:6969/announce","udp://open.tracker.cl:1337/announce",
@@ -154,6 +156,40 @@ static class PublicTrackers {
     internal static bool MaybePrivate(Download job){
         if(job.BtPrivate)return true;
         return !job.HasMetadata&&(job.Url??"").IndexOf("&tr=",StringComparison.OrdinalIgnoreCase)>=0;
+    }
+    // 0.4.62: routers and proxy tools that answer DNS with "fake IP" addresses (198.18.0.0/15) pass TCP but not the UDP
+    // that most trackers use. For each UDP tracker whose name only resolves to such addresses (or not at all), the real
+    // address is looked up over HTTPS DNS (Cloudflare 1.1.1.1, then Google 8.8.8.8; only the tracker's name is sent).
+    // Networks with ordinary DNS answers get no lookups and no changes.
+    internal static Dictionary<string,string> RealAddresses(IEnumerable<string> trackers,int budgetMs,string proxy){
+        var hosts=trackers.Select(t=>{Uri uri;return Uri.TryCreate(t,UriKind.Absolute,out uri)&&uri.Scheme=="udp"&&uri.HostNameType==UriHostNameType.Dns?uri.Host.ToLowerInvariant():null;}).Where(h=>h!=null).Distinct().Take(Max).ToArray();
+        var found=new Dictionary<string,string>();var deadline=DateTime.UtcNow.AddMilliseconds(Math.Max(500,Math.Min(5000,budgetMs)));
+        var tasks=hosts.Select(host=>Task.Run(()=>{
+            try{if(Dns.GetHostAddresses(host).Any(DhtBootstrap.PublicIPv4))return;}catch{} // ordinary answer: keep the name
+            string address=OverHttps(host,deadline,proxy);if(address!=null)lock(found)found[host]=address;
+        })).ToArray();
+        int remaining=(int)(deadline-DateTime.UtcNow).TotalMilliseconds;if(remaining>0)try{Task.WaitAll(tasks,remaining);}catch{}
+        lock(found)return new Dictionary<string,string>(found);
+    }
+    static string OverHttps(string host,DateTime deadline,string proxy){
+        foreach(string source in new[]{"https://1.1.1.1/dns-query?name=","https://8.8.8.8/resolve?name="}){
+            int remaining=(int)(deadline-DateTime.UtcNow).TotalMilliseconds;if(remaining<200)return null;
+            try{
+                var request=(HttpWebRequest)WebRequest.Create(source+Uri.EscapeDataString(host)+"&type=A");request.Accept="application/dns-json";request.Timeout=request.ReadWriteTimeout=remaining;request.UserAgent="Ruxget/"+Util.Version;
+                request.Proxy=String.IsNullOrEmpty(proxy)?null:new WebProxy(proxy);
+                string text;using(var response=(HttpWebResponse)request.GetResponse())using(var reader=new StreamReader(response.GetResponseStream(),Encoding.UTF8)){var buffer=new char[16384];int read=reader.ReadBlock(buffer,0,buffer.Length);text=new string(buffer,0,read);}
+                var reply=Util.Json().Deserialize<Dictionary<string,object>>(text);object answers;
+                if(reply==null||!reply.TryGetValue("Answer",out answers)||!(answers is System.Collections.IEnumerable))continue;
+                foreach(var item in ((System.Collections.IEnumerable)answers).OfType<Dictionary<string,object>>()){IPAddress address;if(Util.Str(item,"type")=="1"&&IPAddress.TryParse(Util.Str(item,"data"),out address)&&DhtBootstrap.PublicIPv4(address))return address.ToString();}
+            }catch{}
+        }
+        return null;
+    }
+    // udp://name:port/... becomes udp://address:port/... where a real address was found; http(s) trackers keep their names.
+    internal static string[] Rewrite(string[] trackers,IDictionary<string,string> addresses){
+        if(addresses==null||addresses.Count==0)return trackers;
+        return trackers.Select(t=>{Uri uri;string address;if(!Uri.TryCreate(t,UriKind.Absolute,out uri)||uri.Scheme!="udp"||!addresses.TryGetValue(uri.Host.ToLowerInvariant(),out address))return t;
+            return new UriBuilder(uri){Host=address}.Uri.AbsoluteUri;}).Distinct().ToArray();
     }
     internal static void Apply(Dictionary<string,string> options,bool privateTorrent,bool localOnly,string[] trackers){
         if(privateTorrent||localOnly||trackers==null||trackers.Length==0)return;
@@ -254,6 +290,7 @@ public partial class Manager {
     readonly Dictionary<string,PeerHint> btPeerHints=new Dictionary<string,PeerHint>();
     TcpListener btPeerTracker;string btPeerToken;
     Task<bool> trackerRefresh;
+    Dictionary<string,string> btTrackerAddresses; // tracker name -> real address, only on fake-IP networks (0.4.62)
     // Once a day, in the background: the current download already has the cached or built-in list.
     void RefreshTrackers(){
         string folder=Path.Combine(dataRoot,"bt-network"),proxy=ProxyUrl;
@@ -345,7 +382,12 @@ public partial class Manager {
         if(btAria!=null&&!btAria.HasExited)return;if(!Components.Ready("aria2c.exe"))throw new Exception("核心下载组件损坏，请重新安装 Ruxget");int port=FreePort();btSecret=Guid.NewGuid().ToString("N");btRpcUrl="http://127.0.0.1:"+port+"/jsonrpc";
         Directory.CreateDirectory(Path.Combine(dataRoot,"bt-network"));RefreshTrackers();int peerPort;do{peerPort=FreePort();}while(peerPort==port);
         if(BtLocalOnly&&BtLocalDhtPort>0)btPeerEntry=new IPEndPoint(IPAddress.Loopback,BtLocalDhtPort);
-        if(!BtLocalOnly&&jobs.Any(job=>TorrentInfo.IsBt(job)&&!job.BtPrivate&&new[]{"排队中","等待下载","下载中","等待节点"}.Contains(job.Status))){var entry=DhtBootstrap.Find(DhtBootstrap.Routers,3000);btBootstrapVerified=entry!=null;btPeerEntry=entry;btBootstrapEntry=entry==null?null:entry.ToString();}
+        if(!BtLocalOnly&&jobs.Any(job=>TorrentInfo.IsBt(job)&&!job.BtPrivate&&new[]{"排队中","等待下载","下载中","等待节点"}.Contains(job.Status))){
+            // Real tracker addresses (fake-IP networks only) are looked up alongside the DHT entry, within the same wait.
+            string trackerFolder=Path.Combine(dataRoot,"bt-network"),proxy=ProxyUrl;var resolving=Task.Run(()=>PublicTrackers.RealAddresses(PublicTrackers.Current(trackerFolder),3000,proxy));
+            var entry=DhtBootstrap.Find(DhtBootstrap.Routers,3000);btBootstrapVerified=entry!=null;btPeerEntry=entry;btBootstrapEntry=entry==null?null:entry.ToString();
+            try{if(resolving.Wait(1000))btTrackerAddresses=resolving.Result;}catch{}
+        }
         btAria=Util.Start(Path.Combine(Util.Root,"bin","aria2c.exe"),BtArguments(port,peerPort));btAria.OutputDataReceived+=(s,e)=>{};btAria.ErrorDataReceived+=(s,e)=>{};try{btAria.Start();}catch{btAria.Dispose();btAria=null;throw;}btAria.BeginOutputReadLine();btAria.BeginErrorReadLine();for(int n=0;n<40;n++){try{BtRpc("getVersion");return;}catch{if(btAria.HasExited)break;Thread.Sleep(100);}}Util.KillTree(btAria);throw new Exception("BT 下载内核启动失败");
     }
     string TorrentSource(Download job){return Path.Combine(Work(job),"source.torrent");}
@@ -355,7 +397,7 @@ public partial class Manager {
         lock(gate){CanAdd(1);UniqueBt(info.Hash);var job=new Download{Id=Guid.NewGuid().ToString("N").Substring(0,16),Url=path,Title=info.Name,Kind="torrent",Folder=Path.GetFullPath(folder??Config.Folder),Status="等待选文件",Stage="双击任务，勾选需要下载的文件",Error="",Speed="",AutoCategorize=autoCategorize??Config.AutoCategorize,BtHash=info.Hash,BtPrivate=info.Private,BtFiles=info.Files,ExpectedSize=info.Total,HasMetadata=true};job.Transfer.Resume=true;Directory.CreateDirectory(Work(job));System.IO.File.WriteAllBytes(TorrentSource(job),bytes);jobs.Add(job);try{Save();}catch{jobs.Remove(job);PublishSnapshot();throw;}return job;}
     }
     void ApplyBtInfo(Download job,TorrentInfo info){if(job.BtHash!=info.Hash)throw new Exception("种子哈希与磁力链接不一致，未开始下载");var previous=(job.BtFiles??new TorrentFileInfo[0]).ToDictionary(f=>f.Index);foreach(var file in info.Files){TorrentFileInfo old;if(previous.TryGetValue(file.Index,out old))file.Completed=Math.Min(file.Length,old.Completed);}job.Title=info.Name;job.BtFiles=info.Files;job.BtPrivate=info.Private;job.HasMetadata=true;job.ExpectedSize=info.Total;SyncBtSelection(job);}
-    Dictionary<string,string> BtOptions(Download job,string directory){var options=new Dictionary<string,string>{{"gid",job.Id},{"dir",directory},{"seed-time","0"},{"check-integrity","true"},{"allow-overwrite","false"},{"auto-file-renaming","false"},{"file-allocation","none"},{"bt-stop-timeout","0"},{"bt-max-peers","128"},{"bt-request-peer-speed-limit",(Config.RateKiB>0?Math.Min(5120,Config.RateKiB):5120)+"K"},{"bt-tracker-interval","0"},{"bt-tracker-connect-timeout","10"},{"bt-tracker-timeout","15"},{"all-proxy",ProxyUrl},{"no-proxy","localhost,127.0.0.1,::1"},{"rpc-save-upload-metadata","false"}};PublicTrackers.Apply(options,PublicTrackers.MaybePrivate(job),BtLocalOnly,PublicTrackers.Current(Path.Combine(dataRoot,"bt-network")));if(Config.RateKiB>0)options["max-download-limit"]=Config.RateKiB+"K";return options;}
+    Dictionary<string,string> BtOptions(Download job,string directory){var options=new Dictionary<string,string>{{"gid",job.Id},{"dir",directory},{"seed-time","0"},{"check-integrity","true"},{"allow-overwrite","false"},{"auto-file-renaming","false"},{"file-allocation","none"},{"bt-stop-timeout","0"},{"bt-max-peers","128"},{"bt-request-peer-speed-limit",(Config.RateKiB>0?Math.Min(5120,Config.RateKiB):5120)+"K"},{"bt-tracker-interval","0"},{"bt-tracker-connect-timeout","10"},{"bt-tracker-timeout","15"},{"all-proxy",ProxyUrl},{"no-proxy","localhost,127.0.0.1,::1"},{"rpc-save-upload-metadata","false"}};PublicTrackers.Apply(options,PublicTrackers.MaybePrivate(job),BtLocalOnly,PublicTrackers.Rewrite(PublicTrackers.Current(Path.Combine(dataRoot,"bt-network")),btTrackerAddresses));if(Config.RateKiB>0)options["max-download-limit"]=Config.RateKiB+"K";return options;}
     void StartBt(Download job){
         job.BtProgressAt=DateTime.UtcNow;job.BtLastCompleted=-1;job.BtFinishing=false;job.BtReason=job.BtAdvice="";job.BtDiagnosticAt=DateTime.MinValue;job.BtPeerStatus=null;job.BtDownloadLimit=-1;
         if(job.BtAutoWaiting&&btAria!=null&&!btAria.HasExited){BtRpc("unpause",job.Id);job.BtAutoWaiting=false;job.Status="等待下载";return;}job.BtAutoWaiting=false;

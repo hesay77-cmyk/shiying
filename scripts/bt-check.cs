@@ -114,6 +114,11 @@ class BtCheck {
         var options=new Dictionary<string,string>();PublicTrackers.Apply(options,true,false,current);Check(!options.ContainsKey("bt-tracker"),"private torrents never get public trackers");
         PublicTrackers.Apply(options,false,true,current);Check(!options.ContainsKey("bt-tracker"),"the loopback test engine never gets public trackers");
         PublicTrackers.Apply(options,false,false,current);Check(options["bt-tracker"].Split(',').Length==current.Length,"ordinary BT and magnet tasks get the whole list");
+        // 0.4.62: on fake-IP networks UDP trackers are reached by their real address; HTTP trackers keep their names.
+        var real=new Dictionary<string,string>{{"tracker.opentrackr.org","93.158.213.92"},{"tracker.dler.com","1.2.3.4"}};
+        var rewritten=PublicTrackers.Rewrite(new[]{"udp://tracker.opentrackr.org:1337/announce","udp://open.stealth.si:80/announce","http://tracker.dler.com:6969/announce"},real);
+        Check(rewritten[0]=="udp://93.158.213.92:1337/announce"&&rewritten[1]=="udp://open.stealth.si:80/announce"&&rewritten[2]=="http://tracker.dler.com:6969/announce","fake-IP networks: UDP trackers use the real address found, HTTP trackers and unresolved ones keep their names");
+        Check(PublicTrackers.Rewrite(current,new Dictionary<string,string>()).SequenceEqual(current)&&PublicTrackers.Rewrite(current,null).SequenceEqual(current),"ordinary networks: the tracker list is used unchanged");
     }
     [STAThread] static int Main(string[] args){try{Console.OutputEncoding=new System.Text.UTF8Encoding(false);
         string folder=Path.GetFullPath(args[0]),torrent=Path.GetFullPath(args[1]),magnet=args[2],seedRoot=args[3],boundary=args[4],hash,name;var parsed=TorrentInfo.Read(File.ReadAllBytes(torrent));if(args.Length>8&&args[8].StartsWith("restart-cache-")){RestartCacheStage(args[8],folder,Path.GetDirectoryName(torrent),seedRoot);return 0;}if(args.Length>8&&args[8]=="reconnect-only"){ReconnectAndFinish(folder,Path.GetDirectoryName(torrent),Path.Combine(folder,"files"),seedRoot);return 0;}
