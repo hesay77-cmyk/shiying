@@ -44,6 +44,9 @@ class TakeoverCheck {
             string probe;lock(seen)probe=seen.First(entry=>entry.StartsWith("/file.bin"));
             Check(probe.Contains("Referer: https://pages.example.test/list")&&probe.Contains("User-Agent: Mozilla/5.0 Fixture")&&probe.Contains("Range: bytes=0-0"),"the probe asks for one byte with the page's Referer and User-Agent");
             var unnamed=manager.Takeover(Input(server+"/file.bin"));Check(unnamed.AutoName,"without Chrome's name the server's name is used later");
+            // 0.4.63: CDNs such as Aliyun's refuse "aria2/x.y" (403, UA blacklist); a link without a browser name uses an ordinary one.
+            var bare=Input(server+"/file.bin");bare["userAgent"]="";manager.Takeover(bare);string bareProbe;lock(seen)bareProbe=seen.Last(entry=>entry.StartsWith("/file.bin"));
+            Check(bareProbe.Contains("User-Agent: "+Util.BrowserAgent)&&!bareProbe.Contains("aria2"),"a link without a browser name is probed as an ordinary browser, never as aria2");
             Check(manager.Takeover(Input(server+"/empty.txt"))!=null,"an empty file (416 for a byte range) is still taken");
             int before=manager.Snapshot().Count;
             string login=Refusal(()=>manager.Takeover(Input(server+"/login")));Check(login!=null&&login.Contains("登录"),"a login page goes back to Chrome");

@@ -68,7 +68,10 @@ static class Util {
     // Windows proxy for HTTPS traffic, as http://host:port, or "" when the system proxy is off or uses only a PAC script.
     public static string SystemProxy(){try{using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Internet Settings")){if(key==null||Convert.ToInt32(key.GetValue("ProxyEnable",0))!=1)return "";string server=Convert.ToString(key.GetValue("ProxyServer","")).Trim();if(server.Contains("=")){var parts=server.Split(';').Select(p=>p.Split(new[]{'='},2)).Where(p=>p.Length==2).ToDictionary(p=>p[0].Trim().ToLowerInvariant(),p=>p[1].Trim());server=parts.ContainsKey("https")?parts["https"]:parts.ContainsKey("http")?parts["http"]:"";}if(server.Length==0)return "";if(!server.Contains("://"))server="http://"+server;Uri uri;return Uri.TryCreate(server,UriKind.Absolute,out uri)&&(uri.Scheme=="http"||uri.Scheme=="https"||uri.Scheme.StartsWith("socks"))?server:"";}}catch{return "";}}
     public static void CheckProxy(string value){if(value.Length>0&&value!=SystemProxyMode)Url(value);}
-    public const string Version="0.4.62";
+    public const string Version="0.4.63";
+    // Links added without a browser's own name (pasted, batch, magnet-free files) go out with an ordinary browser name.
+    // Many CDNs refuse the download engine's default "aria2/x.y": Aliyun's answers "403 denied by UA ACL = blacklist" (0.4.63).
+    public const string BrowserAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
     public static readonly string Root = AppDomain.CurrentDomain.BaseDirectory;
     public static readonly string PipeName = "shiying.desktop.v1." + WindowsIdentity.GetCurrent().User.Value.Replace('-', '_');
     public static JavaScriptSerializer Json() { return new JavaScriptSerializer { MaxJsonLength = 8 * 1024 * 1024 }; }
@@ -212,7 +215,7 @@ public partial class Manager : IDisposable {
         string url=Util.Url(Util.Str(input,"url")),referer=Util.Str(input,"referer"),agent=Util.Str(input,"userAgent");
         if(referer.Length>0)referer=Util.Url(referer);if(agent.Length>512||agent.Any(Char.IsControl))throw new Exception("浏览器信息无效");
         var request=(HttpWebRequest)WebRequest.Create(url);request.Method="GET";request.AddRange(0,0);request.Timeout=8000;request.ReadWriteTimeout=8000;request.KeepAlive=false;request.AllowAutoRedirect=true;
-        request.UserAgent=agent.Length>0?agent:"aria2/1.37.0";if(referer.Length>0)request.Referer=referer;
+        request.UserAgent=agent.Length>0?agent:Util.BrowserAgent;if(referer.Length>0)request.Referer=referer;
         request.Proxy=new Uri(url).IsLoopback||ProxyUrl.Length==0?null:new WebProxy(ProxyUrl);
         try{using(var response=(HttpWebResponse)request.GetResponse()){
             if(response.StatusCode!=HttpStatusCode.OK&&response.StatusCode!=HttpStatusCode.PartialContent)throw new Exception("服务器没有直接给出文件");
@@ -304,7 +307,7 @@ public partial class Manager : IDisposable {
         var options=new Dictionary<string,string>{{"gid",job.Id},{"dir",Work(job)},{"out",name},{"split",Config.Connections.ToString()},{"max-connection-per-server",Config.Connections.ToString()},{"min-split-size","1M"},{"continue","true"},{"allow-overwrite","false"},{"auto-file-renaming","false"},{"max-tries","3"},{"retry-wait","2"},{"connect-timeout","20"},{"timeout","30"},{"all-proxy",ProxyUrl},{"no-proxy","localhost,127.0.0.1,::1"}};
         if(Config.RateKiB>0)options["max-download-limit"]=Config.RateKiB+"K";
         if(!String.IsNullOrEmpty(job.Referer))options["referer"]=job.Referer;
-        if(!String.IsNullOrEmpty(job.UserAgent))options["user-agent"]=job.UserAgent;
+        options["user-agent"]=String.IsNullOrEmpty(job.UserAgent)?Util.BrowserAgent:job.UserAgent;
         Rpc("addUri",new[]{String.IsNullOrEmpty(job.NetdiskProvider)?job.Url:NetdiskRelayUrl(job)},options); job.Status="等待下载";
     }
     class RemoteMetadata {public string ETag, Modified, Name;public long Size;public bool? Resume;}
@@ -317,7 +320,7 @@ public partial class Manager : IDisposable {
     RemoteMetadata Metadata(Download job) {
         if(!String.IsNullOrEmpty(job.NetdiskProvider))return NetdiskMetadata(job);
         if(closing)throw new OperationCanceledException();
-        var request=(HttpWebRequest)WebRequest.Create(job.Url);request.Method="GET";request.AddRange(0,0);request.Timeout=10000;request.ReadWriteTimeout=10000;request.KeepAlive=false;request.UserAgent=String.IsNullOrEmpty(job.UserAgent)?"aria2/1.37.0":job.UserAgent;
+        var request=(HttpWebRequest)WebRequest.Create(job.Url);request.Method="GET";request.AddRange(0,0);request.Timeout=10000;request.ReadWriteTimeout=10000;request.KeepAlive=false;request.UserAgent=String.IsNullOrEmpty(job.UserAgent)?Util.BrowserAgent:job.UserAgent;
         activeProbe=request;
         if(closing){request.Abort();throw new OperationCanceledException();}
         request.Proxy=new Uri(job.Url).IsLoopback||ProxyUrl.Length==0?null:new WebProxy(ProxyUrl);
