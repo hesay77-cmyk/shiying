@@ -114,11 +114,44 @@ function render() {
                     status.textContent = pick('已开始下载', 'Started');
                     downloads.set(result.id, status);
                 } else { status.textContent = pick('已打开下载页', 'Download page opened'); }
-                notify(result.id === undefined ? pick('已打开下载页，请保持它打开以完成下载', 'The download page is open; keep it open until it finishes') : pick('下载已开始，进度可在 Chrome 下载列表查看', 'Download started; see progress in Chrome’s downloads'));
+                notify(result.id === undefined ? pick('已打开下载页，请保持它打开以完成下载', 'The download page is open; keep it open until it finishes') : result.takeover ? pick('下载已开始；大文件会交给 Ruxget 桌面版', 'Download started; large files go to Ruxget Desktop') : pick('下载已开始，进度可在 Chrome 下载列表查看', 'Download started; see progress in Chrome’s downloads'));
             } finally { button.disabled = false; }
         });
         onClick(card.querySelector('.copy-button'), () => copy(data.url));
-        card.querySelector('.desktop-button').addEventListener('click', () => {
+        card.querySelector('.desktop-button').addEventListener('click', async () => {
+            // 0.4.64: never the same file twice. If "下载" already handed it to the desktop, nothing more is sent; if Chrome
+            // is downloading this very link, the desktop takes that download over and Chrome's copy stops.
+            const url = card.querySelector('select').value || data.url;
+            if (/^https?:\/\//i.test(url) && !['hls', 'dash'].includes(kind)) {
+                // Asked first, while Chrome still counts this as the click (it shows its prompt only then).
+                const granted = await chrome.permissions.request({permissions: ['nativeMessaging']}).catch(() => false);
+                if (!granted) { failure(new Error('未允许连接桌面版，仍可使用原有下载入口')); return; }
+                const same = value => RuxgetTakeover.sameLink(value, url);
+                const {ruxgetTakeoverLog: log = []} = await chrome.storage.session.get('ruxgetTakeoverLog').catch(() => ({}));
+                // A second click within a few seconds sends it again on purpose (say the desktop task failed or was deleted).
+                if (log.some(entry => entry.result === 'desktop' && (same(entry.url) || same(entry.source)) && Date.now() - entry.at < 600000) && !(card.resendUntil > Date.now())) {
+                    card.resendUntil = Date.now() + 8000;
+                    status.textContent = pick('已交给桌面版', 'In Ruxget Desktop');
+                    notify(pick('这个文件已经交给 Ruxget 桌面版在下载。要再发一次，几秒内再点一下「桌面下载」', 'This file is already downloading in Ruxget Desktop. To send it again, click “Desktop” once more within a few seconds'));
+                    return;
+                }
+                card.resendUntil = 0;
+                const [running] = (await chrome.downloads.search({state: 'in_progress'}).catch(() => [])).filter(item => same(item.url) || same(item.finalUrl));
+                if (running) {
+                    const moved = await chrome.runtime.sendMessage({Message: 'ruxgetHandOver', id: running.id, own: true}).catch(() => null);
+                    if (moved?.ok) {
+                        downloads.delete(running.id); status.textContent = pick('已交给桌面版', 'In Ruxget Desktop');
+                        notify(pick('已交给 Ruxget 桌面版，Chrome 里正在下的这一份已停止', 'Moved to Ruxget Desktop; the copy Chrome was downloading has stopped'));
+                        return;
+                    }
+                    // Chrome keeps its copy in every case below, so nothing is added to the desktop.
+                    const issue = moved && ShiyingDesktop.connectionIssue({message: moved.error});
+                    if (issue) { await ShiyingDesktop.offerDesktopDownload(issue); return; }
+                    if (moved && moved.error !== 'gone' && moved.error !== 'finished') { failure(new Error(pick('桌面版接不了这个链接，仍由 Chrome 下载：', 'Ruxget Desktop can’t take this link, so Chrome keeps it: ') + RuxgetText.tr(moved.error || ''))); return; }
+                    const [still] = await chrome.downloads.search({id: running.id}).catch(() => []);
+                    if (!moved || still?.state === 'in_progress') { failure(new Error(pick('Chrome 还在准备这个下载，请过几秒再点「桌面下载」', 'Chrome is still setting up this download; try “Desktop” again in a few seconds'))); return; }
+                }
+            }
             ShiyingDesktop.send(() => {
                 const headers=Object.fromEntries(Object.entries(data.requestHeaders||{}).map(([key,value])=>[key.toLowerCase(),value]));
                 if(data.cookie||headers.cookie||headers.authorization) throw new Error('这个媒体需要认证信息，请使用原有下载入口');
@@ -217,9 +250,14 @@ chrome.runtime.onMessage.addListener(event => {
     if (event.Message === 'shiyingAccessRevoked') {cards.clear();refresh().then(updateSiteAccess).catch(failure);return;}
     if (event.Message === 'popupAddData' && event.data?.tabId === tabId && !media.some(item => item.url === event.data.url)) { media.push(event.data); render(); probeSoon(); }
 });
-chrome.downloads.onChanged.addListener(event => {
+chrome.downloads.onChanged.addListener(async event => {
     const status = downloads.get(event.id);
     if (!status) return;
+    // Taken over by the desktop (takeover on): Chrome's copy was cancelled on purpose.
+    if (event.error?.current === 'USER_CANCELED') {
+        const {ruxgetTakeoverLog: log = []} = await chrome.storage.session.get('ruxgetTakeoverLog').catch(() => ({}));
+        if (log.some(entry => entry.id === event.id && entry.result === 'desktop')) { downloads.delete(event.id); status.textContent = RuxgetI18n.pick('已交给桌面版', 'In Ruxget Desktop'); return; }
+    }
     if (event.error) status.textContent = RuxgetI18n.pick('下载中断，请在下载列表重试', 'Interrupted; retry from Chrome’s downloads');
     else if (event.state?.current === 'complete') status.textContent = RuxgetI18n.pick('下载完成', 'Done');
 });

@@ -2,7 +2,7 @@
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),vm=require('node:vm'),assert=require('node:assert/strict');
 const root=path.resolve(__dirname,'..'),code=fs.readFileSync(path.join(root,'js/shiying-native.js'),'utf8')+'\nglobalThis.api=ShiyingNative;';
 async function bridgeCase({granted=true,error='',response={ok:true},factoryError=''}={}){
- const calls={native:0,opened:[]};const context={URL,navigator:{userAgent:'review'},chrome:{permissions:{request:async()=>granted},runtime:{getURL:x=>'chrome-extension://review/'+x,sendNativeMessage:async()=>{calls.native++;if(error)throw new Error(error);return response;}},tabs:{create:async x=>calls.opened.push(x)}}};
+ const calls={native:0,opened:[]};const context={URL,navigator:{userAgent:'review'},chrome:{permissions:{contains:async()=>false,request:async()=>granted},runtime:{getURL:x=>'chrome-extension://review/'+x,sendNativeMessage:async()=>{calls.native++;if(error)throw new Error(error);return response;}},tabs:{create:async x=>calls.opened.push(x)}}};
  vm.createContext(context);vm.runInContext(code,context);let result;
  try{result=await context.api.send(()=>{if(factoryError)throw new Error(factoryError);return {action:'add',url:'https://review.example/file.bin'};});}catch(e){result={error:e.message,cancelled:!!e.cancelled,reason:e.connectionIssue};}
  return {calls,result};

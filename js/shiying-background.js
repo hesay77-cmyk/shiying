@@ -221,7 +221,12 @@ async function startDownload(data, tabId) {
         await chrome.tabs.create({url:chrome.runtime.getURL(`downloader.html?${parameters}`), active:true});
         return {page:true};
     }
-    return {id:await chrome.downloads.download({url:data.url, filename:Shiying.filename(data), saveAs})};
+    // With takeover on, this plain file goes to the desktop like any other web download (0.4.64).
+    // Not when the person asked Chrome to ask where to save each file.
+    const takeable = !saveAs && typeof RuxgetTakeover !== 'undefined' && (await RuxgetTakeover.settings()).enabled;
+    if (takeable) await RuxgetTakeover.markTakeable(data.url, Shiying.filename(data), data.webUrl || '').catch(() => {});
+    try { return {id:await chrome.downloads.download({url:data.url, filename:Shiying.filename(data), saveAs}), takeover:takeable}; }
+    catch (error) { if (takeable) await RuxgetTakeover.takeable([data.url]).catch(() => {}); throw error; }
 }
 chrome.runtime.onMessage.addListener((event, sender, respond) => {
     if (!['shiyingPlaylist','shiyingDownload'].includes(event.Message) || sender.id !== chrome.runtime.id) return;

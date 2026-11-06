@@ -109,6 +109,7 @@ function t(key,a,b){let msg=(STR[uiLang]&&STR[uiLang][key])||(STR.zh_CN[key])||k
 function hostText(text){if(text==null||text==='')return '';const s=String(text);if(uiLang==='zh_CN')return s;const key='host_'+s;if(STR.en[key])return STR.en[key];
  let m;if((m=/^约 (\d+) 秒$/.exec(s)))return '~'+m[1]+'s';if((m=/^约 (\d+) 分 (\d+) 秒$/.exec(s)))return '~'+m[1]+'m '+m[2]+'s';if((m=/^约 (\d+) 小时 (\d+) 分$/.exec(s)))return '~'+m[1]+'h '+m[2]+'m';if((m=/^约 (\d+) 天$/.exec(s)))return '~'+m[1]+'d';
  if((m=/^(\d+) 个$/.exec(s)))return m[1];
+ if((m=/^服务器只提供了这个文件的一部分：大约从 (\d+)% 处开始/.exec(s)))return 'The server only provides part of this file: from about '+m[1]+'% on, it refuses the rest (HTTP 416). Cloud drives often limit free accounts this way; a browser download would also get only the first part. What was downloaded is kept in the task.';
  if(s.startsWith('区间 '))return 'Range '+s.slice(3);
  if(s.includes('；最终大小以合并后的文件为准')){const head=s.split('；最终大小以合并后的文件为准')[0];return hostText(head)+'; final size is the merged file';}
  // Longer phrases first so short tokens like 已完成 do not punch holes in full sentences
@@ -143,6 +144,8 @@ function hostText(text){if(text==null||text==='')return '';const s=String(text);
   '链接不存在或已过期，请重新获取下载地址':'The link is missing or expired. Get the download link again',
   '网站拒绝了下载请求，请在原网页重新读取并发送':'The site refused the download. Read it again on the page and resend',
   '网站暂时限制请求，请稍后再试':'The site is limiting requests. Try again later',
+  '服务器不再提供数据，所有连接都失败了。可以稍后重试，或在原网页重新获取下载地址':'The server stopped sending data and every connection failed. Try again later, or get the download link again from the original page',
+  '服务器给出的数据比请求的少，可能只肯提供文件的一部分。可以稍后重试，或在原网页重新获取下载地址':'The server sent less than was asked for; it may provide only part of the file. Try again later, or get the download link again from the original page',
   '网站未返回完整文件，请重新读取视频链接':'The site didn’t return the full file. Read the video link again',
   '源文件已变化或无法确认版本，请新建下载；原有未完成数据已保留':'The source changed or can’t be verified. Start a new download; unfinished data is kept',
   '任务仍在运行，请先暂停再删除':'The task is running. Pause it before deleting',

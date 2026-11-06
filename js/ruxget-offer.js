@@ -189,12 +189,14 @@ if(typeof chrome!=='undefined'&&chrome.downloads&&typeof ServiceWorkerGlobalScop
         }
         if(changes.ruxgetUiLanguage)RuxgetOffer.menuTitles();
     });
-    // "改用桌面版" in the panel: the panel may close at any moment, so the worker does the hand-over.
+    // "改用桌面版" in the panel, or "桌面下载" on a media row whose link Chrome is already downloading (own: Ruxget
+    // started that copy itself). The panel may close at any moment, so the worker does the hand-over.
     chrome.runtime.onMessage.addListener((event,sender,respond)=>{
         if(sender.id!==chrome.runtime.id||event?.Message!=='ruxgetHandOver')return;
         (async()=>{
             const [item]=await chrome.downloads.search({id:Number(event.id)});
-            if(!item||item.state!=='in_progress'||item.byExtensionId||!/^https?:\/\//i.test(item.finalUrl||item.url||''))return {ok:false,result:'chrome',error:'gone'};
+            const ours=item?.byExtensionId&&event.own===true&&item.byExtensionId===chrome.runtime.id;
+            if(!item||item.state!=='in_progress'||item.byExtensionId&&!ours||!/^https?:\/\//i.test(item.finalUrl||item.url||''))return {ok:false,result:'chrome',error:'gone'};
             const outcome=await RuxgetTakeover.handOver(item);
             return Object.assign({ok:outcome.result==='desktop'},outcome);
         })().then(respond,error=>respond({ok:false,result:'chrome',error:error?.message||String(error)}));

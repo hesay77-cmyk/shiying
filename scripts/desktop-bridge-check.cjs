@@ -33,7 +33,7 @@ function native(caller,bytes,program=exe){return new Promise((resolve,reject)=>{
  const actual=await dispatch(720);assert(actual.ok);assert.equal(actual.payload.videoUrl,catalog.video[0].url);assert.equal(actual.payload.height,720);assert(!('cookie' in actual.payload));
  assert.equal((await dispatch(1080)).ok,false);assert.equal((await dispatch(720,'https://evil.test/')).ok,false);
  catalog.createdAt=0;assert.equal((await dispatch(720)).ok,false);
- let nativeCalls=0,opened=[];const helperContext={chrome:{permissions:{request:async()=>false},runtime:{getURL:file=>file,sendNativeMessage:async()=>{nativeCalls++;throw new Error('Specified native messaging host not found.');}},tabs:{create:async tab=>opened.push(tab)}},document:{querySelector:()=>null}};
+ let nativeCalls=0,opened=[];const helperContext={chrome:{permissions:{contains:async()=>false,request:async()=>false},runtime:{getURL:file=>file,sendNativeMessage:async()=>{nativeCalls++;throw new Error('Specified native messaging host not found.');}},tabs:{create:async tab=>opened.push(tab)}},document:{querySelector:()=>null}};
  vm.createContext(helperContext);vm.runInContext(fs.readFileSync(path.join(root,'js/shiying-native.js'),'utf8')+fs.readFileSync(path.join(root,'js/shiying-desktop.js'),'utf8')+'\nglobalThis.api=ShiyingDesktop;',helperContext);
  await assert.rejects(helperContext.api.send(()=>({action:'add',url:'https://example.test/'})),/未允许/);assert.equal(nativeCalls,0);
  helperContext.chrome.permissions.request=async()=>true;await assert.rejects(helperContext.api.send(()=>({action:'add',url:'https://example.test/'})),error=>error.cancelled&&error.connectionIssue==='missing');assert.equal(opened.length,1);assert(opened[0].url.includes('shiying-get-desktop.html?reason=missing'));

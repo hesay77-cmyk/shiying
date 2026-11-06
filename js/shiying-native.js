@@ -74,7 +74,8 @@ const ShiyingNative = {
         try {return await ShiyingNative.pendingPrompt;} finally {ShiyingNative.pendingPrompt=null;}
     },
     async send(payloadFactory) {
-        const granted=await chrome.permissions.request({permissions:['nativeMessaging']});
+        // Already allowed: no second request, which Chrome refuses once the click's user gesture has expired.
+        const granted=await chrome.permissions.contains({permissions:['nativeMessaging']})||await chrome.permissions.request({permissions:['nativeMessaging']});
         if(!granted)throw new Error('未允许连接桌面版，仍可使用原有下载入口');
         const result=await payloadFactory();
         // Every hand-off tells the desktop app where Chrome saves, so it can keep its folder beside the extension's.

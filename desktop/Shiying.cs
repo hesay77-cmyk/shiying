@@ -68,7 +68,7 @@ static class Util {
     // Windows proxy for HTTPS traffic, as http://host:port, or "" when the system proxy is off or uses only a PAC script.
     public static string SystemProxy(){try{using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Internet Settings")){if(key==null||Convert.ToInt32(key.GetValue("ProxyEnable",0))!=1)return "";string server=Convert.ToString(key.GetValue("ProxyServer","")).Trim();if(server.Contains("=")){var parts=server.Split(';').Select(p=>p.Split(new[]{'='},2)).Where(p=>p.Length==2).ToDictionary(p=>p[0].Trim().ToLowerInvariant(),p=>p[1].Trim());server=parts.ContainsKey("https")?parts["https"]:parts.ContainsKey("http")?parts["http"]:"";}if(server.Length==0)return "";if(!server.Contains("://"))server="http://"+server;Uri uri;return Uri.TryCreate(server,UriKind.Absolute,out uri)&&(uri.Scheme=="http"||uri.Scheme=="https"||uri.Scheme.StartsWith("socks"))?server:"";}}catch{return "";}}
     public static void CheckProxy(string value){if(value.Length>0&&value!=SystemProxyMode)Url(value);}
-    public const string Version="0.4.63";
+    public const string Version="0.4.64";
     // Links added without a browser's own name (pasted, batch, magnet-free files) go out with an ordinary browser name.
     // Many CDNs refuse the download engine's default "aria2/x.y": Aliyun's answers "403 denied by UA ACL = blacklist" (0.4.63).
     public const string BrowserAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
@@ -109,6 +109,9 @@ static class Util {
         if(Regex.IsMatch(text,"Resource not found|404|HTTP Error 410",RegexOptions.IgnoreCase))return "链接不存在或已过期，请重新获取下载地址";
         if(Regex.IsMatch(text,"403|Forbidden",RegexOptions.IgnoreCase))return "网站拒绝了下载请求，请在原网页重新读取并发送";
         if(Regex.IsMatch(text,"429|Too Many Requests",RegexOptions.IgnoreCase))return "网站暂时限制请求，请稍后再试";
+        if(Regex.IsMatch(text,"No URI available",RegexOptions.IgnoreCase))return "服务器不再提供数据，所有连接都失败了。可以稍后重试，或在原网页重新获取下载地址";
+        // aria2 asked for one range and the server sent a shorter one: it is holding part of the file back.
+        if(Regex.IsMatch(text,"Invalid range header",RegexOptions.IgnoreCase))return "服务器给出的数据比请求的少，可能只肯提供文件的一部分。可以稍后重试，或在原网页重新获取下载地址";
         return text.Substring(0,Math.Min(500,text.Length));
     }
     public static void KillTree(Process p) {
@@ -317,6 +320,44 @@ public partial class Manager : IDisposable {
         if(encoded.Success)return Util.Name(Uri.UnescapeDataString(encoded.Groups[1].Value.Trim().Trim('"')));
         try{string name=new System.Net.Mime.ContentDisposition(header).FileName;return String.IsNullOrWhiteSpace(name)?"":Util.Name(name);}catch{return "";}
     }
+    // 0.4.64: some servers serve only part of a file and answer 416 for the rest (PikPak does this for shared
+    // files on free accounts: the first 56% and the very end of a 4 GB video). aria2 then only says "No URI available",
+    // and Chrome even calls its cut-off copy finished. One-byte probes where pieces are missing tell the person why.
+    void ExplainPartial(Download job){
+        var t=job.Transfer;if(job.Kind!="file"||!String.IsNullOrEmpty(job.NetdiskProvider)||t==null||t.Total<=0||t.Completed<0||t.Completed>=t.Total)return;
+        long[] offsets=TransferData.MissingStarts(t,16);if(offsets.Length==0)return;
+        string url=job.Url,referer=job.Referer,agent=String.IsNullOrEmpty(job.UserAgent)?Util.BrowserAgent:job.UserAgent,proxy=ProxyUrl,before=job.Error;long total=t.Total;
+        Task.Run(()=>{
+            long served=0;
+            foreach(long offset in offsets){
+                if(closing)return;
+                int status=ProbeStatus(url,referer,agent,proxy,offset);
+                if(status==206){served=offset;continue;}
+                if(status!=416)continue;
+                // Narrow down where the refused part starts to 64 KiB (about 12 probes per 256 MB).
+                long low=served,high=offset;
+                while(high-low>65536&&!closing){long middle=low+(high-low)/2;int answer=ProbeStatus(url,referer,agent,proxy,middle);if(answer==416)high=middle;else if(answer==206)low=middle;else break;}
+                lock(gate){if(!closing&&!disposed&&job.Status=="失败"&&job.Error==before){job.Error=PartialMessage(high,total);Save();}}
+                return;
+            }
+        });
+    }
+    public static string PartialMessage(long offset,long total){
+        int percent=(int)Math.Max(1,Math.Min(99,Math.Round(100.0*offset/total)));
+        return "服务器只提供了这个文件的一部分：大约从 "+percent+"% 处开始，后面的内容拒绝下载（HTTP 416）。网盘对免费账号常有这种限制，换成浏览器下载也只能得到前面这部分。已下载的部分保留在任务里。";
+    }
+    // HTTP status for one byte at offset, or -1 when the server can't be reached.
+    public static int ProbeStatus(string url,string referer,string agent,string proxy,long offset){
+        HttpWebRequest request=null;
+        try{
+            request=(HttpWebRequest)WebRequest.Create(url);request.Method="GET";request.AddRange(offset,offset);request.Timeout=8000;request.ReadWriteTimeout=8000;request.KeepAlive=false;request.UserAgent=agent;
+            request.Proxy=new Uri(url).IsLoopback||String.IsNullOrEmpty(proxy)?null:new WebProxy(proxy);if(!String.IsNullOrEmpty(referer))request.Referer=referer;
+            // A server that ignores Range sends the whole file: abort before closing, so the body is never read.
+            var response=(HttpWebResponse)request.GetResponse();int code=(int)response.StatusCode;request.Abort();response.Close();return code;
+        }catch(WebException ex){var response=ex.Response as HttpWebResponse;try{return response!=null?(int)response.StatusCode:-1;}finally{if(response!=null)response.Close();}}
+        catch(Exception){return -1;}
+        finally{if(request!=null)request.Abort();}
+    }
     RemoteMetadata Metadata(Download job) {
         if(!String.IsNullOrEmpty(job.NetdiskProvider))return NetdiskMetadata(job);
         if(closing)throw new OperationCanceledException();
@@ -407,7 +448,7 @@ public partial class Manager : IDisposable {
                 if(status=="waiting"&&!job.PauseRequested)job.Status="等待下载";
                 if(status=="complete") {
                     string file=Path.Combine(Work(job),String.IsNullOrEmpty(job.WorkName)?Util.Name(job.Title):job.WorkName); job.File=Util.PlaceFile(file,Util.OutputFolder(job),job.Title);job.Status="已完成";job.Progress=100;job.Speed="";job.NetdiskCookie="";lock(relayGate)relayJobs.Remove(job.Id);TransferData.Complete(job);Save();
-                }else if(status=="error"||status=="removed") {job.Status="失败";job.Speed="";job.Error=Util.SafeError(Util.Str(state,"errorMessage","下载中断，请重试"));Save();}
+                }else if(status=="error"||status=="removed") {job.Status="失败";job.Speed="";job.Error=Util.SafeError(Util.Str(state,"errorMessage","下载中断，请重试"));Save();if(status=="error"&&Regex.IsMatch(Util.Str(state,"errorMessage",""),"No URI available|416|Invalid range header",RegexOptions.IgnoreCase))ExplainPartial(job);}
                 else if(status=="paused"){job.Status="已暂停";job.Speed="";Save();}
             }catch(Exception ex){job.Status="失败";job.Speed="";job.Error=Util.SafeError(ex.Message);Save();}
             PublishSnapshot();

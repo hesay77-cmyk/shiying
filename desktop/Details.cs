@@ -73,6 +73,17 @@ public static class TransferData {
     }
     public static bool HasVersion(Download job){return !String.IsNullOrEmpty(job.ETag)&&!job.ETag.StartsWith("W/")||!String.IsNullOrEmpty(job.Modified);}
     public static string ResumeText(Download job){if(TorrentInfo.IsBt(job))return job.HasMetadata?"支持（分块校验）":"获取信息后确认";if(job.Kind!="file")return "取决于源站";var t=job.Transfer??new TransferInfo();return t.Resume==true?HasVersion(job)?"支持":"无法安全续传":t.Resume==false?"不支持":"尚未确认";}
+    // Start of the first missing piece in each of up to `groups` equal parts of the file, in file order.
+    public static long[] MissingStarts(TransferInfo t,int groups){
+        if(t==null||t.Total<=0||t.PieceLength<=0||t.Pieces<=0||t.Pieces>4000000||(t.Total-1)/t.PieceLength+1!=t.Pieces)return new long[0];
+        if(t.Bitfield==null||t.Bitfield.Length!=(t.Pieces+7)/8*2||t.Bitfield.Any(c=>!Uri.IsHexDigit(c)))return new long[0];
+        var result=new List<long>();int count=Math.Max(1,Math.Min(groups,t.Pieces));
+        for(int n=0;n<count;n++){
+            int first=(int)((long)n*t.Pieces/count),last=(int)((long)(n+1)*t.Pieces/count);
+            for(int piece=first;piece<last;piece++)if((Convert.ToInt32(t.Bitfield[piece/4].ToString(),16)&(8>>(piece%4)))==0){result.Add((long)piece*t.PieceLength);break;}
+        }
+        return result.ToArray();
+    }
     // aria2 schedules fixed-size pieces dynamically. These are file ranges, not invented thread slots.
     public static DownloadSegment[] Segments(Download job){
         var t=job.Transfer;long total=TorrentInfo.IsBt(job)?job.ExpectedSize:t==null?-1:t.Total;if(job.Kind!="file"&&!TorrentInfo.IsBt(job)||t==null||total<=0||t.PieceLength<=0||t.Pieces<=0||t.Pieces>4000000||(total-1)/t.PieceLength+1!=t.Pieces)return new DownloadSegment[0];
