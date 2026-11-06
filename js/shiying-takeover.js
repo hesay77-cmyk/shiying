@@ -77,11 +77,20 @@ const RuxgetTakeover={
         };
         wrapped.ruxgetMarked=true;downloads.download=wrapped;
     },
+    // Recent hand-overs and why a download stayed in Chrome, with timings, so a miss can be explained (0.4.65).
+    // Kept in local storage: session storage is cleared whenever the worker restarts, which is exactly when misses happen.
     remember(entry){
         return RuxgetTakeover.serial(async()=>{try{
-            const {[RuxgetTakeover.LOG]:log=[]}=await chrome.storage.session.get(RuxgetTakeover.LOG);
-            await chrome.storage.session.set({[RuxgetTakeover.LOG]:[Object.assign({at:Date.now()},entry),...log].slice(0,5)});
+            const {[RuxgetTakeover.LOG]:log=[]}=await chrome.storage.local.get(RuxgetTakeover.LOG);
+            await chrome.storage.local.set({[RuxgetTakeover.LOG]:[Object.assign({at:Date.now()},entry),...log].slice(0,8)});
         }catch{/* The log is only a convenience on the settings page and in the panel. */}});
+    },
+    // How far Chrome got before Ruxget could act: seconds since the download started, and the share already downloaded.
+    async progress(item){
+        const [current]=await chrome.downloads.search({id:item.id}).catch(()=>[]);const now=current||item;
+        const total=Math.max(Number(now.totalBytes)||0,Number(now.fileSize)||0),done=Number(now.bytesReceived)||0;
+        const started=Date.parse(item.startTime||now.startTime||'');
+        return {state:now.state,paused:!!now.paused,lagMs:Number.isFinite(started)?Math.max(0,Date.now()-started):-1,percent:total>0?Math.round(100*done/total):-1,done,total};
     },
     async handle(item){
         const config=await RuxgetTakeover.settings(),urls=[item.url,item.finalUrl].filter(Boolean);
@@ -90,8 +99,15 @@ const RuxgetTakeover={
         const offered=config.enabled&&(!item.byExtensionId||item.byExtensionId===chrome.runtime.id)?await RuxgetTakeover.takeable(urls):null;
         if(RuxgetTakeover.skipReason(offered?Object.assign({},item,{byExtensionId:''}):item,config,chrome.runtime.id))return;
         if(await RuxgetTakeover.takeOwn(urls)&&!offered)return;
-        await RuxgetTakeover.handOver(item,offered||{});
+        // Reached so late that Chrome has (nearly) finished: moving it now would only download it a second time.
+        const seen=await RuxgetTakeover.progress(item);
+        if(seen.state!=='in_progress'||seen.percent>=RuxgetTakeover.LATE){
+            await RuxgetTakeover.remember({url:item.finalUrl||item.url,id:item.id,name:RuxgetTakeover.name(item),result:'chrome',error:'late',lagMs:seen.lagMs,percent:seen.percent});
+            return;
+        }
+        await RuxgetTakeover.handOver(item,Object.assign({},offered||{},{seen}));
     },
+    LATE:80,
     // Moves one running Chrome download to the desktop: automatic takeover, or "改用桌面版" in the panel.
     // Returns {result:'desktop'} or {result:'chrome',error}; a file the desktop can't take keeps downloading in Chrome.
     // One hand-over per download at a time: a second request for the same download (say "桌面下载" clicked while the
@@ -104,13 +120,16 @@ const RuxgetTakeover={
     },
     async moveNow(item,hint){
         if(!await chrome.permissions.contains({permissions:['nativeMessaging']}))return {result:'chrome',error:'not connected'};
-        // A brand-new download can refuse a pause while Chrome is still naming it, so retry briefly.
-        // A file that finishes in the meantime is simply left to Chrome.
+        // A brand-new download can refuse a pause while Chrome is still naming it, so keep trying for a few seconds.
+        // A file that finishes in the meantime is simply left to Chrome. Every outcome is noted with its timing.
+        const seen=hint.seen||await RuxgetTakeover.progress(item),started=Date.now();
+        const note=(result,error,extra={})=>RuxgetTakeover.remember(Object.assign({url:item.finalUrl||item.url,source:item.url,id:item.id,name:RuxgetTakeover.name(item)||String(hint.name||'').split(/[\\/]/).pop(),result,error,lagMs:seen.lagMs,percent:seen.percent,ms:Date.now()-started},extra));
         for(let attempt=0;;attempt++){
             try{await chrome.downloads.pause(item.id);break;}
-            catch{
+            catch(error){
                 const [current]=await chrome.downloads.search({id:item.id});
-                if(attempt>=10||!current||current.state!=='in_progress')return {result:'chrome',error:'finished'};
+                if(!current||current.state!=='in_progress')return {result:'chrome',error:'finished'};
+                if(attempt>=50){await note('chrome','pause',{detail:error?.message||String(error)});return {result:'chrome',error:'pause'};}
                 await new Promise(resolve=>setTimeout(resolve,100));
             }
         }
@@ -122,7 +141,7 @@ const RuxgetTakeover={
         catch(error){reply={ok:false,error:error?.message||String(error)};}
         if(reply?.ok){
             // Noted before cancelling, so the panel can tell "moved to the desktop" from "interrupted" when Chrome reports the cancel.
-            await RuxgetTakeover.remember({url,source:item.url,id:item.id,name:reply.name||name,result:'desktop'});
+            await note('desktop','',{name:reply.name||name});
             // Erase only once Chrome has finished cancelling, or a "cancelled" entry stays in its list.
             try{await chrome.downloads.cancel(item.id);}catch{}
             for(let attempt=0;attempt<20;attempt++){
@@ -137,7 +156,7 @@ const RuxgetTakeover={
         // Back to Chrome: resume the paused copy, or start it again if Chrome can't resume this server.
         try{await chrome.downloads.resume(item.id);}
         catch{try{await chrome.downloads.cancel(item.id);}catch{}try{await chrome.downloads.download({url});}catch{}}
-        await RuxgetTakeover.remember({url,name,result:'chrome',error:String(reply?.error||'')});
+        await note('chrome',String(reply?.error||'')||'desktop');
         return {result:'chrome',error:String(reply?.error||'')};
     }
 };

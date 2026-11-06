@@ -11,6 +11,8 @@ const MB=1048576,SIZE=120*MB;
 const server=http.createServer((q,r)=>{
  const u=new URL(q.url,'http://x');
  if(u.pathname==='/')return r.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}),r.end('<!doctype html><meta charset=utf-8><title>Share page</title><p>files</p>');
+ // A fast 3 MB file that Chrome finishes at once (for the "too late" case).
+ if(u.pathname==='/quick.zip')return r.writeHead(200,{'Content-Type':'application/zip','Content-Length':3*MB}),r.end(Buffer.alloc(3*MB,1));
  if(!u.pathname.startsWith('/file/'))return r.writeHead(404),r.end();
  const m=/bytes=(\d+)-(\d*)/.exec(q.headers.range||''),start=m?Number(m[1]):0,end=m&&m[2]?Math.min(Number(m[2]),SIZE-1):SIZE-1;
  r.writeHead(m?206:200,{'Content-Type':'video/mp4','Accept-Ranges':'bytes','Content-Length':end-start+1,...(m?{'Content-Range':`bytes ${start}-${end}/${SIZE}`}:{})});
@@ -62,7 +64,7 @@ const server=http.createServer((q,r)=>{
   }
   const row=(pp,what)=>ev(`document.querySelector('.media-item:not(template *) ${what}').click();'ok'`,pp);
   const statusText=pp=>ev(`document.querySelector('.media-item .item-status').textContent`,pp);
-  const reset=()=>ev(`(async()=>{for(const d of await chrome.downloads.search({}))try{await chrome.downloads.cancel(d.id);}catch{}await chrome.downloads.erase({});native.length=0;reply={ok:true,id:'job1',name:'clip.mp4'};await chrome.storage.session.remove(['ruxgetTakeoverLog','ruxgetOwnDownloads','ruxgetTakeableDownloads']);return 'ok';})()`,ss);
+  const reset=()=>ev(`(async()=>{for(const d of await chrome.downloads.search({}))try{await chrome.downloads.cancel(d.id);}catch{}await chrome.downloads.erase({});native.length=0;reply={ok:true,id:'job1',name:'clip.mp4'};await chrome.storage.session.remove(['ruxgetOwnDownloads','ruxgetTakeableDownloads']);await chrome.storage.local.remove('ruxgetTakeoverLog');return 'ok';})()`,ss);
 
   // 1. Takeover on: "下载" on a 120 MB video goes to the desktop; Chrome's copy is cancelled and erased.
   await takeover(true);let p=await panel();await row(p.pp,'.download-button');
@@ -111,6 +113,18 @@ const server=http.createServer((q,r)=>{
   const back=await until(async()=>(await calls()).length>=1&&(await list()).find(d=>d.url===p.url&&d.state==='in_progress'&&!d.paused));await wait(2000);
   check(back&&(await calls()).length===1&&(await list()).filter(d=>d.url===p.url&&d.state==='in_progress').length===1,'a refused file finishes in Chrome, asked once, one copy');
   await p.close();await reset();
+
+  // 4b. Reached too late (0.4.65): Chrome has already finished, so nothing is sent and the reason is kept with its timing.
+  await takeover(false);
+  const quick=await ev(`new Promise(done=>chrome.downloads.download({url:'${origin}/quick.zip'},id=>{const check=()=>chrome.downloads.search({id}).then(([d])=>d&&d.state==='complete'?done(d):setTimeout(check,100));check();}))`,ss);
+  // As if Chrome had started it from a page (not one of Ruxget's own), with takeover on for files of 1 MB and up.
+  await ev(`chrome.storage.session.remove('ruxgetOwnDownloads').then(()=>chrome.storage.local.set({ruxgetTakeover:{enabled:true,minMB:1,minChosen:true,skipHosts:[]}}))`,ss);
+  await ev(`native.length=0;RuxgetTakeover.handle(${JSON.stringify(Object.assign({},quick,{state:"in_progress",bytesReceived:0,byExtensionId:"",byExtensionName:""}))}).then(()=>'ok')`,ss);
+  const late=(await ev(`chrome.storage.local.get('ruxgetTakeoverLog').then(v=>v.ruxgetTakeoverLog||[])`,ss))[0];
+  check((await calls()).length===0&&late&&late.result==='chrome'&&late.error==='late'&&late.percent===100&&late.lagMs>=0,'a download Chrome has already finished is left alone, and the log says why and how late');
+  const page2=await send('Target.createTarget',{url:`chrome-extension://${id}/shiying-desktop.html#takeover`});const dp=await attach(page2.result.targetId);
+  check(await until(async()=>(await ev(`document.querySelector('#takeoverLog')?.textContent||''`,dp)).includes('来得太晚')),'the settings page shows that reason in plain words');
+  await send('Target.closeTarget',{targetId:page2.result.targetId});await reset();
 
   // 5. Takeover on, "另存为" chosen in settings: the person picks the place in Chrome, nothing is handed over.
   await ev(`chrome.storage.sync.set({saveAs:true})`,ss);

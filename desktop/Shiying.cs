@@ -68,7 +68,7 @@ static class Util {
     // Windows proxy for HTTPS traffic, as http://host:port, or "" when the system proxy is off or uses only a PAC script.
     public static string SystemProxy(){try{using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Internet Settings")){if(key==null||Convert.ToInt32(key.GetValue("ProxyEnable",0))!=1)return "";string server=Convert.ToString(key.GetValue("ProxyServer","")).Trim();if(server.Contains("=")){var parts=server.Split(';').Select(p=>p.Split(new[]{'='},2)).Where(p=>p.Length==2).ToDictionary(p=>p[0].Trim().ToLowerInvariant(),p=>p[1].Trim());server=parts.ContainsKey("https")?parts["https"]:parts.ContainsKey("http")?parts["http"]:"";}if(server.Length==0)return "";if(!server.Contains("://"))server="http://"+server;Uri uri;return Uri.TryCreate(server,UriKind.Absolute,out uri)&&(uri.Scheme=="http"||uri.Scheme=="https"||uri.Scheme.StartsWith("socks"))?server:"";}}catch{return "";}}
     public static void CheckProxy(string value){if(value.Length>0&&value!=SystemProxyMode)Url(value);}
-    public const string Version="0.4.64";
+    public const string Version="0.4.65";
     // Links added without a browser's own name (pasted, batch, magnet-free files) go out with an ordinary browser name.
     // Many CDNs refuse the download engine's default "aria2/x.y": Aliyun's answers "403 denied by UA ACL = blacklist" (0.4.63).
     public const string BrowserAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
@@ -565,7 +565,10 @@ static class BrowserBridge {
             if(!new[]{"add","takeover","netdisk","netdiskFolder","show","status","forget"}.Contains(action))throw new Exception("不支持的浏览器操作");if(action=="add"||action=="takeover")Util.Url(Util.Str(message,"url"));
             using(var pipe=new NamedPipeClientStream(".",Util.PipeName,PipeDirection.InOut)){
                 // Netdisk and taken-over downloads start the app in the tray instead of opening its window.
-                try{pipe.Connect(action=="status"?3000:300);}catch(TimeoutException){if(action=="status")throw new Exception("桌面版正忙，请稍后");Process.Start(new ProcessStartInfo(Application.ExecutablePath,action=="netdisk"||action=="takeover"||action=="forget"?"--background":""){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=Util.Root});pipe.Connect(10000);}
+                // 0.4.65: when the app is already running, a busy pipe (it answers one browser request at a time) is waited
+                // for instead of starting another copy after 0.3 s, which only delayed taken-over downloads.
+                Mutex alive;bool runningNow=Mutex.TryOpenExisting("Local\\"+Util.PipeName,out alive);if(alive!=null)alive.Dispose();
+                try{pipe.Connect(action=="status"?3000:runningNow?10000:300);}catch(TimeoutException){if(runningNow&&action!="status")throw new Exception("桌面版正忙，请稍后");if(action=="status")throw new Exception("桌面版正忙，请稍后");Process.Start(new ProcessStartInfo(Application.ExecutablePath,action=="netdisk"||action=="takeover"||action=="forget"?"--background":""){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=Util.Root});pipe.Connect(10000);}
                 WriteFrame(pipe,frame);response=Util.Json().DeserializeObject(Encoding.UTF8.GetString(ReadFrame(pipe)));
             }
         }catch(Exception ex){response=new{ok=false,error=Util.SafeError(ex.Message)};}

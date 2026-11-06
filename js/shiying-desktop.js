@@ -63,13 +63,26 @@ if(takeoverSwitch&&chrome.storage?.local){
     const read=async()=>Object.assign({enabled:false,minMB:1,skipHosts:[]},(await chrome.storage.local.get(KEY))[KEY]||{});
     const save=async patch=>chrome.storage.local.set({[KEY]:Object.assign(await read(),patch)});
     const hosts=text=>[...new Set(text.split(/[\s,，]+/).map(entry=>entry.trim().toLowerCase().replace(/^https?:\/\//,'').replace(/[/:].*$/,'')).filter(Boolean))].slice(0,200);
+    // One line per recent download: where it went, why, and how quickly Ruxget got to it (0.4.65).
+    function describe(entry){
+        const time=new Date(entry.at||Date.now()).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}),name=entry.name||entry.url||'';
+        const lag=entry.lagMs>=0?(entry.lagMs/1000).toFixed(1):'?',pct=entry.percent>=0?entry.percent:'?';
+        const timing=entry.lagMs>=0?pick(`（下载开始 ${lag} 秒后接手，Chrome 已下 ${pct}%）`,` (reached ${lag}s after it started, ${pct}% done in Chrome)`):'';
+        if(entry.result==='desktop')return time+' '+pick('已交给桌面版：','Sent to the desktop app: ')+name+timing;
+        const reasons={late:pick(`Ruxget 来得太晚：下载开始 ${lag} 秒后才接手，Chrome 已下 ${pct}%，不再重下`,`Ruxget got to it too late: ${lag}s after it started, ${pct}% already done, so it was not downloaded again`),
+            pause:pick('Chrome 不让暂停这个下载','Chrome would not pause this download')+(entry.detail?'：'+entry.detail:''),
+            'not connected':pick('没有允许连接桌面版','The desktop app connection isn’t allowed'),
+            desktop:pick('桌面版没有接','The desktop app didn’t take it')};
+        const why=reasons[entry.error]||(typeof RuxgetText!=='undefined'?RuxgetText.tr(entry.error||''):entry.error)||pick('桌面版没有接','The desktop app didn’t take it');
+        return time+' '+pick('留在 Chrome：','Kept in Chrome: ')+name+' — '+why+(entry.error==='late'?'':timing);
+    }
     async function render(){
         const config=await read();
         takeoverSwitch.checked=!!config.enabled;options.hidden=!config.enabled;
         if(document.activeElement!==min)min.value=config.minMB;
         if(document.activeElement!==skip)skip.value=(config.skipHosts||[]).join('\n');
-        let entries=[];try{entries=(await chrome.storage.session.get(LOG))[LOG]||[];}catch{}
-        log.replaceChildren(...entries.map(entry=>{const item=document.createElement('li');item.className=entry.result==='desktop'?'is-desktop':'';item.textContent=(entry.result==='desktop'?pick('已交给桌面版：','Sent to the desktop app: '):pick('留在 Chrome：','Kept in Chrome: '))+(entry.name||entry.url);item.title=entry.url;return item;}));
+        let entries=[];try{entries=(await chrome.storage.local.get(LOG))[LOG]||[];}catch{}
+        log.replaceChildren(...entries.map(entry=>{const item=document.createElement('li');item.className=entry.result==='desktop'?'is-desktop':'';item.textContent=describe(entry);item.title=entry.url||'';return item;}));
     }
     takeoverSwitch.addEventListener('change',async()=>{
         const on=takeoverSwitch.checked;status.textContent='';

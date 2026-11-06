@@ -127,7 +127,7 @@ function render() {
                 const granted = await chrome.permissions.request({permissions: ['nativeMessaging']}).catch(() => false);
                 if (!granted) { failure(new Error('未允许连接桌面版，仍可使用原有下载入口')); return; }
                 const same = value => RuxgetTakeover.sameLink(value, url);
-                const {ruxgetTakeoverLog: log = []} = await chrome.storage.session.get('ruxgetTakeoverLog').catch(() => ({}));
+                const {ruxgetTakeoverLog: log = []} = await chrome.storage.local.get('ruxgetTakeoverLog').catch(() => ({}));
                 // A second click within a few seconds sends it again on purpose (say the desktop task failed or was deleted).
                 if (log.some(entry => entry.result === 'desktop' && (same(entry.url) || same(entry.source)) && Date.now() - entry.at < 600000) && !(card.resendUntil > Date.now())) {
                     card.resendUntil = Date.now() + 8000;
@@ -255,7 +255,7 @@ chrome.downloads.onChanged.addListener(async event => {
     if (!status) return;
     // Taken over by the desktop (takeover on): Chrome's copy was cancelled on purpose.
     if (event.error?.current === 'USER_CANCELED') {
-        const {ruxgetTakeoverLog: log = []} = await chrome.storage.session.get('ruxgetTakeoverLog').catch(() => ({}));
+        const {ruxgetTakeoverLog: log = []} = await chrome.storage.local.get('ruxgetTakeoverLog').catch(() => ({}));
         if (log.some(entry => entry.id === event.id && entry.result === 'desktop')) { downloads.delete(event.id); status.textContent = RuxgetI18n.pick('已交给桌面版', 'In Ruxget Desktop'); return; }
     }
     if (event.error) status.textContent = RuxgetI18n.pick('下载中断，请在下载列表重试', 'Interrupted; retry from Chrome’s downloads');

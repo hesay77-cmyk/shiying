@@ -98,7 +98,7 @@ const MB=1024*1024;
   item=await settle(fromPage);assert.equal(item.state,'complete');assert.equal(await calls(),callsBefore);await popup.close();
   check('downloads started by Ruxget itself (service worker or its pages) are left alone');
 
-  const log=await worker.evaluate(()=>chrome.storage.session.get('ruxgetTakeoverLog'));
+  const log=await worker.evaluate(()=>chrome.storage.local.get('ruxgetTakeoverLog'));
   assert.deepEqual(log.ruxgetTakeoverLog.map(entry=>entry.result),['chrome','chrome','desktop']);
   check('the last results are kept for the settings page (session only)');
 

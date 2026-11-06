@@ -5,7 +5,8 @@ const root=path.resolve(__dirname,'..'),report=fs.mkdtempSync(path.join(process.
 const checks=[];function check(name){checks.push(name);console.log('PASS '+name);}
 (async()=>{
  // Answers after a short delay, so the test can register the job before Chrome finishes the file.
- const server=http.createServer((request,response)=>setTimeout(()=>{response.writeHead(200,{'Content-Type':'application/octet-stream','Content-Length':2048});response.end(Buffer.alloc(2048,1));},400));
+ // 2 MB sent over about 2 s, so a download is still running when takeover looks at it (0.4.65 leaves finished ones alone).
+ const server=http.createServer((request,response)=>setTimeout(()=>{const size=2*1024*1024,chunk=Buffer.alloc(64*1024,1);let sent=0;response.writeHead(200,{'Content-Type':'application/octet-stream','Content-Length':size});const timer=setInterval(()=>{if(response.destroyed||sent>=size){clearInterval(timer);return response.end();}sent+=chunk.length;response.write(chunk);},60);response.on('close',()=>clearInterval(timer));},400));
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const origin='http://127.0.0.1:'+server.address().port;
  execFileSync(process.execPath,[path.join(__dirname,'package.cjs')],{stdio:'ignore'});
  const extension=path.join(root,'build'),downloads=path.join(report,'downloads');
