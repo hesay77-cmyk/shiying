@@ -31,7 +31,7 @@ const manifestFile = path.join(full, 'manifest.json'), manifest = JSON.parse(fs.
 const youtubePages = ['https://www.youtube.com/*', 'https://m.youtube.com/*', 'https://youtube.com/*'];
 manifest.version_name = manifest.version + ' 完整版';
 // The full edition's description mentions YouTube, so it is written only into build-full's locale files.
-for (const [locale, text] of Object.entries({zh_CN: '免费开源、无广告、不打扰：B站、YouTube、抖音、快手、小红书视频一键保存为 MP4 或 MP3，带字幕；网盘和 BT 可交给配套桌面版。', en: 'Free, open source, no ads, no account. Save Bilibili, YouTube, Douyin, Kuaishou and Xiaohongshu videos as MP4 or MP3 in one click.'})) {
+for (const [locale, text] of Object.entries({zh_CN: "免费开源、无广告、不打扰的下载器：B站、YouTube、抖音、快手、小红书视频一键存为 MP4/MP3，带字幕；大文件、网盘和 BT 可交给配套桌面版，断点续传。",en: "Free, open-source downloader, no ads: save YouTube and other web videos as MP4/MP3; large files and BT go to the desktop app."})) {
   const file = path.join(full, '_locales', locale, 'messages.json'), messages = JSON.parse(fs.readFileSync(file, 'utf8'));
   messages.extDescription = {message: text}; fs.writeFileSync(file, JSON.stringify(messages, null, 2) + '\n');
 }

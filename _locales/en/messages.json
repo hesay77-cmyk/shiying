@@ -1,9 +1,9 @@
 {
   "extName": {
-    "message": "Ruxget · Web Video Downloader"
+    "message": "Ruxget Downloader · Videos, MP3 and large files"
   },
   "extDescription": {
-    "message": "Free, open source, no ads, no account. Save Bilibili, Douyin, Kuaishou and Xiaohongshu videos as MP4 or MP3 in one click."
+    "message": "Free, open-source downloader, no ads: save web videos as MP4/MP3 and send large files, cloud drives and BT to the desktop app."
   },
   "catCatch": {
     "message": "Ruxget"
