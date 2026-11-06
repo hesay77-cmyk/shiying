@@ -33,6 +33,7 @@
     "tabs",
     "webRequest",
     "downloads",
+    "downloads.ui",
     "storage",
     "webNavigation",
     "alarms",

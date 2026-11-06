@@ -92,8 +92,32 @@ const RuxgetTakeover={
         const started=Date.parse(item.startTime||now.startTime||'');
         return {state:now.state,paused:!!now.paused,lagMs:Number.isFinite(started)?Math.max(0,Date.now()-started):-1,percent:total>0?Math.round(100*done/total):-1,done,total};
     },
+    // 0.4.65: with takeover on, Chrome's own download bubble stays shut while a download may be moving to the
+    // desktop, like other download managers do, and opens again once it is settled (a file kept in Chrome shows there).
+    uiHold:0,
+    holdUi(on){
+        if(!chrome.downloads?.setUiOptions)return;
+        RuxgetTakeover.uiHold=Math.max(0,RuxgetTakeover.uiHold+(on?1:-1));
+        chrome.downloads.setUiOptions({enabled:RuxgetTakeover.uiHold===0}).catch(()=>{});
+    },
+    // What may be moved, decided without waiting, so the bubble can be shut before Chrome shows it.
+    mayTake(item,config){
+        if(!config?.enabled||item.incognito)return false;
+        if(item.byExtensionId&&item.byExtensionId!==chrome.runtime.id)return false;
+        if(!/^https?:\/\//i.test(item.finalUrl||item.url||''))return false;
+        const min=Math.max(0,Number(config.minMB)||0)*1048576;
+        return !(item.totalBytes>0&&item.totalBytes<min);
+    },
+    known:null,
     async handle(item){
+        // Right after the worker wakes the settings aren't read yet: shut the bubble anyway, it reopens within moments.
+        const quick=RuxgetTakeover.known?RuxgetTakeover.mayTake(item,RuxgetTakeover.known):true;
+        if(quick)RuxgetTakeover.holdUi(true);
+        try{return await RuxgetTakeover.decide(item);}finally{if(quick)RuxgetTakeover.holdUi(false);}
+    },
+    async decide(item){
         const config=await RuxgetTakeover.settings(),urls=[item.url,item.finalUrl].filter(Boolean);
+        RuxgetTakeover.known=config;
         // The fallback that restarts a refused file in Chrome is never marked, so nothing can bounce back and forth.
         // Chrome often leaves byExtensionId empty when the download starts, even for Ruxget's own.
         const offered=config.enabled&&(!item.byExtensionId||item.byExtensionId===chrome.runtime.id)?await RuxgetTakeover.takeable(urls):null;
@@ -163,6 +187,10 @@ const RuxgetTakeover={
 if(typeof chrome!=='undefined'&&chrome.downloads){
     RuxgetTakeover.wrapDownload();
     // Only the service worker decides; extension pages load this file just to mark their own downloads.
-    if(typeof ServiceWorkerGlobalScope!=='undefined'&&self instanceof ServiceWorkerGlobalScope)chrome.downloads.onCreated.addListener(item=>{RuxgetTakeover.handle(item).catch(()=>{});});
+    if(typeof ServiceWorkerGlobalScope!=='undefined'&&self instanceof ServiceWorkerGlobalScope){
+        chrome.downloads.onCreated.addListener(item=>{RuxgetTakeover.handle(item).catch(()=>{});});
+        RuxgetTakeover.settings().then(config=>{RuxgetTakeover.known=config;}).catch(()=>{});
+        chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&changes[RuxgetTakeover.KEY])RuxgetTakeover.settings().then(config=>{RuxgetTakeover.known=config;}).catch(()=>{});});
+    }
 }
 if(typeof module!=='undefined')module.exports=RuxgetTakeover;

@@ -41,7 +41,7 @@ const server=http.createServer((q,r)=>{
   const sw=await until(async()=>(await send('Target.getTargets')).result.targetInfos.find(t=>t.type==='service_worker'&&t.url.includes(id)));
   const ss=await attach(sw.targetId);
   // Desktop stub: replies after a short probe delay; reply can be switched per case.
-  await ev(`(async()=>{globalThis.native=[];globalThis.reply={ok:true,id:'job1',name:'clip.mp4'};chrome.permissions.contains=async()=>true;
+  await ev(`(async()=>{globalThis.native=[];globalThis.reply={ok:true,id:'job1',name:'clip.mp4'};chrome.permissions.contains=async()=>true;globalThis.ui=[];const realUi=chrome.downloads.setUiOptions.bind(chrome.downloads);chrome.downloads.setUiOptions=o=>{ui.push(o.enabled);return realUi(o);};
    chrome.runtime.sendNativeMessage=async(h,m)=>{native.push({action:m.action,url:m.url,name:m.name,referer:m.referer});if(m.action!=='takeover')return {ok:true};await new Promise(r=>setTimeout(r,300));return reply;};return 'ok';})()`,ss);
   const page=(await send('Target.getTargets')).result.targetInfos.find(t=>t.type==='page');const ps=await attach(page.targetId);
   await send('Page.navigate',{url:origin+'/'},ps);await wait(800);
@@ -73,6 +73,7 @@ const server=http.createServer((q,r)=>{
   check(moved&&!moved.l.some(d=>d.state==='in_progress'||d.state==='complete'),'takeover on: Chrome keeps no copy of it');
   check(moved&&moved.c[0].name==='Share page.mp4'&&moved.c[0].referer===origin+'/','the desktop gets the panel file name and the page it came from');
   check(await until(async()=>(await statusText(p.pp)).includes('已交给桌面版')),'the row says the desktop has it, not "interrupted"');
+  const bubble=await ev('ui',ss);check(bubble.includes(false)&&bubble[bubble.length-1]===true,'the Chrome download bubble is shut during the hand-over and opened again afterwards');
   // 1b. "桌面下载" afterwards adds nothing: the file is already in the desktop.
   await row(p.pp,'.desktop-button');await wait(1200);
   check((await adds(p.pp))===0&&(await calls()).length===1&&(await notice(p.pp)).includes('已经交给 Ruxget 桌面版'),'"桌面下载" after the hand-over sends nothing more and says so');

@@ -121,7 +121,17 @@ public partial class Manager {
 public partial class MainWindow {
     bool startingInBackground;
     protected override bool ShowWithoutActivation {get{return startingInBackground||base.ShowWithoutActivation;}}
-    public void PrepareBackgroundStart(){startingInBackground=true;Opacity=0;ShowInTaskbar=false;Shown+=(s,e)=>{Hide();Opacity=1;ShowInTaskbar=true;startingInBackground=false;};}
+    // 0.4.65: started by a taken-over download, the window is hidden before the slow first-run work (the download
+    // interface, the bridge) instead of after it. Windows replaced the transparent but busy window with a white
+    // "Ruxget (未响应)" ghost when that work took more than five seconds. A request to show it in the meantime waits.
+    bool showWhenReady;
+    public void PrepareBackgroundStart(){startingInBackground=true;Opacity=0;ShowInTaskbar=false;}
+    protected override void OnShown(EventArgs e){
+        bool background=startingInBackground;
+        if(background){Hide();Opacity=1;ShowInTaskbar=true;hiddenToTray=true;tray.Visible=true;}
+        base.OnShown(e);
+        if(background){startingInBackground=false;if(showWhenReady){showWhenReady=false;BeginInvoke(new Action(RestoreFromTray));}}
+    }
     internal object AcceptNetdisk(IDictionary<string,object> input){if(closingWindow||IsDisposed)throw new Exception("Ruxget 正在退出，请稍后重试");return manager.AddNetdisk(input);}
     internal void PickNetdiskFolder(){if(closingWindow||IsDisposed)return;RestoreFromTray();string folder=PickFolder(this,manager.Config.Folder);if(folder!=null)SetDefaultFolder(folder);}
 }
