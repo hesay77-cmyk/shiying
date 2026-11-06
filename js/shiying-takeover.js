@@ -110,14 +110,17 @@ const RuxgetTakeover={
     },
     known:null,
     async handle(item){
-        // Right after the worker wakes the settings aren't read yet: shut the bubble anyway, it reopens within moments.
-        const quick=RuxgetTakeover.known?RuxgetTakeover.mayTake(item,RuxgetTakeover.known):true;
-        if(quick)RuxgetTakeover.holdUi(true);
-        try{return await RuxgetTakeover.decide(item);}finally{if(quick)RuxgetTakeover.holdUi(false);}
+        // The bubble is only ever touched once takeover is known to be on. Right after the worker wakes the setting
+        // isn't read yet; then it is read first, so someone without takeover (or without the desktop app) never loses
+        // Chrome's own download bubble.
+        let held=false;
+        const hold=config=>{if(!held&&RuxgetTakeover.mayTake(item,config)){held=true;RuxgetTakeover.holdUi(true);}};
+        if(RuxgetTakeover.known)hold(RuxgetTakeover.known);
+        try{return await RuxgetTakeover.decide(item,hold);}finally{if(held)RuxgetTakeover.holdUi(false);}
     },
-    async decide(item){
+    async decide(item,hold=()=>{}){
         const config=await RuxgetTakeover.settings(),urls=[item.url,item.finalUrl].filter(Boolean);
-        RuxgetTakeover.known=config;
+        RuxgetTakeover.known=config;hold(config);
         // The fallback that restarts a refused file in Chrome is never marked, so nothing can bounce back and forth.
         // Chrome often leaves byExtensionId empty when the download starts, even for Ruxget's own.
         const offered=config.enabled&&(!item.byExtensionId||item.byExtensionId===chrome.runtime.id)?await RuxgetTakeover.takeable(urls):null;

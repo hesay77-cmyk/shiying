@@ -410,8 +410,20 @@ public partial class Manager {
             if(job.BtSelected.Any(n=>!info.Files.Any(f=>f.Index==n)))throw new Exception("BT 文件选择无效，请重新选择");Directory.CreateDirectory(job.BtFolder);var options=BtOptions(job,job.BtFolder);options["select-file"]=String.Join(",",job.BtSelected);options["bt-remove-unselected-file"]="false";string tracker=PeerTracker(job);if(tracker!=null)bytes=TorrentInfo.WithPeerTracker(bytes,tracker);BtRpc("addTorrent",Convert.ToBase64String(bytes),new string[0],options);job.BtPhase="content";job.Stage=tracker==null?"正在连接 BT 节点":"正在优先重连最近可用节点";
         }job.Status="等待下载";
     }
+    // 0.4.66: when no BT task has needed the engine for two minutes it stops, so an idle app shares nothing and keeps no
+    // BT or DHT connections open. The next BT task starts it again (a few seconds to find peers, as after a restart).
+    public TimeSpan BtIdleStop=TimeSpan.FromMinutes(2);
+    DateTime btIdleSince=DateTime.MinValue;
+    public bool BtEngineRunning{get{lock(gate){return btAria!=null&&!btAria.HasExited;}}}
+    static readonly string[] BtBusy={"下载中","等待下载","正在暂停","排队中","等待节点","等待选文件"};
     void TickBt(){
-        if(btAria==null)return;foreach(var job in jobs.Where(j=>TorrentInfo.IsBt(j)&&new[]{"下载中","等待下载","正在暂停"}.Contains(j.Status)).ToArray())try{
+        if(btAria==null)return;
+        // A finished task keeps its BtFinishing mark, so only the status counts (finishing tasks are still "下载中").
+        bool needed=(btPeerSearch!=null&&!btPeerSearch.IsCompleted)||jobs.Any(j=>TorrentInfo.IsBt(j)&&BtBusy.Contains(j.Status));
+        if(needed)btIdleSince=DateTime.MinValue;
+        else if(btIdleSince==DateTime.MinValue)btIdleSince=DateTime.UtcNow;
+        else if(DateTime.UtcNow-btIdleSince>=BtIdleStop){StopBt();btIdleSince=DateTime.MinValue;return;}
+        foreach(var job in jobs.Where(j=>TorrentInfo.IsBt(j)&&new[]{"下载中","等待下载","正在暂停"}.Contains(j.Status)).ToArray())try{
             var state=(IDictionary<string,object>)BtRpc("tellStatus",job.Id);string status=Util.Str(state,"status");
             if(job.BtPhase=="metadata"){
                 job.Transfer.Connections=(int)TransferData.Number(state,"connections");job.Stage="正在获取种子信息，等待可用节点";

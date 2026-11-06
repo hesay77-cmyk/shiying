@@ -95,9 +95,11 @@ const server=http.createServer((q,r)=>{
   await ev(`delete globalThis.slow;'ok'`,ss);await p.close();await reset();
 
   // 2. Takeover off: "下载" stays in Chrome, the desktop is never asked.
-  await takeover(false);p=await panel();await row(p.pp,'.download-button');
+  // As right after the worker wakes: the takeover setting is not read yet.
+  await takeover(false);await ev(`ui.length=0;RuxgetTakeover.known=null;'ok'`,ss);p=await panel();await row(p.pp,'.download-button');
   const kept=await until(async()=>(await list()).find(d=>d.url===p.url&&d.state==='in_progress'));await wait(1200);
   check(kept&&(await calls()).length===0&&(await list()).some(d=>d.url===p.url&&d.state==='in_progress'),'takeover off: the panel\'s "下载" stays in Chrome');
+  check(!(await ev('ui',ss)).includes(false),'takeover off: the Chrome download bubble is never touched, even right after the worker wakes');
   check(!(await ev(`chrome.storage.session.get('ruxgetTakeableDownloads').then(v=>(v.ruxgetTakeableDownloads||[]).length)`,ss)),'takeover off: no marker is left that could later override a "use Chrome" choice');
 
   // 3. Same panel, takeover still off: "桌面下载" on the link Chrome is downloading moves it rather than adding a second copy.
