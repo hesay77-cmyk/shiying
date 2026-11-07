@@ -26,7 +26,7 @@ save:'保存',chooseFiles:'选择下载文件',chooseLater:'稍后选择',select
 btNote:'未确认前不开始下载。跨文件校验可能保留少量未选文件的边界数据。',downloadSelected:'下载所选文件',
 deleteThisTask:'删除这个任务？',alsoDeleteFiles:'同时删除文件',deleteTaskAndFiles:'删除任务和文件',deleteTaskOnly:'仅删除任务',
 close:'关闭',dropHint:'松开添加种子或链接',selectFiles:'选文件',details:'详情',viewDetails:'查看详情',collapseDetailsBtn:'收起详情',
-openFolder:'打开文件夹',chooseBtFiles:'选择 BT 文件',copyLink:'复制下载链接',selectMultiple:'选择多个任务',deleteTaskEllipsis:'删除任务…',
+openFile:'打开',openFolder:'打开文件夹',chooseBtFiles:'选择 BT 文件',copyLink:'复制下载链接',selectMultiple:'选择多个任务',deleteTaskEllipsis:'删除任务…',
 moreActions:'更多任务操作',segmentProgress:'分段进度',segmentEach:'查看每段进度',segmentN:'分段 $1',downloadAddrs:'下载地址与保存位置',
 activeCount:'正在进行 $1 项',selectedCount:'已选 $1 项',selectJob:'选择 $1',progressOf:'$1下载进度',
 miniCount:'Ruxget · $1 个任务',noDownloads:'暂无下载任务',expandToAdd:'展开窗口添加链接',
@@ -69,7 +69,7 @@ save:'Save',chooseFiles:'Choose files',chooseLater:'Choose later',selectAll:'Sel
 btNote:'Download starts only after you confirm. Piece checks may keep a little data at file boundaries.',downloadSelected:'Download selected',
 deleteThisTask:'Delete this task?',alsoDeleteFiles:'Also delete files',deleteTaskAndFiles:'Delete task and files',deleteTaskOnly:'Delete task only',
 close:'Close',dropHint:'Drop to add a torrent or link',selectFiles:'Files',details:'Details',viewDetails:'View details',collapseDetailsBtn:'Hide details',
-openFolder:'Open folder',chooseBtFiles:'Choose BT files',copyLink:'Copy link',selectMultiple:'Select multiple',deleteTaskEllipsis:'Delete task…',
+openFile:'Open',openFolder:'Open folder',chooseBtFiles:'Choose BT files',copyLink:'Copy link',selectMultiple:'Select multiple',deleteTaskEllipsis:'Delete task…',
 moreActions:'More actions',segmentProgress:'Segment progress',segmentEach:'Show each segment',segmentN:'Segment $1',downloadAddrs:'URL and save path',
 activeCount:'$1 active',selectedCount:'$1 selected',selectJob:'Select $1',progressOf:'$1 progress',
 miniCount:'Ruxget · $1 tasks',noDownloads:'No downloads',expandToAdd:'Expand to add a link',
@@ -111,6 +111,7 @@ function hostText(text){if(text==null||text==='')return '';const s=String(text);
  if((m=/^(\d+) 个$/.exec(s)))return m[1];
  if((m=/^服务器只提供了这个文件的一部分：大约从 (\d+)% 处开始/.exec(s)))return 'The server only provides part of this file: from about '+m[1]+'% on, it refuses the rest (HTTP 416). Cloud drives often limit free accounts this way; a browser download would also get only the first part. What was downloaded is kept in the task.';
  if(s.startsWith('区间 '))return 'Range '+s.slice(3);
+ if(s.startsWith('打不开这个文件：'))return 'Couldn’t open the file: '+s.slice(8);
  if(s.includes('；最终大小以合并后的文件为准')){const head=s.split('；最终大小以合并后的文件为准')[0];return hostText(head)+'; final size is the merged file';}
  // Longer phrases first so short tokens like 已完成 do not punch holes in full sentences
  const pairs=Object.entries({
@@ -153,7 +154,7 @@ function hostText(text){if(text==null||text==='')return '';const s=String(text);
   '请先暂停任务，再调整下载文件':'Pause the task before changing files',
   '已删除任务及其文件':'Task and files deleted',
   '已删除任务，文件已保留':'Task deleted, files kept',
-  '已复制下载链接':'Download link copied',
+  '已复制下载链接':'Download link copied','文件已不在原来的位置，可能被移动或删除了':'The file is no longer where it was saved; it may have been moved or deleted','没有能打开这种文件的程序，可以点“打开文件夹”':'No app is set up to open this kind of file; use Open folder instead','这个程序没有“来自网络”的安全标记，已打开它所在的文件夹，请确认后再运行':'This program has no "downloaded from the internet" safety mark, so its folder was opened instead; check it before running it',
   '已保存所选文件，加入下载队列':'Selected files saved and queued',
   '设置已保存':'Settings saved',
   '已修复连接，回到 Chrome 插件检查即可。':'Connection repaired. Check it again in the Chrome extension.',
@@ -223,7 +224,7 @@ function jobAction(job){if(job.choose)post('choose',{id:job.id});else if(job.can
 function actionLabel(job){return job.choose?t('selectFiles'):job.canResume?t('resume'):job.canPause?t('pause'):t('details');}
 function taskMenu(job,anchor){closeMenus();const menu=$('taskMenu');menu.replaceChildren();
  const add=(text,run)=>menu.append(button(text,'',()=>{closeMenus();run();}));
- add(expanded===job.id?t('collapseDetailsBtn'):t('viewDetails'),()=>toggleDetails(job.id));add(t('openFolder'),()=>post('folder',{id:job.id}));
+ add(expanded===job.id?t('collapseDetailsBtn'):t('viewDetails'),()=>toggleDetails(job.id));if(job.canOpen)add(t('openFile'),()=>post('open',{id:job.id}));add(t('openFolder'),()=>post('folder',{id:job.id}));
  if(job.bt&&job.canChoose)add(t('chooseBtFiles'),()=>post('choose',{id:job.id}));
  add(t('copyLink'),()=>post('copy',{id:job.id}));
  add(t('selectMultiple'),()=>{selectMode=true;selected.add(job.id);render(true);});
@@ -243,7 +244,7 @@ function renderInspector(job){
  const panel=$('inspector'),body=$('inspectorBody'),same=body.dataset.id===job?.id,top=same?body.scrollTop:0,addressesOpen=same&&!!body.querySelector('.detail-addresses[open]');body.dataset.id=job?.id||'';panel.hidden=!job;document.querySelector('.workspace').classList.toggle('has-inspector',!!job);body.replaceChildren();if(!job)return;
  const head=el('div','inspector-file');head.append(el('div','file-icon '+(job.kind==='audio'?'audio':job.kind==='file'?'document':'video'),job.bt?'BT':job.kind==='audio'?'♪':job.kind==='file'?'↓':'▷'),el('h3','',job.title));body.append(head);
  const status=el('div','inspector-progress');status.append(el('span','',hostText(job.stage)),el('b','',job.known?job.percent+'%':''));const bar=el('progress');bar.max=100;bar.value=job.known?job.progress:0;body.append(status,bar,details(job));
- const tools=el('div','inspector-actions'),canOperate=job.choose||job.canResume||job.canPause,primary=button(canOperate?actionLabel(job):t('openFolder'),'download-button',()=>canOperate?jobAction(job):post('folder',{id:job.id}));primary.disabled=!!state.busy;primary.dataset.focus=job.id+'-inspector-primary';tools.append(primary);if(canOperate){const folder=button(t('openFolder'),'text-button',()=>post('folder',{id:job.id}));folder.dataset.focus=job.id+'-inspector-folder';tools.append(folder);}if(job.canForget){const remove=button(t('deleteTask'),'text-button task-delete',()=>removeTask(job));remove.disabled=!!state.busy;remove.dataset.focus=job.id+'-inspector-remove';tools.append(remove);}$('inspectorActions').replaceChildren(...tools.childNodes);if(addressesOpen)body.querySelector('.detail-addresses').open=true;body.scrollTop=top;
+ const tools=el('div','inspector-actions'),canOperate=job.choose||job.canResume||job.canPause,primary=button(canOperate?actionLabel(job):job.canOpen?t('openFile'):t('openFolder'),'download-button',()=>canOperate?jobAction(job):post(job.canOpen?'open':'folder',{id:job.id}));primary.disabled=!!state.busy;primary.dataset.focus=job.id+'-inspector-primary';tools.append(primary);if(canOperate||job.canOpen){const folder=button(t('openFolder'),'text-button',()=>post('folder',{id:job.id}));folder.dataset.focus=job.id+'-inspector-folder';tools.append(folder);}if(job.canForget){const remove=button(t('deleteTask'),'text-button task-delete',()=>removeTask(job));remove.disabled=!!state.busy;remove.dataset.focus=job.id+'-inspector-remove';tools.append(remove);}$('inspectorActions').replaceChildren(...tools.childNodes);if(addressesOpen)body.querySelector('.detail-addresses').open=true;body.scrollTop=top;
 }
 function render(force=false){const fingerprint=JSON.stringify([state.jobs,expanded,filter,selectMode,[...selected],state.busy,uiLang]);if(!force&&fingerprint===lastRender){renderMini();return;}lastRender=fingerprint;
  document.body.classList.toggle('no-tasks',state.jobs.length===0);document.querySelectorAll('form button[type=submit],[data-batch]').forEach(node=>node.disabled=!!state.busy);document.querySelectorAll('[data-command=new],[data-command=torrent]').forEach(node=>node.disabled=!!state.busy);
@@ -254,12 +255,12 @@ function render(force=false){const fingerprint=JSON.stringify([state.jobs,expand
  for(const id of [...selected])if(!state.jobs.some(j=>j.id===id))selected.delete(id);
  updateEditorList();updateBT();updateDeletion();for(const id of ['batchEditor','settings','btChooser'])$(id).querySelectorAll('[data-close]').forEach(node=>node.disabled=!!state.busy);$('batchTools').hidden=!selectMode;$('selectionCount').textContent=t('selectedCount',selected.size);$('taskList').classList.toggle('select-mode',selectMode);
  $('empty').hidden=shown.length>0;$('empty').querySelector('h3').textContent=state.jobs.length?t('noTasksHere'):t('emptyTitle');$('empty').querySelector('p').hidden=state.jobs.length>0;
- list.replaceChildren();for(const job of shown){const row=el('article','media-item'+(selected.has(job.id)?' task-selected':''));row.dataset.id=job.id;row.dataset.focus=job.id+'-row';row.classList.toggle('inspected',expanded===job.id);row.tabIndex=0;row.setAttribute('aria-label',job.title+'，'+hostText(job.status));row.addEventListener('dblclick',event=>{if(!event.target.closest('button,input,summary'))showDetails(job.id);});row.addEventListener('keydown',event=>{if(event.target!==row)return;if(event.key==='Enter'){event.preventDefault();toggleDetails(job.id);}if(event.key===' '){event.preventDefault();jobAction(job);}if(event.key==='Delete'&&job.canForget&&!state.busy){event.preventDefault();removeTask(job);}});row.addEventListener('click',event=>{if((event.ctrlKey||event.metaKey)&&!event.target.closest('button,input')){selectMode=true;selected.has(job.id)?selected.delete(job.id):selected.add(job.id);render(true);}else if(!event.target.closest('button,input,summary')&&expanded!==job.id)showDetails(job.id);});
+ list.replaceChildren();for(const job of shown){const row=el('article','media-item'+(selected.has(job.id)?' task-selected':''));row.dataset.id=job.id;row.dataset.focus=job.id+'-row';row.classList.toggle('inspected',expanded===job.id);row.tabIndex=0;row.setAttribute('aria-label',job.title+'，'+hostText(job.status));row.addEventListener('dblclick',event=>{if(event.target.closest('button,input,summary')||event.ctrlKey||event.metaKey||event.shiftKey||selectMode)return;if(job.canOpen)post('open',{id:job.id});else showDetails(job.id);});row.addEventListener('keydown',event=>{if(event.target!==row)return;if(event.key==='Enter'){event.preventDefault();toggleDetails(job.id);}if(event.key===' '){event.preventDefault();jobAction(job);}if(event.key==='Delete'&&job.canForget&&!state.busy){event.preventDefault();removeTask(job);}});row.addEventListener('click',event=>{if((event.ctrlKey||event.metaKey)&&!event.target.closest('button,input')){selectMode=true;selected.has(job.id)?selected.delete(job.id):selected.add(job.id);render(true);}else if(!event.target.closest('button,input,summary')&&expanded!==job.id)showDetails(job.id);});
   const line=el('div','media-row'),check=el('input','task-select');check.type='checkbox';check.checked=selected.has(job.id);check.setAttribute('aria-label',t('selectJob',job.title));check.addEventListener('change',()=>{check.checked?selected.add(job.id):selected.delete(job.id);render(true);});
   const icon=el('div','file-icon '+(job.kind==='audio'?'audio':job.kind==='file'?'document':'video'),job.bt?'BT':job.kind==='audio'?'♪':job.kind==='file'?'↓':'▷'),info=el('div','media-info'),title=el('h3','',job.title);title.title=job.title;const meta=el('div','meta');meta.append(el('span','format',hostText(job.typeLabel)),el('span','size',hostText(job.amount)));info.append(title,meta);
   const actions=el('div','task-actions'),act=button(actionLabel(job),'download-button',()=>jobAction(job));act.disabled=state.busy;act.dataset.focus=job.id+'-action';actions.append(act);if(job.canForget){const remove=button(t('deleteTask'),'text-button task-delete',()=>removeTask(job));remove.disabled=!!state.busy;remove.title=t('deleteTaskKeepHint');remove.dataset.focus=job.id+'-remove';remove.dataset.deleteTask=job.id;actions.append(remove);}line.append(check,icon,info,actions);row.append(line);
   const progress=el('div','job-capsule task-progress'),status=el('div','job-line');status.append(el('span','',hostText(job.stage)),el('b','',job.known?job.percent+'%':''));const bar=el('progress');bar.max=100;bar.value=job.known?job.progress:0;bar.setAttribute('aria-label',t('progressOf',job.title));progress.append(status,bar);row.append(progress);
-  const tools=el('div','row-tools'),detail=button(expanded===job.id?t('collapseDetailsBtn'):t('viewDetails'),'text-button',()=>toggleDetails(job.id));detail.setAttribute('aria-expanded',expanded===job.id?'true':'false');detail.dataset.focus=job.id+'-details';const more=button('···','text-button',()=>taskMenu(job,more));more.setAttribute('aria-label',t('moreActions'));tools.append(detail,button(t('openFolder'),'text-button',()=>post('folder',{id:job.id})),more);row.append(tools);
+  const tools=el('div','row-tools'),detail=button(expanded===job.id?t('collapseDetailsBtn'):t('viewDetails'),'text-button',()=>toggleDetails(job.id));detail.setAttribute('aria-expanded',expanded===job.id?'true':'false');detail.dataset.focus=job.id+'-details';const more=button('···','text-button',()=>taskMenu(job,more));more.setAttribute('aria-label',t('moreActions'));if(job.canOpen){const open=button(t('openFile'),'text-button',()=>post('open',{id:job.id}));open.dataset.focus=job.id+'-open';tools.append(detail,open);}else tools.append(detail);tools.append(button(t('openFolder'),'text-button',()=>post('folder',{id:job.id})),more);row.append(tools);
   list.append(row);
  }
  renderInspector(shown.find(job=>job.id===expanded));list.parentElement.scrollTop=scroll;

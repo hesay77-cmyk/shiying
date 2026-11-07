@@ -63,12 +63,49 @@ public class Settings {
     // Picking a folder in the app turns it off.
     public bool FollowBrowser = true;
 }
+// Marks finished downloads as coming from the internet (Zone.Identifier, like browsers do), so Windows SmartScreen
+// and Office Protected View still check them when they are opened from Ruxget or Explorer.
+static class WebMark {
+    [System.Runtime.InteropServices.DllImport("kernel32.dll",CharSet=System.Runtime.InteropServices.CharSet.Unicode,SetLastError=true)]
+    static extern Microsoft.Win32.SafeHandles.SafeFileHandle CreateFileW(string name,uint access,uint share,IntPtr security,uint disposition,uint flags,IntPtr template);
+    // Long paths and network shares need the \\?\ form for the stream name.
+    static string Stream(string path){
+        string full=Path.GetFullPath(path)+":Zone.Identifier";
+        if(full.StartsWith(@"\\?\"))return full;
+        if(full.StartsWith(@"\\"))return @"\\?\UNC\"+full.Substring(2);
+        return @"\\?\"+full;
+    }
+    // Program and script types that Windows runs straight away when opened.
+    static readonly string[] Runnable={".exe",".msi",".msix",".msixbundle",".appx",".appxbundle",".bat",".cmd",".com",".scr",".pif",".ps1",".psm1",".vbs",".vbe",".js",".jse",".wsf",".wsh",".hta",".lnk",".url",".cpl",".jar",".reg",".msc",".msp",".appref-ms",".application",".inf",".chm",".iso",".img",".vhd",".vhdx",".scf",".settingcontent-ms"};
+    public static bool IsRunnable(string path){return Runnable.Contains((Path.GetExtension(path)??"").ToLowerInvariant());}
+    public static bool Has(string path){
+        try{using(var handle=CreateFileW(Stream(path),0x80000000,1,IntPtr.Zero,3,0x80,IntPtr.Zero))return !handle.IsInvalid;}catch(Exception){return false;}
+    }
+    public static bool File(string path,string url){
+        try{
+            if(String.IsNullOrEmpty(path)||!System.IO.File.Exists(path))return false;
+            string text="[ZoneTransfer]\r\nZoneId=3\r\n";Uri uri;
+            // Only the site (scheme, host, port): paths, queries and user names in download links often carry tokens.
+            if(Uri.TryCreate(url??"",UriKind.Absolute,out uri)&&(uri.Scheme=="http"||uri.Scheme=="https"))text+="HostUrl="+uri.Scheme+"://"+uri.IdnHost+(uri.IsDefaultPort?"":":"+uri.Port)+"/\r\n";
+            using(var handle=CreateFileW(Stream(path),0x40000000,0,IntPtr.Zero,2,0x80,IntPtr.Zero)){
+                if(handle.IsInvalid)return false;
+                using(var stream=new FileStream(handle,FileAccess.Write)){var bytes=Encoding.ASCII.GetBytes(text);stream.Write(bytes,0,bytes.Length);}
+            }
+            return true;
+        }catch(Exception){return false;}
+    }
+    // Runs in the background: a large torrent can hold thousands of files.
+    public static void Folder(string folder){
+        if(String.IsNullOrEmpty(folder))return;
+        Task.Run(()=>{try{if(!Directory.Exists(folder))return;foreach(var file in Directory.EnumerateFiles(folder,"*",SearchOption.AllDirectories).Take(10000))File(file,null);}catch(Exception){}});
+    }
+}
 static class Util {
     public const string SystemProxyMode="system";
     // Windows proxy for HTTPS traffic, as http://host:port, or "" when the system proxy is off or uses only a PAC script.
     public static string SystemProxy(){try{using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Internet Settings")){if(key==null||Convert.ToInt32(key.GetValue("ProxyEnable",0))!=1)return "";string server=Convert.ToString(key.GetValue("ProxyServer","")).Trim();if(server.Contains("=")){var parts=server.Split(';').Select(p=>p.Split(new[]{'='},2)).Where(p=>p.Length==2).ToDictionary(p=>p[0].Trim().ToLowerInvariant(),p=>p[1].Trim());server=parts.ContainsKey("https")?parts["https"]:parts.ContainsKey("http")?parts["http"]:"";}if(server.Length==0)return "";if(!server.Contains("://"))server="http://"+server;Uri uri;return Uri.TryCreate(server,UriKind.Absolute,out uri)&&(uri.Scheme=="http"||uri.Scheme=="https"||uri.Scheme.StartsWith("socks"))?server:"";}}catch{return "";}}
     public static void CheckProxy(string value){if(value.Length>0&&value!=SystemProxyMode)Url(value);}
-    public const string Version="0.4.66";
+    public const string Version="0.4.68";
     // Links added without a browser's own name (pasted, batch, magnet-free files) go out with an ordinary browser name.
     // Many CDNs refuse the download engine's default "aria2/x.y": Aliyun's answers "403 denied by UA ACL = blacklist" (0.4.63).
     public const string BrowserAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";

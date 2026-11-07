@@ -41,7 +41,7 @@ public partial class MainWindow {
         string amount=t.Completed>=0?TransferData.Bytes(t.Completed)+(t.Total>=0?" / "+(t.Estimated?"约 ":"")+TransferData.Bytes(t.Total):""):"大小待确认";
         if(job.Status=="已完成"&&t.Total>=0)amount=TransferData.Bytes(t.Total);
         string btNotice=job.Status=="已暂停"?"任务已暂停；点击“继续”后才会重新寻找节点。"+(String.IsNullOrEmpty(job.BtReason)?"":" 上次状态："+job.BtReason):(job.BtReason??"")+" "+(job.BtAdvice??"");
-        return new{id=job.Id,title=job.Title,url=job.Url,kind=job.Kind,status=job.Status,stage,amount,progress=job.Progress,percent=job.Progress.ToString("0.#",System.Globalization.CultureInfo.InvariantCulture),known=t.Total>0||job.Status=="已完成"||job.Status=="准备组件",active=Active(job),bt,typeLabel=bt?"BT":job.Kind=="audio"?"MP3":job.Kind=="file"?"文件":"视频",canPause=CanPause(job),canResume=CanResume(job),canForget=CanForget(job)||CanPause(job)||job.Status=="正在暂停",choose=job.Status=="等待选文件",canChoose=bt&&job.HasMetadata&&new[]{"等待选文件","已暂停","失败","已完成"}.Contains(job.Status),destination=String.IsNullOrEmpty(job.File)?Util.OutputFolder(job):job.File,
+        return new{id=job.Id,title=job.Title,url=job.Url,kind=job.Kind,status=job.Status,stage,amount,progress=job.Progress,percent=job.Progress.ToString("0.#",System.Globalization.CultureInfo.InvariantCulture),known=t.Total>0||job.Status=="已完成"||job.Status=="准备组件",active=Active(job),bt,typeLabel=bt?"BT":job.Kind=="audio"?"MP3":job.Kind=="file"?"文件":"视频",canPause=CanPause(job),canResume=CanResume(job),canForget=CanForget(job)||CanPause(job)||job.Status=="正在暂停",canOpen=job.Status=="已完成"&&!String.IsNullOrEmpty(job.File),choose=job.Status=="等待选文件",canChoose=bt&&job.HasMetadata&&new[]{"等待选文件","已暂停","失败","已完成"}.Contains(job.Status),destination=String.IsNullOrEmpty(job.File)?Util.OutputFolder(job):job.File,
             metrics=new[]{new[]{"文件大小",(t.Estimated&&t.Total>=0?"约 ":"")+TransferData.Bytes(t.Total)},new[]{"已下载",TransferData.Bytes(t.Completed)},new[]{"传输速度",active&&t.Speed>=0?TransferData.Bytes(t.Speed)+"/s":"—"},new[]{"预计剩余",TransferData.Remaining(job)},new[]{"能否续传",TransferData.ResumeText(job)},new[]{"活动连接",active&&t.Connections>=0?t.Connections+" 个":"—"}},
             segments=TransferData.Segments(job).Select(piece=>new{percent=piece.Percent,label="区间 "+piece.Number+" · "+TransferData.Bytes(piece.Completed)+" / "+TransferData.Bytes(piece.Length)}).ToArray(),segmentNote=job.Kind=="file"||bt?"收到分段信息后显示，未知数据不会推算为已完成。":"当前媒体轨进度；内核暂不提供独立分片的字节进度。",notice=!String.IsNullOrEmpty(job.Error)?job.Error:bt?btNotice:job.Kind!="file"&&job.Status!="已完成"?(String.IsNullOrEmpty(t.Scope)?"视频可能分轨下载":t.Scope)+"；最终大小以合并后的文件为准":"",error=!String.IsNullOrEmpty(job.Error),
             files=(job.BtFiles??new TorrentFileInfo[0]).Select(file=>new{index=file.Index,path=file.Path,length=file.Length,size=TransferData.Bytes(file.Length),completed=TransferData.Bytes(file.Completed),selected=file.Selected}).ToArray()};
@@ -88,6 +88,18 @@ public partial class MainWindow {
             if(target=="default")SetDefaultFolder(picked);else{if(target=="editor")editorFolder=picked;else batchFolder=picked;PluginSend(new{type="folder",target,path=picked});}PushPluginState();return;
         }
         if(command=="folder"){if(!preview){SelectTask(id);OpenFolder();}return;}
+        if(command=="open"){
+            var job=manager.Snapshot().FirstOrDefault(item=>item.Id==id);if(job==null||job.Status!="已完成"||preview)return;
+            string path=job.File;bool file=!String.IsNullOrEmpty(path)&&System.IO.File.Exists(path),folder=!file&&!String.IsNullOrEmpty(path)&&Directory.Exists(path);
+            if(!file&&!folder){PluginNotice("文件已不在原来的位置，可能被移动或删除了");return;}
+            // Older tasks (before 0.4.68) have no "from the internet" mark yet. Add it now, so SmartScreen checks programs;
+            // a program that still can't be marked (e.g. on a FAT32 USB stick) is only shown in its folder, never run.
+            if(file&&!WebMark.Has(path))WebMark.File(path,job.Url);
+            if(file&&WebMark.IsRunnable(path)&&!WebMark.Has(path)){try{System.Diagnostics.Process.Start("explorer.exe","/select,"+Util.Quote(path));}catch(Exception){}PluginNotice("这个程序没有“来自网络”的安全标记，已打开它所在的文件夹，请确认后再运行");return;}
+            try{if(folder)System.Diagnostics.Process.Start("explorer.exe",Util.Quote(path));else System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path){UseShellExecute=true,WorkingDirectory=Path.GetDirectoryName(path)});}
+            catch(System.ComponentModel.Win32Exception ex){if(ex.NativeErrorCode!=1223)PluginNotice(ex.NativeErrorCode==1155?"没有能打开这种文件的程序，可以点“打开文件夹”":"打不开这个文件："+ex.Message);}
+            return;
+        }
         if(command=="copy"){var job=manager.Snapshot().FirstOrDefault(item=>item.Id==id);if(job!=null&&!preview){Clipboard.SetText(job.Url);PluginNotice("已复制下载链接");}return;}
         if(command=="choose"){var job=manager.Snapshot().FirstOrDefault(item=>item.Id==id);if(job==null||!TorrentInfo.IsBt(job)||!job.HasMetadata)throw new Exception("正在获取种子文件列表，请稍后再试");if(!new[]{"等待选文件","已暂停","失败","已完成"}.Contains(job.Status))throw new Exception("请先暂停任务，再调整下载文件");PluginSend(new{type="bt",job=PluginJob(job)});return;}
         if(command=="components"){var lines=await Task.Run(()=>manager.Components.Specs.Select(spec=>spec.name+" · "+spec.version+" · "+(manager.Components.Ready(spec.name)?"已就绪":spec.bundled?"需要修复安装":"首次使用时自动准备")).ToArray());PluginSend(new{type="info",title="视频组件",lines=lines.Concat(new[]{"准备过程可暂停和继续；校验通过后才会使用组件。"}),action=new{label="网络设置",command="settings"}});return;}

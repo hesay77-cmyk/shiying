@@ -113,11 +113,18 @@ function render() {
                 if (result.id !== undefined) {
                     status.textContent = pick('已开始下载', 'Started');
                     downloads.set(result.id, status);
+                    if (card.dataset.download) downloads.delete(Number(card.dataset.download));
+                    delete card.dataset.opens; card.title = ''; card.dataset.download = result.id;
                 } else { status.textContent = pick('已打开下载页', 'Download page opened'); }
                 notify(result.id === undefined ? pick('已打开下载页，请保持它打开以完成下载', 'The download page is open; keep it open until it finishes') : result.takeover ? pick('下载已开始；大文件会交给 Ruxget 桌面版', 'Download started; large files go to Ruxget Desktop') : pick('下载已开始，进度可在 Chrome 下载列表查看', 'Download started; see progress in Chrome’s downloads'));
             } finally { button.disabled = false; }
         });
         onClick(card.querySelector('.copy-button'), () => copy(data.url));
+        // A finished Chrome download opens on double-click (plays the video, runs the installer).
+        card.addEventListener('dblclick', event => {
+            if (card.dataset.opens !== card.dataset.download || event.target.closest('button,select,input,a,summary')) return;
+            RuxgetOpen.file(Number(card.dataset.opens), notify);
+        });
         card.querySelector('.desktop-button').addEventListener('click', async () => {
             // 0.4.64: never the same file twice. If "下载" already handed it to the desktop, nothing more is sent; if Chrome
             // is downloading this very link, the desktop takes that download over and Chrome's copy stops.
@@ -259,7 +266,11 @@ chrome.downloads.onChanged.addListener(async event => {
         if (log.some(entry => entry.id === event.id && entry.result === 'desktop')) { downloads.delete(event.id); status.textContent = RuxgetI18n.pick('已交给桌面版', 'In Ruxget Desktop'); return; }
     }
     if (event.error) status.textContent = RuxgetI18n.pick('下载中断，请在下载列表重试', 'Interrupted; retry from Chrome’s downloads');
-    else if (event.state?.current === 'complete') status.textContent = RuxgetI18n.pick('下载完成', 'Done');
+    else if (event.state?.current === 'complete') {
+        status.textContent = RuxgetI18n.pick('下载完成 · 双击打开', 'Done · double-click to open');
+        const card = status.closest('[data-download]');
+        if (card && card.dataset.download === String(event.id)) { card.dataset.opens = String(event.id); card.title = RuxgetI18n.pick('双击打开文件', 'Double-click to open the file'); }
+    }
 });
 chrome.tabs.onActivated.addListener(event => {
     if (!new URLSearchParams(location.search).has('tabId')) { cards.clear(); downloads.clear(); initialize().catch(failure); }

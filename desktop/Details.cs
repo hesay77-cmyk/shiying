@@ -55,6 +55,7 @@ public static class TransferData {
     public static void Complete(Download job){
         var t=job.Transfer??(job.Transfer=new TransferInfo());
         try{if(File.Exists(job.File)){t.Total=t.Completed=new FileInfo(job.File).Length;t.Estimated=false;}}catch(IOException){}
+        WebMark.File(job.File,job.Url);
         t.Eta=0;t.Speed=0;t.Connections=0;t.Scope="";
     }
     public static long Estimate(long total,long done,long speed){if(total<0||done<0||done>total||speed<=0)return -1;double value=Math.Ceiling((total-done)/(double)speed);return value>=Int64.MaxValue?-1:(long)value;}

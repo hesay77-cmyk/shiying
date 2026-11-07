@@ -63,6 +63,8 @@ const ShiyingPlatformUI = (() => {
         $('#platformCancel').hidden=['complete','error','cancelled'].includes(job.status);
         if($('#platformDelete').dataset.armed!==job.id)disarmDelete();
         $('#platformDelete').hidden=!['complete','error','cancelled'].includes(job.status);
+        $('#platformOpen').hidden=!(job.status==='complete'&&Number.isInteger(job.downloadId));$('#platformOpen').textContent=pick('打开','Open');
+        $('#platformJob').title=$('#platformOpen').hidden?'':pick('双击打开文件','Double-click to open the file');
         renderHint();
     }
     // One quiet line under the card, never a pop-up and never something to dismiss:
@@ -119,6 +121,10 @@ const ShiyingPlatformUI = (() => {
         renderJob(change.newValue||null);
     });
     $('#platformDetails').addEventListener('click',()=>{if(currentJob)chrome.tabs.create({url:chrome.runtime.getURL('shiying-task.html?id='+encodeURIComponent(currentJob.id))});});
+    // Open the saved file: the "打开" button, or a double-click anywhere on the finished download (not on its buttons).
+    const openJob=()=>{if(currentJob?.status==='complete'&&Number.isInteger(currentJob.downloadId))RuxgetOpen.file(currentJob.downloadId,text=>{if(typeof notify==='function')notify(text);});};
+    $('#platformOpen').addEventListener('click',openJob);
+    $('#platformJob').addEventListener('dblclick',event=>{if(!event.target.closest('button'))openJob();});
     $('#platformDelete').addEventListener('click',async()=>{
         const button=$('#platformDelete');if(!currentJob)return;
         if(button.dataset.armed!==currentJob.id){button.dataset.armed=currentJob.id;button.classList.add('is-armed');button.textContent=pick('再点一次确认删除','Click again to delete');clearTimeout(deleteTimer);deleteTimer=setTimeout(disarmDelete,4000);return;}
