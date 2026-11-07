@@ -108,6 +108,13 @@ const checks=[];function check(name){checks.push(name);console.log('PASS '+name)
   assert(!/[一-鿿]/.test((await popup.locator('#recentList').innerText()).replace(/网站视频/g,'')),'English list');
   await popup.screenshot({path:path.join(report,'downloads-en.png'),fullPage:true});
   check('the tabs and the list read in English');
+  // Toolbar popup: one fixed frame. Switching tabs must not change the document size (Chrome sizes the popup by it)
+  // or move the tabs; a long 已下载 list scrolls inside its own panel.
+  {await popup.evaluate(()=>document.documentElement.classList.add('popup'));const frames=[];
+   for(const tab of ['#tabPage','#tabDownloads','#tabPage','#tabDownloads']){await popup.locator(tab).click();await popup.waitForTimeout(300);
+    frames.push(await popup.evaluate(()=>{const r=document.documentElement.getBoundingClientRect(),t=document.querySelector('#viewTabs').getBoundingClientRect();return [Math.round(r.width),Math.round(r.height),Math.round(t.left),Math.round(t.width),document.body.scrollHeight<=document.body.clientHeight+1].join(' ');}));}
+   assert.equal(new Set(frames).size,1,'popup frame changes between tabs: '+frames.join(' | '));assert(frames[0].startsWith('360 560 '),'popup frame is 360 × 560: '+frames[0]);assert(frames[0].endsWith('true'),'the popup body itself never scrolls');
+   check('the toolbar popup keeps one 360 × 560 frame when switching 本页视频 ↔ 已下载');}
   assert.deepEqual(errors,[]);check('no page errors');
   fs.writeFileSync(path.join(report,'summary.json'),JSON.stringify({ok:true,checks},null,2));
   console.log('VIEW TABS CHECKS PASSED ('+checks.length+')');

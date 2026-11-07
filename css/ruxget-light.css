@@ -21,6 +21,13 @@
 html,body{background:var(--bg)!important;background-image:none!important;color:var(--fg)!important}
 /* Keep the scrollbar's place even when nothing scrolls, so switching 本页视频 ↔ 已下载 never changes the width. */
 html{scrollbar-gutter:stable;scrollbar-width:thin;scrollbar-color:#C9C2AC transparent}
+/* Toolbar popup: one fixed frame (360 × 560). The header and the two tabs stay put; only the open tab's content
+   scrolls inside the frame, so switching 本页视频 ↔ 已下载 never resizes the popup. The side panel is not affected. */
+html.popup{height:560px;overflow:hidden;scrollbar-gutter:auto}
+html.popup body{height:560px;overflow:hidden;display:flex;flex-direction:column}
+html.popup body>.topbar,html.popup body>.offer-card,html.popup body>.view-tabs{flex:none}
+html.popup body>.view-panel{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable;scrollbar-width:thin;scrollbar-color:#C9C2AC transparent}
+html.popup body>.view-panel[hidden]{display:none}
 body{font-family:"Geist","Microsoft YaHei UI","PingFang SC",sans-serif!important;-webkit-font-smoothing:antialiased}
 button,input,select,textarea{font-family:inherit}
 ::selection{background:var(--lime);color:var(--lime-ink)}
