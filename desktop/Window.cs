@@ -168,7 +168,9 @@ public partial class MainWindow : Form {
     readonly System.Windows.Forms.Timer timer=new System.Windows.Forms.Timer();
     static readonly Color Blue=Color.FromArgb(95,185,255),Ink=Color.FromArgb(255,255,255),Muted=Color.FromArgb(196,214,235),Wash=Color.FromArgb(17,29,46),Line=Color.FromArgb(59,83,111);
     string filter="all";
-    bool ticking,closeReady,closingWindow,refreshing,batchBusy;
+    bool ticking,closeReady,closingWindow,refreshing,batchBusy,quitRequested;
+    // Quitting for real (tray menu "完全退出"): saves tasks and stops downloads. The window's X only hides to the tray.
+    public void Quit(){quitRequested=true;Close();}
     Action<Form> inspectDialog;
 
     public MainWindow(Manager engine,bool isPreview=false) {
@@ -242,12 +244,12 @@ public partial class MainWindow : Form {
         miniSurface.Controls.Add(miniMeta);miniSurface.Controls.Add(miniProgress);miniSurface.Controls.Add(miniTitle);miniSurface.Controls.Add(miniHeader);miniSurface.Controls.Add(miniActions);
         Controls.Add(mainSurface);Controls.Add(miniSurface);
         if(!preview){mainSurface.Visible=false;miniSurface.Visible=false;}
-        tray.Icon=Icon;tray.Text="Ruxget · 后台下载";var trayMenu=new ContextMenuStrip();trayMenu.Items.Add("显示 Ruxget",null,(s,e)=>RestoreFromTray());trayMenu.Items.Add("退出并保存任务",null,(s,e)=>Close());tray.ContextMenuStrip=trayMenu;tray.DoubleClick+=(s,e)=>RestoreFromTray();
+        tray.Icon=Icon;tray.Text="Ruxget · 后台下载";var trayMenu=new ContextMenuStrip();trayMenu.Items.Add("显示 Ruxget",null,(s,e)=>RestoreFromTray());trayMenu.Items.Add("完全退出",null,(s,e)=>Quit());tray.ContextMenuStrip=trayMenu;tray.DoubleClick+=(s,e)=>RestoreFromTray();
         FormClosed+=(s,e)=>{taskMenu.Dispose();timer.Dispose();tray.Dispose();segmentTip.Dispose();menu.Dispose();trayMenu.Dispose();};
         KeyPreview=true;KeyDown+=(s,e)=>{if(e.KeyCode==Keys.Escape&&!String.IsNullOrEmpty(expandedId)&&!miniMode){expandedId="";UpdateDetails();e.Handled=true;}};
         timer.Interval=700;timer.Tick+=async(s,e)=>{if(ticking||closingWindow)return;ticking=true;try{await Task.Run(()=>manager.Tick());if(!IsDisposed&&!closingWindow)RefreshJobs();}catch(Exception ex){if(!IsDisposed)status.Text=ex.Message;}finally{ticking=false;}};
         if(!preview)timer.Start();RefreshJobs();
-        FormClosing+=async(s,e)=>{if(e.CloseReason==CloseReason.WindowsShutDown||e.CloseReason==CloseReason.TaskManagerClosing){timer.Stop();if(!closingWindow){closingWindow=true;try{manager.Dispose();}catch{}}return;}timer.Stop();if(!closeReady&&!closingWindow)SaveWindowLayout();if(preview||closeReady)return;e.Cancel=true;if(closingWindow)return;closingWindow=true;tray.Visible=false;foreach(Form owned in OwnedForms)owned.Hide();Hide();status.Text="正在保存任务…";try{await Task.Run(()=>manager.Dispose());}catch(Exception ex){Alert(ex.Message);}closeReady=true;Close();};
+        FormClosing+=async(s,e)=>{if(!quitRequested&&!closeReady&&!closingWindow&&!preview&&e.CloseReason==CloseReason.UserClosing){e.Cancel=true;SaveWindowLayout();HideToTray();return;}if(e.CloseReason==CloseReason.WindowsShutDown||e.CloseReason==CloseReason.TaskManagerClosing){timer.Stop();if(!closingWindow){closingWindow=true;try{manager.Dispose();}catch{}}return;}timer.Stop();if(!closeReady&&!closingWindow)SaveWindowLayout();if(preview||closeReady)return;e.Cancel=true;if(closingWindow)return;closingWindow=true;tray.Visible=false;foreach(Form owned in OwnedForms)owned.Hide();Hide();status.Text="正在保存任务…";try{await Task.Run(()=>manager.Dispose());}catch(Exception ex){Alert(ex.Message);}closeReady=true;Close();};
         if(!preview)Shown+=(s,e)=>StartPlugin();
         if(!preview)Shown+=(s,e)=>RestoreWindowMode();
         if(!preview)Shown+=(s,e)=>BrowserBridge.Listen(this);
@@ -427,8 +429,8 @@ public partial class MainWindow : Form {
         LabelAt(f,"默认保存文件夹",24,20);var folder=new TextBox{Left=24,Top=50,Width=424,Text=manager.Config.Folder,AccessibleName="新任务默认保存文件夹"};f.Controls.Add(folder);var browse=Button("选文件夹");browse.SetBounds(456,47,90,30);f.Controls.Add(browse);browse.Click+=(s,e)=>{string path=PickFolder(f,folder.Text);if(path!=null)folder.Text=path;};
         LabelAt(f,"网页 / HTTP Tracker 代理（填 system 跟随系统，留空直连）",24,92);var proxy=new TextBox{Left=24,Top=122,Width=522,Text=manager.Config.Proxy};f.Controls.Add(proxy);
         LabelAt(f,"每个文件的最大连接数",24,166);var connections=new NumericUpDown{Left=260,Top=164,Width=110,Minimum=1,Maximum=16,Value=manager.Config.Connections};f.Controls.Add(connections);
-        LabelAt(f,"同时下载的文件 / BT 任务",24,210);var files=new NumericUpDown{Left=260,Top=210,Width=110,Minimum=1,Maximum=4,Value=manager.Config.FileSlots};f.Controls.Add(files);
-        LabelAt(f,"同时下载的视频任务",24,254);var videos=new NumericUpDown{Left=260,Top=254,Width=110,Minimum=1,Maximum=2,Value=manager.Config.VideoSlots};f.Controls.Add(videos);
+        LabelAt(f,"同时下载的文件 / BT 任务",24,210);var files=new NumericUpDown{Left=260,Top=210,Width=110,Minimum=1,Maximum=10,Value=manager.Config.FileSlots};f.Controls.Add(files);
+        LabelAt(f,"同时下载的视频任务",24,254);var videos=new NumericUpDown{Left=260,Top=254,Width=110,Minimum=1,Maximum=6,Value=manager.Config.VideoSlots};f.Controls.Add(videos);
         LabelAt(f,"每任务限速 KiB/s（0 为不限）",24,298);var rate=new NumericUpDown{Left=310,Top=296,Width=120,Minimum=0,Maximum=102400,Value=manager.Config.RateKiB};f.Controls.Add(rate);
         LabelAt(f,"BT 上传上限 KiB/s",24,342);var upload=new NumericUpDown{Left=310,Top=340,Width=120,Minimum=16,Maximum=8192,Value=manager.Config.BtUploadKiB};f.Controls.Add(upload);
         var categorize=new CheckBox{Left=24,Top=390,Width=522,Height=28,Text="新任务默认按类型放入子文件夹",Checked=manager.Config.AutoCategorize};f.Controls.Add(categorize);

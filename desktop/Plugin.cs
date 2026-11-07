@@ -71,7 +71,7 @@ public partial class MainWindow {
         if(command=="cancelBatch"){batchFolder="";return;}
         if(command=="mini"||command=="expand"){if(command=="mini"&&!String.IsNullOrEmpty(id))SelectTask(id);SetMini(command=="mini");return;}
         if(command=="window"){
-            string action=Util.Str(data,"action");if(action=="close")Close();else if(action=="minimize")WindowState=FormWindowState.Minimized;else if(action=="maximize"){ToggleMaximize();PushPluginState();}return;
+            string action=Util.Str(data,"action");if(action=="close")HideToTray();else if(action=="quit")Quit();else if(action=="minimize")WindowState=FormWindowState.Minimized;else if(action=="maximize"){ToggleMaximize();PushPluginState();}return;
         }
         if(command=="resize"){int hit;if(Int32.TryParse(Util.Str(data,"hit"),out hit))BeginNativeResize(hit);return;}
         if(command=="hide"){HideToTray();return;}

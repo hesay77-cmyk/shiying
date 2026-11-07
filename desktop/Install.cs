@@ -82,7 +82,10 @@ public static class Installation {
             var restore=Util.Json().Deserialize<RegGroup[]>(Util.Json().Serialize(groups));if(prior!=null)foreach(var value in restore.SelectMany(g=>g.Values)){var previous=prior.Registry.SelectMany(g=>g.Values).FirstOrDefault(v=>v.Path==value.Path&&v.Name==value.Name);if(previous!=null){value.Before=previous.Before;value.Exists=previous.Exists;value.BeforeNumber=previous.BeforeNumber;}}
             var files=expected.files.Concat(new[]{new InstalledFile{Path="ShiyingSetup.exe",Sha256=ComponentStore.Hash(installedSetup)}}).ToArray();
             var receipt=new InstallReceipt{Root=root,Id=prior==null?Guid.NewGuid().ToString("N"):prior.Id,Version=Util.Version,Files=files,Registry=restore,Shortcuts=prior==null?new string[0]:MigrateShortcuts(root,prior.Shortcuts)};
-            if(shortcuts){createdLinks.AddRange(CreateShortcuts(root));receipt.Shortcuts=createdLinks.Concat(receipt.Shortcuts??new string[0]).Distinct().ToArray();}Util.Atomic(receiptPath,receipt);return receipt;
+            if(shortcuts){createdLinks.AddRange(CreateShortcuts(root));receipt.Shortcuts=createdLinks.Concat(receipt.Shortcuts??new string[0]).Distinct().ToArray();}Util.Atomic(receiptPath,receipt);
+            // 0.4.70: only the two newest program backups are kept (each upgrade used to leave one more, about 10 MB).
+            try{foreach(var old in new DirectoryInfo(Path.Combine(root,"data")).GetDirectories("install-backup-*").OrderByDescending(d=>d.Name.Length).ThenByDescending(d=>d.Name,StringComparer.Ordinal).Skip(2))old.Delete(true);}catch(Exception){}
+            return receipt;
         }catch{
             foreach(string link in createdLinks)try{File.Delete(link);}catch{}
             if(groups!=null)Restore(registry,groups,false);if(oldManifest!=null)File.WriteAllText(manifest,oldManifest,new UTF8Encoding(false));else if(File.Exists(manifest))File.Delete(manifest);

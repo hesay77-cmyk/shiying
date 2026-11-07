@@ -47,7 +47,9 @@ class WindowShellCheck {
   using(var owned=new Form{Text="Private owned details fixture",ShowInTaskbar=false})using(var held=new ManualResetEventSlim()){
    owned.Show(window);typeof(MainWindow).GetField("preview",Private).SetValue(window,false); // Constructor stays in isolated review mode; exercise the production close event only.
    var worker=Task.Run(()=>{lock(Field(manager,"gate")){held.Set();Thread.Sleep(2100);}});Require(held.Wait(1000),"Slow shutdown fixture did not acquire the manager gate");
-   var watch=System.Diagnostics.Stopwatch.StartNew();Call(window,"PluginMessage","{\"command\":\"window\",\"action\":\"close\"}");long requestMs=watch.ElapsedMilliseconds;
+   // 0.4.70: the window's X hides to the tray and keeps running; quitting is the tray's "完全退出".
+   Call(window,"PluginMessage","{\"command\":\"window\",\"action\":\"close\"}");Pump(()=>!window.Visible,"The X did not hide the window");Require(!window.IsDisposed,"The X closed the app instead of hiding it to the tray");window.Show();
+   var watch=System.Diagnostics.Stopwatch.StartNew();Call(window,"PluginMessage","{\"command\":\"window\",\"action\":\"quit\"}");long requestMs=watch.ElapsedMilliseconds;
    bool immediatelyHidden=!window.Visible&&!owned.Visible,pending=!window.IsDisposed;window.RestoreFromTray();bool restoreSuppressed=!window.Visible;window.Close();
    Pump(()=>window.IsDisposed,"Production close never completed its asynchronous cleanup");worker.GetAwaiter().GetResult();long cleanupMs=watch.ElapsedMilliseconds;
    var saved=Util.Json().Deserialize<WindowLayout>(File.ReadAllText(Path.Combine(manager.DataDirectory,"window.json")));bool sizeSaved=saved.Width==normal.Width&&saved.Height==normal.Height;

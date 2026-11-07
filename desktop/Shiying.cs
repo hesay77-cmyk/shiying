@@ -27,6 +27,11 @@ namespace ShiyingDesktop {
 public class Download {
     public string Id, Url, Title, Kind, Folder, Status, Error, File, VideoUrl, AudioUrl, Referer, UserAgent, Stage;
     public bool ExtractAudio;
+    // 0.4.70: unfinished data of a new file/video download sits next to its destination (same drive), so finishing is
+    // a rename instead of copying the whole file from the app's own drive. Empty for older tasks and BT.
+    public string WorkDir;
+    // A server check running outside the lock for this download; a newer token (or none) makes its result stale.
+    [ScriptIgnore] public string ProbeToken;
     public string NetdiskProvider,NetdiskFileKey,NetdiskCookie,NetdiskUrl;
     public long NetdiskSize=-1;
     public int Height;
@@ -54,7 +59,7 @@ public class Settings {
     // "system" follows the Windows proxy (Internet Settings); "" is a direct connection; anything else is an explicit proxy URL.
     public string Proxy = Util.SystemProxyMode;
     public int Connections = 8;
-    public int FileSlots = 2, VideoSlots = 1, RateKiB, BtUploadKiB=512;
+    public int FileSlots = 10, VideoSlots = 6, RateKiB, BtUploadKiB=512;
     public bool AutoCategorize = true;
     public bool SaveSubtitles;
     public string UiLanguage = "auto";
@@ -137,7 +142,7 @@ static class Util {
     // Windows proxy for HTTPS traffic, as http://host:port, or "" when the system proxy is off or uses only a PAC script.
     public static string SystemProxy(){try{using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Internet Settings")){if(key==null||Convert.ToInt32(key.GetValue("ProxyEnable",0))!=1)return "";string server=Convert.ToString(key.GetValue("ProxyServer","")).Trim();if(server.Contains("=")){var parts=server.Split(';').Select(p=>p.Split(new[]{'='},2)).Where(p=>p.Length==2).ToDictionary(p=>p[0].Trim().ToLowerInvariant(),p=>p[1].Trim());server=parts.ContainsKey("https")?parts["https"]:parts.ContainsKey("http")?parts["http"]:"";}if(server.Length==0)return "";if(!server.Contains("://"))server="http://"+server;Uri uri;return Uri.TryCreate(server,UriKind.Absolute,out uri)&&(uri.Scheme=="http"||uri.Scheme=="https"||uri.Scheme.StartsWith("socks"))?server:"";}}catch{return "";}}
     public static void CheckProxy(string value){if(value.Length>0&&value!=SystemProxyMode)Url(value);}
-    public const string Version="0.4.69";
+    public const string Version="0.4.70";
     // Links added without a browser's own name (pasted, batch, magnet-free files) go out with an ordinary browser name.
     // Many CDNs refuse the download engine's default "aria2/x.y": Aliyun's answers "403 denied by UA ACL = blacklist" (0.4.63).
     public const string BrowserAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
@@ -186,6 +191,7 @@ static class Util {
         if(Regex.IsMatch(text,"Resource not found",RegexOptions.IgnoreCase)||HttpStatus(text,"404","Not Found")||HttpStatus(text,"410","Gone"))return "链接不存在或已过期，请重新获取下载地址";
         if(HttpStatus(text,"403","Forbidden"))return "网站拒绝了下载请求，请在原网页重新读取并发送";
         if(Regex.IsMatch(text,"Too Many Requests",RegexOptions.IgnoreCase)||HttpStatus(text,"429","Too Many Requests"))return "网站暂时限制请求，请稍后再试";
+        if(Regex.IsMatch(text,"^\\s*Download aborted\\.?\\s*$",RegexOptions.IgnoreCase))return "下载中止了：下载文件夹可能不能写入、被移走了，或路径太长。换一个下载文件夹后重试";
         if(Regex.IsMatch(text,"Got EOF from the server",RegexOptions.IgnoreCase))return "服务器中途断开了连接，可以点重试接着下载";
         if(Regex.IsMatch(text,"No URI available",RegexOptions.IgnoreCase))return "服务器不再提供数据，所有连接都失败了。可以稍后重试，或在原网页重新获取下载地址";
         // aria2 asked for one range and the server sent a shorter one: it is holding part of the file back.
@@ -228,10 +234,16 @@ static class Util {
     // taken: names another task still points at (its file may have been deleted by hand). 0.4.69: they are skipped too,
     // so two tasks never share one file and deleting one task's file never touches another's.
     public static string PlaceFile(string source, string folder, string outputName=null, Func<string,bool> taken=null) {
-        Directory.CreateDirectory(folder);
         string selected=Name(outputName??Path.GetFileName(source));
         string name = Name(Path.GetFileNameWithoutExtension(selected)), ext = Path.GetExtension(selected);
         if (Path.GetFileNameWithoutExtension(selected).Length == 0) { name = selected; ext = ""; }
+        // 0.4.70: the whole path stays within Windows' 260 characters (with room for " (99)"); a folder that is itself
+        // too long is explained instead of failing after the download.
+        string full; try { full = Path.GetFullPath(folder); } catch (PathTooLongException) { full = new string('x', 300); }
+        int room = 259 - full.TrimEnd('\\').Length - 1 - ext.Length - 7;
+        if (room < 8) throw new IOException("保存文件夹的路径太长，请换一个短一点的文件夹");
+        Directory.CreateDirectory(folder);
+        if (name.Length > room) { int cut = room; if (Char.IsHighSurrogate(name[cut - 1])) cut--; name = name.Substring(0, cut).TrimEnd(' ', '.'); }
         for (int n=0; n<10000; n++) {
             string target=Path.Combine(folder,name+(n==0?"":" ("+n+")")+ext);
             if (taken!=null&&taken(target)) continue;
@@ -292,7 +304,7 @@ public partial class Manager : IDisposable {
             jobs=ReadSaved<List<Download>>(state)??new List<Download>();
             foreach (var job in jobs){if(TorrentInfo.IsBt(job)){if(job.Status=="已完成"&&job.BtSelected==null)job.BtSelected=(job.BtFiles??new TorrentFileInfo[0]).Select(f=>f.Index).ToArray();SyncBtSelection(job);if(job.HasMetadata&&!HasBtSelection(job)&&job.Status!="已完成"){job.Status="等待选文件";job.Speed="";continue;}}if(job.Status!="已完成"&&job.Status!="失败"){job.Status="已暂停";job.Speed="";}else if(job.Status=="已完成"&&(job.Transfer==null||job.Transfer.Total<0))TransferData.Complete(job);}
         }
-        foreach(var job in jobs){job.BtReason="";job.BtAdvice="";}
+        foreach(var job in jobs){job.BtReason="";job.BtAdvice="";if(job.Status!="已完成"&&YouTubeTracks(job))YouTubeItself(job);}
         PublishSnapshot();
     }
     // Chrome's download folder as the extension last saw it. Returns true when the save folder changed.
@@ -305,11 +317,41 @@ public partial class Manager : IDisposable {
     public void SaveSettings() {
         lock(gate) { NormalizeSettings();if(btAria!=null&&!btAria.HasExited)BtRpc("changeGlobalOption",new Dictionary<string,string>{{"max-overall-upload-limit",Config.BtUploadKiB+"K"}});Util.Atomic(Path.Combine(dataRoot,"settings.json"),Config); }
     }
-    void NormalizeSettings(){Config.UiLanguage=(Config.UiLanguage=="en"||Config.UiLanguage=="zh_CN"||Config.UiLanguage=="auto")?Config.UiLanguage:"auto";Config.Proxy=Config.Proxy??"";Util.CheckProxy(Config.Proxy);Config.Connections=Math.Max(1,Math.Min(16,Config.Connections));Config.FileSlots=Math.Max(1,Math.Min(4,Config.FileSlots));Config.VideoSlots=Math.Max(1,Math.Min(2,Config.VideoSlots));Config.RateKiB=Math.Max(0,Math.Min(102400,Config.RateKiB));Config.BtUploadKiB=Math.Max(16,Math.Min(8192,Config.BtUploadKiB));Config.Folder=Path.GetFullPath(String.IsNullOrWhiteSpace(Config.Folder)?new Settings().Folder:Config.Folder);}
+    void NormalizeSettings(){Config.UiLanguage=(Config.UiLanguage=="en"||Config.UiLanguage=="zh_CN"||Config.UiLanguage=="auto")?Config.UiLanguage:"auto";Config.Proxy=Config.Proxy??"";Util.CheckProxy(Config.Proxy);Config.Connections=Math.Max(1,Math.Min(16,Config.Connections));// 0.4.70: no setting any more; the largest values always (6 videos, 10 files at once).
+        Config.FileSlots=10;Config.VideoSlots=6;Config.RateKiB=Math.Max(0,Math.Min(102400,Config.RateKiB));Config.BtUploadKiB=Math.Max(16,Math.Min(8192,Config.BtUploadKiB));Config.Folder=Path.GetFullPath(String.IsNullOrWhiteSpace(Config.Folder)?new Settings().Folder:Config.Folder);}
     void PublishSnapshot(){snapshotJson=Util.Json().Serialize(jobs);}
     void Save() { PublishSnapshot(); Util.Atomic(Path.Combine(dataRoot,"tasks.json"),jobs); }
     public List<Download> Snapshot() { return Util.Json().Deserialize<List<Download>>(snapshotJson); }
-    public string Work(Download job) { return Path.Combine(dataRoot,"partial",job.Id); }
+    public string Work(Download job) { string near=NearWork(job); return near!=null&&String.Equals(job.WorkDir,near,StringComparison.OrdinalIgnoreCase) ? near : Path.Combine(dataRoot,"partial",job.Id); }
+    // The only place a task's data may live outside the app: <its folder>\.ruxget-partial\<its id>.
+    static string NearWork(Download job){try{return String.IsNullOrEmpty(job.WorkDir)||String.IsNullOrEmpty(job.Folder)||!Regex.IsMatch(job.Id??"",@"^[a-f0-9]{16}$")?null:Path.Combine(Path.GetFullPath(job.Folder),".ruxget-partial",job.Id);}catch(Exception){return null;}}
+    // A hidden .ruxget-partial folder in the download's own folder; the app's folder when that can't be used or when
+    // this task already has data there (started before 0.4.70).
+    void ChooseWork(Download job){
+        if(!String.IsNullOrEmpty(job.WorkDir)||job.Kind!="file"||TorrentInfo.IsBt(job)||Directory.Exists(Path.Combine(dataRoot,"partial",job.Id))||String.IsNullOrEmpty(job.Folder))return;
+        try{
+            string parent=Path.Combine(Path.GetFullPath(job.Folder),".ruxget-partial"),dir=Path.Combine(parent,job.Id);
+            if(String.Equals(Path.GetPathRoot(parent),Path.GetPathRoot(Path.GetFullPath(dataRoot)),StringComparison.OrdinalIgnoreCase))return;
+            foreach(string name in new[]{"OneDrive","OneDriveConsumer","OneDriveCommercial"}){string synced=Environment.GetEnvironmentVariable(name);if(!String.IsNullOrEmpty(synced)&&Util.InDirectory(parent,synced))return;}
+            if(Path.Combine(dir,(String.IsNullOrEmpty(job.WorkName)?Util.Name(job.Title):job.WorkName)+".aria2").Length>250)return;
+            Directory.CreateDirectory(dir);var info=new DirectoryInfo(parent);if((info.Attributes&FileAttributes.Hidden)==0)info.Attributes|=FileAttributes.Hidden;
+            string probe=Path.Combine(dir,".write-check");System.IO.File.WriteAllText(probe,"");System.IO.File.Delete(probe);
+            job.WorkDir=dir;
+        }catch(Exception){/* Not writable (read-only share, odd drive): the app's own folder as before. */}
+    }
+    static void Writable(string folder){
+        try{Directory.CreateDirectory(folder);string probe=Path.Combine(folder,".ruxget-write-check");System.IO.File.WriteAllText(probe,"");System.IO.File.Delete(probe);}
+        catch(Exception){throw new IOException("下载文件夹不能写入（"+folder+"）。换一个下载文件夹后重试");}
+    }
+    // The single finished media file in a video task's folder (no partial or fragment files), or null.
+    static string FinishedMedia(string folder){
+        try{var media=Directory.GetFiles(folder).Where(f=>new[]{".mp4",".mkv",".webm",".mp3",".m4a",".opus",".mov"}.Contains(Path.GetExtension(f).ToLowerInvariant())&&!Regex.IsMatch(Path.GetFileName(f),@"\.f\d+\.|\.part|\.temp\.",RegexOptions.IgnoreCase)).ToArray();return media.Length==1?media[0]:null;}catch(Exception){return null;}
+    }
+    // After a download is placed, its empty .ruxget-partial folder (and the parent, once empty) goes away.
+    void TidyWork(Download job){
+        string near=NearWork(job);if(near==null||!String.Equals(job.WorkDir,near,StringComparison.OrdinalIgnoreCase))return;
+        try{if(Directory.Exists(job.WorkDir)&&Directory.GetFileSystemEntries(job.WorkDir).Length==0)Directory.Delete(job.WorkDir);string parent=Path.GetDirectoryName(job.WorkDir);if(Path.GetFileName(parent)==".ruxget-partial"&&Directory.Exists(parent)&&Directory.GetFileSystemEntries(parent).Length==0)Directory.Delete(parent);}catch(Exception){}
+    }
     void CanAdd(int count){if(closing)throw new Exception("正在关闭下载窗口，请稍后重新打开");if(jobs.Count+count>2000)throw new Exception("任务记录最多 2000 条，请先移除不需要的记录");}
     public Download Add(string url, string kind, string title="", int height=1080, string folder=null, IDictionary<string,object> input=null, bool? autoCategorize=null) {
         lock(gate) {
@@ -363,10 +405,14 @@ public partial class Manager : IDisposable {
                     (sourceHost=="www.kuaishou.com"||sourceHost=="kuaishou.com")&&Regex.IsMatch(videoHost,@"(^|\.)(kwaicdn|ndcimgs|yximgs|kwimgs)\.com$")||
                     (sourceHost=="www.xiaohongshu.com"||sourceHost=="xiaohongshu.com")&&Regex.IsMatch(videoHost,@"(^|\.)xhscdn\.com$"));
                 if(!(bili&&biliTracks||yt&&ytTracks||combined))throw new Exception("音视频轨与来源网站不匹配");
+                if(yt)YouTubeItself(job);
             }
             if(input!=null) { job.Referer=Util.Str(input,"referer"); if(job.Referer.Length>0)job.Referer=Util.Url(job.Referer); job.UserAgent=Util.Str(input,"userAgent"); if(job.UserAgent.Length>512||job.UserAgent.Any(Char.IsControl))throw new Exception("浏览器信息无效"); }
             return job;
     }
+    // 0.4.70: YouTube serves addresses copied from its page at a few KB/s; yt-dlp reads the video itself at full speed.
+    static void YouTubeItself(Download job){job.Kind="video";job.VideoUrl="";job.AudioUrl="";job.ExtractAudio=false;}
+    static bool YouTubeTracks(Download job){try{string host=new Uri(job.Url).Host;return job.Kind=="tracks"&&(host=="www.youtube.com"||host=="youtube.com"||host=="youtu.be"||host=="m.youtube.com");}catch{return false;}}
     static string TrackUrl(string value) {
         string url=Util.Url(value); var u=new Uri(url);
         if(u.Scheme!="https"||!u.IsDefaultPort||!Regex.IsMatch(u.Host,@"(^|\.)(bilivideo\.(com|cn)|googlevideo\.com|douyinvod\.com|douyincdn\.com|kwaicdn\.com|ndcimgs\.com|yximgs\.com|kwimgs\.com|xhscdn\.com)$"))throw new Exception("视频轨地址不受支持");
@@ -393,16 +439,36 @@ public partial class Manager : IDisposable {
         string exe=Path.Combine(Util.Root,"bin","aria2c.exe"); if(!System.IO.File.Exists(exe))throw new Exception("缺少 aria2c.exe，请使用完整桌面版目录");
         var listener=new TcpListener(IPAddress.Loopback,0); listener.Start(); int port=((IPEndPoint)listener.LocalEndpoint).Port; listener.Stop();
         secret=Guid.NewGuid().ToString("N"); rpcUrl="http://127.0.0.1:"+port+"/jsonrpc";
-        aria=Util.Start(exe,new[]{"--stop-with-process="+Process.GetCurrentProcess().Id,"--no-conf=true","--no-netrc=true","--enable-rpc=true","--rpc-listen-all=false","--rpc-listen-port="+port,"--rpc-secret="+secret,"--max-concurrent-downloads=4","--follow-torrent=false","--follow-metalink=false","--enable-dht=false","--enable-dht6=false","--enable-peer-exchange=false","--save-session-interval=0","--auto-save-interval=1","--check-certificate=true","--console-log-level=error","--download-result=hide","--enable-color=false"});
+        aria=Util.Start(exe,new[]{"--stop-with-process="+Process.GetCurrentProcess().Id,"--no-conf=true","--no-netrc=true","--enable-rpc=true","--rpc-listen-all=false","--rpc-listen-port="+port,"--rpc-secret="+secret,"--max-concurrent-downloads=10","--follow-torrent=false","--follow-metalink=false","--enable-dht=false","--enable-dht6=false","--enable-peer-exchange=false","--save-session-interval=0","--auto-save-interval=1","--check-certificate=true","--console-log-level=error","--download-result=hide","--enable-color=false"});
         aria.OutputDataReceived+=(s,e)=>{}; aria.ErrorDataReceived+=(s,e)=>{};
         try{aria.Start();}catch{aria.Dispose();aria=null;throw;} aria.BeginOutputReadLine(); aria.BeginErrorReadLine();
         for(int n=0;n<30;n++){try{Rpc("getVersion");return;}catch{if(aria.HasExited)break;Thread.Sleep(100);}}
         Util.KillTree(aria); throw new Exception("下载内核启动失败，请重试");
     }
-    void StartFile(Download job) {
-        EnsureAria(); Directory.CreateDirectory(Work(job));
+    void BeginFile(Download job) {
+        string token=Guid.NewGuid().ToString("N");job.ProbeToken=token;job.Status="等待下载";job.PauseRequested=false;
+        Task.Run(()=>{
+            RemoteMetadata metadata=null;Exception failure=null;
+            ChooseWork(job);
+            try{Writable(Util.OutputFolder(job));metadata=Metadata(job);}catch(Exception ex){failure=ex;}
+            lock(gate){
+                if(job.ProbeToken!=token)return;job.ProbeToken=null;
+                if(closing||disposed||!jobs.Contains(job))return;
+                if(job.Status!="等待下载"){Save();return;}
+                try{if(failure!=null)throw failure;StartFile(job,metadata);}catch(Exception ex){job.Status=closing?"已暂停":"失败";job.Error=closing?"":Util.SafeError(ex.Message);}
+                Save();
+            }
+        });
+    }
+    void StartFile(Download job,RemoteMetadata probed=null) {
+        if(probed==null)ChooseWork(job);EnsureAria();
+        // Its unfinished data is gone with its folder (moved, renamed, a USB drive with another letter): say so instead
+        // of silently starting again from zero.
+        if(Work(job)!=Path.Combine(dataRoot,"partial",job.Id)&&job.HasMetadata&&job.Transfer!=null&&job.Transfer.Completed>0&&!Directory.Exists(Work(job)))throw new Exception("找不到这个下载已下好的部分（下载文件夹可能被移动、改名或拔掉了）。把文件夹放回原处后再继续，或新建下载");
+        Directory.CreateDirectory(Work(job));
         string name=String.IsNullOrEmpty(job.WorkName)?Util.Name(job.Title):job.WorkName;
-        var metadata=Metadata(job);
+        string data=Path.Combine(Work(job),name);if(System.IO.File.Exists(data)&&!System.IO.File.Exists(data+".aria2")){System.IO.File.Delete(data);if(job.Transfer!=null)job.Transfer.Completed=0;job.Progress=0;}
+        var metadata=probed??Metadata(job);
         if(job.HasMetadata&&System.IO.File.Exists(Path.Combine(Work(job),name)+".aria2")) {
             if(metadata.Resume!=true)throw new Exception("服务器不支持或无法确认分段续传，原有未完成数据已保留；请新建任务重新下载");
             bool sameVersion=!String.IsNullOrEmpty(job.ETag)&&!job.ETag.StartsWith("W/") ? job.ETag==metadata.ETag : !String.IsNullOrEmpty(job.Modified)&&job.Modified==metadata.Modified;
@@ -490,7 +556,7 @@ public partial class Manager : IDisposable {
         string exe=Path.Combine(Util.Root,"bin","yt-dlp.exe"), ffmpeg=Path.Combine(Util.Root,"bin","ffmpeg.exe"), node=Path.Combine(Util.Root,"bin","node.exe");
         if(!Components.Ready(job))throw new Exception("视频组件尚未准备好，请继续重试");
         Directory.CreateDirectory(Work(job)); job.PauseRequested=false;
-        var args=new List<string>{"--ignore-config","--no-playlist","--no-cache-dir","--no-overwrites","--newline","--progress","--progress-delta","0.2","--socket-timeout","20","--retries","2","--fragment-retries","2","--concurrent-fragments","4","--ffmpeg-location",Path.Combine(Util.Root,"bin"),"--proxy",new Uri(job.Url).IsLoopback?"":ProxyUrl,"-o",Path.Combine(Work(job),"%(title).120B [%(id)s].%(ext)s"),"--progress-template","download:progress:{\"downloaded_bytes\":%(progress.downloaded_bytes|null)j,\"total_bytes\":%(progress.total_bytes|null)j,\"total_bytes_estimate\":%(progress.total_bytes_estimate|null)j,\"speed\":%(progress.speed|null)j,\"eta\":%(progress.eta|null)j,\"fragment_index\":%(progress.fragment_index|null)j,\"fragment_count\":%(progress.fragment_count|null)j,\"vcodec\":%(info.vcodec|null)j,\"acodec\":%(info.acodec|null)j}","--progress-template","postprocess:phase:%(progress.postprocessor)s","--print","after_move:final:%(filepath)s"};
+        var args=new List<string>{"--ignore-config","--encoding","utf-8","--no-playlist","--no-cache-dir","--no-overwrites","--newline","--progress","--progress-delta","0.2","--socket-timeout","20","--retries","2","--fragment-retries","2","--concurrent-fragments","4","--ffmpeg-location",Path.Combine(Util.Root,"bin"),"--proxy",new Uri(job.Url).IsLoopback?"":ProxyUrl,"-o",Path.Combine(Work(job),"%(title).120B [%(id)s].%(ext)s"),"--progress-template","download:progress:{\"downloaded_bytes\":%(progress.downloaded_bytes|null)j,\"total_bytes\":%(progress.total_bytes|null)j,\"total_bytes_estimate\":%(progress.total_bytes_estimate|null)j,\"speed\":%(progress.speed|null)j,\"eta\":%(progress.eta|null)j,\"fragment_index\":%(progress.fragment_index|null)j,\"fragment_count\":%(progress.fragment_count|null)j,\"vcodec\":%(info.vcodec|null)j,\"acodec\":%(info.acodec|null)j}","--progress-template","postprocess:phase:%(progress.postprocessor)s","--print","after_move:final:%(filepath)s"};
         if(ComponentStore.NeedsNode(job))args.AddRange(new[]{"--js-runtimes","node:"+node});
         if(Config.RateKiB>0)args.AddRange(new[]{"--limit-rate",Config.RateKiB+"K"});
         if(job.Kind=="tracks") {
@@ -519,8 +585,11 @@ public partial class Manager : IDisposable {
         try{child.Start();}catch{job.Child=null;child.Dispose();throw;}Util.EndWithApp(child);child.BeginOutputReadLine();child.BeginErrorReadLine();
         Task.Run(()=>{child.WaitForExit();lock(gate){
             job.Child=null; job.Speed="";
+            // 0.4.70: a title with characters the console code page lacks (｜, emoji) used to come back garbled, so the
+            // finished file was "not found". The one media file yt-dlp left in this task's own folder is used then.
+            if(child.ExitCode==0&&!(Util.InDirectory(final,Work(job))&&System.IO.File.Exists(final)))final=FinishedMedia(Work(job))??final;
             if(job.PauseRequested||closing)job.Status="已暂停";
-            else if(child.ExitCode==0&&Util.InDirectory(final,Work(job))&&System.IO.File.Exists(final)) { try{job.File=Util.PlaceFile(final,Util.OutputFolder(job,Path.GetFileName(final)),null,path=>Claimed(path,job));PlaceSubtitles(job,final);job.Status="已完成";job.Progress=100;job.Error="";TransferData.Complete(job);}catch(Exception ex){job.Status="失败";job.Error=Util.SafeError(ex.Message);} }
+            else if(child.ExitCode==0&&Util.InDirectory(final,Work(job))&&System.IO.File.Exists(final)) { try{job.File=Util.PlaceFile(final,Util.OutputFolder(job,Path.GetFileName(final)),null,path=>Claimed(path,job));TidyWork(job);PlaceSubtitles(job,final);job.Status="已完成";job.Progress=100;job.Error="";TransferData.Complete(job);}catch(Exception ex){job.Status="失败";job.Error=Util.SafeError(ex.Message);} }
             else {job.Status="失败";job.Error=String.IsNullOrWhiteSpace(last)?"网站未返回完整文件，请重新读取视频链接":last;}
             child.Dispose();Save();
         }});
@@ -540,18 +609,18 @@ public partial class Manager : IDisposable {
             foreach(var job in jobs.Where(j=>j.Status=="排队中").OrderBy(j=>j.QueueOrder).ToArray()) {
                 if(closing)break;
                 if((job.Kind=="file"||TorrentInfo.IsBt(job))&&jobs.Count(j=>(j.Kind=="file"||TorrentInfo.IsBt(j))&&BtMetadataJob(j)==BtMetadataJob(job)&&(j.Status=="下载中"||j.Status=="等待下载"||j.Status=="正在暂停"))>=(BtMetadataJob(job)?2:Config.FileSlots))continue;
-                if(job.Kind!="file"&&!TorrentInfo.IsBt(job)&&jobs.Count(j=>!TorrentInfo.IsBt(j)&&j.Kind!="file"&&(j.Child!=null||j.Status=="准备组件"))>=Config.VideoSlots)continue;
-                try{if(TorrentInfo.IsBt(job))StartBt(job);else if(job.Kind=="file")StartFile(job);else if(!Components.Ready(job)){if(!preparing)PrepareComponents(job);}else StartVideo(job);}catch(Exception ex){job.Status=closing?"已暂停":"失败";job.Error=closing?"":Util.SafeError(ex.Message);} Save();
+                if(job.Kind!="file"&&!TorrentInfo.IsBt(job)&&jobs.Count(j=>!TorrentInfo.IsBt(j)&&j.Kind!="file"&&(j.Child!=null||j.Status=="准备组件"))>=Config.VideoSlots){job.Stage="等前面的视频下完（同时最多下 6 个视频）";continue;}
+                try{if(TorrentInfo.IsBt(job))StartBt(job);else if(job.Kind=="file")BeginFile(job);else if(!Components.Ready(job)){if(!preparing)PrepareComponents(job);}else StartVideo(job);}catch(Exception ex){job.Status=closing?"已暂停":"失败";job.Error=closing?"":Util.SafeError(ex.Message);} Save();
             }
             if(aria==null){PublishSnapshot();return;}
-            foreach(var job in jobs.Where(j=>j.Kind=="file"&&(j.Status=="下载中"||j.Status=="等待下载"||j.Status=="正在暂停")).ToArray())try {
+            foreach(var job in jobs.Where(j=>j.Kind=="file"&&j.ProbeToken==null&&(j.Status=="下载中"||j.Status=="等待下载"||j.Status=="正在暂停")).ToArray())try {
                 var state=(IDictionary<string,object>)Rpc("tellStatus",job.Id);
                 TransferData.FileStatus(job,state);
                 string status=Util.Str(state,"status");
                 if(status=="active"&&!job.PauseRequested)job.Status="下载中";
                 if(status=="waiting"&&!job.PauseRequested)job.Status="等待下载";
                 if(status=="complete") {
-                    string file=Path.Combine(Work(job),String.IsNullOrEmpty(job.WorkName)?Util.Name(job.Title):job.WorkName); job.File=Util.PlaceFile(file,Util.OutputFolder(job),job.Title,path=>Claimed(path,job));job.Status="已完成";job.Progress=100;job.Speed="";job.NetdiskCookie="";lock(relayGate)relayJobs.Remove(job.Id);TransferData.Complete(job);Save();
+                    string file=Path.Combine(Work(job),String.IsNullOrEmpty(job.WorkName)?Util.Name(job.Title):job.WorkName); job.File=Util.PlaceFile(file,Util.OutputFolder(job),job.Title,path=>Claimed(path,job));TidyWork(job);job.Status="已完成";job.Progress=100;job.Speed="";job.NetdiskCookie="";lock(relayGate)relayJobs.Remove(job.Id);TransferData.Complete(job);Save();
                 }else if(status=="error"||status=="removed") {job.Status="失败";job.Speed="";job.Error=Util.SafeError(Util.Str(state,"errorMessage","下载中断，请重试"));Save();if(status=="error"&&Regex.IsMatch(Util.Str(state,"errorMessage",""),"No URI available|416|Invalid range header",RegexOptions.IgnoreCase))ExplainPartial(job);}
                 else if(status=="paused"){job.Status="已暂停";job.Speed="";Save();}
             }catch(Exception ex){job.Status="失败";job.Speed="";job.Error=Util.SafeError(ex.Message);Save();}
@@ -561,6 +630,7 @@ public partial class Manager : IDisposable {
     public void Pause(string id) {
         Process child=null;
         lock(gate){var job=jobs.First(j=>j.Id==id);if(job.BtFinishing)return;if(job.Status=="排队中"||job.Status=="等待节点"){CancelBtSearch(id);job.Status="已暂停";Save();return;}if(job.Status=="准备组件"){job.PauseRequested=true;job.Status="正在暂停";if(preparationCancel!=null)preparationCancel.Cancel();Save();return;}if(job.Status!="下载中"&&job.Status!="等待下载")return;
+            if(job.ProbeToken!=null){job.ProbeToken=null;job.Status="已暂停";job.Speed="";Save();return;}
             job.PauseRequested=true;job.Status="正在暂停";
             if(TorrentInfo.IsBt(job)){CacheBtPeers(job);try{BtRpc("forcePause",job.Id);}catch{if(Util.Str((IDictionary<string,object>)BtRpc("tellStatus",job.Id),"status")!="complete")throw;}}else if(job.Kind=="file"){Rpc("pause",job.Id);}else child=job.Child;
             Save();
@@ -587,7 +657,7 @@ public partial class Manager : IDisposable {
     void DeleteTaskFiles(Download job){
         if(!Regex.IsMatch(job.Id??"",@"^[a-f0-9]{16}$"))throw new IOException("任务编号无效，未删除文件");
         var files=new HashSet<string>(StringComparer.OrdinalIgnoreCase);var directories=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        string work=DeletePath(Work(job),Path.Combine(dataRoot,"partial"));
+        string near=NearWork(job),work=DeletePath(Work(job),near!=null&&String.Equals(Work(job),near,StringComparison.OrdinalIgnoreCase)?Path.GetDirectoryName(near):Path.Combine(dataRoot,"partial"));
         Action<string,string> addFile=(path,root)=>{path=DeletePath(path,root);if(Directory.Exists(path))throw new IOException("任务文件变成了文件夹，未删除");files.Add(path);};
         if(TorrentInfo.IsBt(job)&&!String.IsNullOrEmpty(job.BtFolder)&&Directory.Exists(job.BtFolder)){
             string folder=DeletePath(job.BtFolder,job.Folder);if(!Path.GetFileName(folder).EndsWith(" ["+job.Id.Substring(0,8)+"]",StringComparison.Ordinal))throw new IOException("BT 目录归属不明确，未删除；可保留文件后移除任务");
@@ -622,7 +692,8 @@ public partial class Manager : IDisposable {
     }
     public void Forget(string id,bool deleteFiles=false) {lock(gate){
         var job=jobs.First(j=>j.Id==id);if(!new[]{"已暂停","失败","已完成","等待选文件","等待节点"}.Contains(job.Status)||job.Child!=null)throw new Exception("请先暂停这个任务");
-        if(deleteFiles){DetachForDeletion(job);try{DeleteTaskFiles(job);}catch(Exception ex){throw new IOException("文件未能全部删除，任务已保留。"+Util.SafeError(ex.Message),ex);}}
+        if(deleteFiles){DetachForDeletion(job);try{DeleteTaskFiles(job);}catch(Exception ex){throw new IOException("文件未能全部删除，任务已保留。"+Util.SafeError(ex.Message),ex);}}TidyWork(job);
+        if(!deleteFiles&&job.Status!="已完成"&&NearWork(job)!=null&&String.Equals(Work(job),NearWork(job),StringComparison.OrdinalIgnoreCase)){try{DetachForDeletion(job);DeleteTaskFiles(job);}catch(Exception){}TidyWork(job);}
         if(TorrentInfo.IsBt(job)){ResetBt(job);DropBtPeers(job);}lock(relayGate)relayJobs.Remove(job.Id);int index=jobs.IndexOf(job);jobs.RemoveAt(index);try{Save();}catch{jobs.Insert(index,job);PublishSnapshot();throw;}
     }}
     public void Dispose() {
