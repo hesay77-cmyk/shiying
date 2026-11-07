@@ -49,9 +49,9 @@ const ShiyingNative = {
             dialog.id='desktopConnectPrompt';dialog.setAttribute('aria-labelledby','desktopConnectTitle');
             dialog.setAttribute('aria-describedby','desktopConnectNote');
             const title=document.createElement('h2');title.id='desktopConnectTitle';
-            title.textContent=missing?t('uiDesktopConnectionMissing','还没有连接桌面下载器'):t('uiDesktopConnectionFailed','桌面下载器暂时无法连接');
+            title.textContent=missing?t('uiDesktopConnectionMissing','尚未连接 Ruxget 桌面版'):t('uiDesktopConnectionFailed','暂时无法连接 Ruxget 桌面版');
             const note=document.createElement('p');note.id='desktopConnectNote';note.className='quality-note';
-            note.textContent=missing?t('uiDesktopConnectionMissingNote','尚未安装可以下载；已经安装，请检查或重新配对。也可以继续使用 Chrome 下载。'):t('uiDesktopConnectionFailedNote','可能是配对权限或程序启动异常，请先修复连接，无需反复下载安装。');
+            note.textContent=missing?t('uiDesktopConnectionMissingNote','如未安装，可免费下载（3 MB）；如已安装，请修复连接。也可以继续用 Chrome 下载。'):t('uiDesktopConnectionFailedNote','可能是连接权限或桌面版启动异常。请先修复连接，无需重新安装。');
             const actions=document.createElement('div');actions.className='desktop-connect-actions';
             dialog.append(title,note,actions);
             const choice=await new Promise(resolve=>{
@@ -77,7 +77,8 @@ const ShiyingNative = {
     async send(payloadFactory) {
         // Already allowed: no second request, which Chrome refuses once the click's user gesture has expired.
         const granted=await chrome.permissions.contains({permissions:['nativeMessaging']})||await chrome.permissions.request({permissions:['nativeMessaging']});
-        if(!granted)throw new Error('未允许连接桌面版，仍可使用原有下载入口');
+        // denied: the panel names the button that still downloads (js/shiying-platform-ui.js).
+        if(!granted)throw Object.assign(new Error('没有允许连接桌面版，可以继续用插件下载'),{denied:true});
         const result=await payloadFactory();
         // Every hand-off tells the desktop app where Chrome saves, so it can keep its folder beside the extension's.
         const payload=result.payload||result,folder=await ShiyingNative.chromeFolder();
@@ -91,7 +92,7 @@ const ShiyingNative = {
             const reason=ShiyingNative.connectionIssue(error);
             if(reason) {
                 const action=await ShiyingNative.offerDesktopDownload(reason);
-                const handled=new Error(ShiyingNative.msg('uiDesktopConnectionPending','桌面连接尚未完成，可以继续使用 Chrome 下载'));
+                const handled=new Error(ShiyingNative.msg('uiDesktopConnectionPending','尚未连接桌面版，可以继续用 Chrome 下载'));
                 handled.cancelled=true;handled.desktopAction=action;handled.connectionIssue=reason;
                 throw handled;
             }

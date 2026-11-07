@@ -16,7 +16,7 @@ class StructureCheck {
     static byte[] body=Enumerable.Range(0,3*1048576).Select(i=>(byte)(i*7)).ToArray();
     static int slowMs=0;
     // trickle: the body comes slowly, so a download can be paused part-way.
-    static volatile bool trickle=false;
+    static volatile bool trickle=false;static long served;
     static void Serve(HttpListener listener){
         while(listener.IsListening){HttpListenerContext context;try{context=listener.GetContext();}catch{return;}
             ThreadPool.QueueUserWorkItem(_=>{try{
@@ -26,7 +26,7 @@ class StructureCheck {
                 long start=0,end=body.Length-1;string range=request.Headers["Range"];
                 if(!String.IsNullOrEmpty(range)&&range.StartsWith("bytes=")){var parts=range.Substring(6).Split('-');start=Int64.Parse(parts[0]);if(parts[1].Length>0)end=Math.Min(end,Int64.Parse(parts[1]));response.StatusCode=206;response.Headers["Content-Range"]="bytes "+start+"-"+end+"/"+body.Length;}
                 response.ContentType="application/octet-stream";response.ContentLength64=end-start+1;
-                if(request.HttpMethod!="HEAD"){
+                if(request.HttpMethod!="HEAD"){Interlocked.Add(ref served,end-start+1);
                     if(request.Url.AbsolutePath.StartsWith("/trickle")&&trickle&&end-start>1){for(long at=start;at<=end;at+=65536){if(!trickle){response.OutputStream.Write(body,(int)at,(int)(end-at+1));break;}response.OutputStream.Write(body,(int)at,(int)Math.Min(65536,end-at+1));Thread.Sleep(150);}}
                     else response.OutputStream.Write(body,(int)start,(int)(end-start+1));
                 }
@@ -92,6 +92,33 @@ class StructureCheck {
                 Wait(manager,()=>{var j=Job(manager,nowhere.Id);return j.Status=="失败"||j.Status=="已完成";},"unwritable destination",30);
                 var refusedJob=Job(manager,nowhere.Id);
                 Check(refusedJob.Status=="失败"&&refusedJob.Error.Contains("不能写入")&&(refusedJob.Transfer==null||refusedJob.Transfer.Completed<=0),"an unwritable download folder is explained before anything is downloaded ("+refusedJob.Error+")");
+                // 0.4.72: a finished download that can't be moved into its folder (a file is in the way) keeps its data and
+                // says so in plain words; once the obstacle is gone, 「继续」 saves it again without downloading anything.
+                string blockedRoot=Path.Combine(other,"blocked");Directory.CreateDirectory(blockedRoot);
+                trickle=true;
+                var blocked=manager.Add("http://127.0.0.1:"+port+"/trickle.bin","file","blocked.bin",1080,blockedRoot,null,true);
+                Wait(manager,()=>{var j=Job(manager,blocked.Id);return j.Transfer!=null&&j.Transfer.Completed>0;},"blocked download started",30);
+                string blockedSub=Util.OutputFolder(Job(manager,blocked.Id));if(Directory.Exists(blockedSub))Directory.Delete(blockedSub,true);File.WriteAllText(blockedSub,"in the way");
+                trickle=false;
+                Wait(manager,()=>{var j=Job(manager,blocked.Id);return j.Status=="已完成"||j.Status=="失败";},"blocked placement",60);
+                var stuck=Job(manager,blocked.Id);
+                Check(stuck.Status=="失败"&&stuck.Error.StartsWith("已下载完成")&&stuck.Error.Contains("继续")&&!stuck.Error.Contains(".ruxget-partial")&&!stuck.Error.Contains("payload"),"a finished download that can't be saved says so in plain words ("+stuck.Error+")");
+                File.Delete(blockedSub);long servedBefore=Interlocked.Read(ref served);
+                manager.Resume(blocked.Id);
+                Wait(manager,()=>{var j=Job(manager,blocked.Id);return j.Status=="已完成"||j.Status=="失败";},"save again",60);
+                var saved=Job(manager,blocked.Id);long servedAgain=Interlocked.Read(ref served)-servedBefore;
+                Check(saved.Status=="已完成"&&File.ReadAllBytes(saved.File).SequenceEqual(body)&&servedAgain<body.Length/2,"「继续」 saves it again without downloading it a second time ("+saved.Status+" "+saved.Error+", "+servedAgain+" bytes)");
+                // 0.4.72: an old settings.json with an odd retired FileSlots/VideoSlots no longer resets the whole file.
+                {string oddRoot=Path.Combine(report,"odd-settings");Directory.CreateDirectory(oddRoot);string kept=Path.Combine(other,"kept-folder");Directory.CreateDirectory(kept);
+                 File.WriteAllText(Path.Combine(oddRoot,"settings.json"),"{\"Folder\":"+Util.Json().Serialize(kept)+",\"FollowBrowser\":false,\"FileSlots\":\"three\",\"VideoSlots\":3.5,\"Proxy\":\"\"}");
+                 using(var odd=new Manager(oddRoot))Check(String.Equals(Path.GetFullPath(odd.Config.Folder),Path.GetFullPath(kept),StringComparison.OrdinalIgnoreCase)&&odd.RecoveryNotice=="","odd retired FileSlots/VideoSlots values keep the rest of the settings ("+odd.Config.Folder+" / "+odd.RecoveryNotice+")");
+                 Check(Util.SettingsText("{\"FileSlots\":null,\"VideoSlots\":99999999999}")=="{\"FileSlots\":10,\"VideoSlots\":10}","retired slot fields read as 10");}
+                // 0.4.72: a download folder whose path is too long for Windows is named as such, not "not writable".
+                {string longFolder=Path.Combine(other,new string('a',Math.Max(10,250-other.Length)));
+                 var longJob=manager.Add(url,"file","long.bin",1080,longFolder,null,false);
+                 Wait(manager,()=>{var j=Job(manager,longJob.Id);return j.Status=="失败"||j.Status=="已完成";},"too long folder",30);
+                 var longDone=Job(manager,longJob.Id);
+                 Check(longDone.Status=="失败"&&longDone.Error.Contains("路径太长")&&(longDone.Transfer==null||longDone.Transfer.Completed<=0),"a download folder with a too long path is explained before downloading ("+longDone.Error+")");}
                 // A YouTube video sent by the extension as page addresses is read by yt-dlp itself (page addresses crawl).
                 var input=new Dictionary<string,object>{{"videoUrl","https://rr1---sn-abc.googlevideo.com/videoplayback?itag=137"},{"audioUrl","https://rr1---sn-abc.googlevideo.com/videoplayback?itag=140"},{"referer","https://www.youtube.com/watch?v=0lA-l-RHe1Q"},{"userAgent","Mozilla/5.0"}};
                 var yt=manager.Add("https://www.youtube.com/watch?v=0lA-l-RHe1Q","tracks","A video",720,other,input,false);

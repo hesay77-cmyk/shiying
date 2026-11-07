@@ -117,6 +117,19 @@ const RuxgetOffer={
         const {ruxgetTakeover:current={}}=await chrome.storage.local.get('ruxgetTakeover');
         await chrome.storage.local.set({ruxgetTakeover:Object.assign({skipHosts:[],minMB:RuxgetOffer.MB},current,{enabled:false}),ruxgetDesktopMode:'never'});
     },
+    // 0.4.72, once on upgrade: before 0.4.71 the panel's ▾ menu could be set to 「用桌面版下载」
+    // (shiyingVideoPreference.method==='desktop'), which sent every panel video to the desktop app. The setting that
+    // does that now is 交给桌面版 → 全部 (ruxgetDesktopMode 'all'). Only for someone who chose it and hasn't picked a
+    // mode since; Chrome's own downloads (ruxgetTakeover) stay as they were. Everyone else: nothing changes.
+    async migrateMethod(){
+        const {ruxgetMethodMigrated:done,ruxgetDesktopMode:mode,shiyingVideoPreference:preference}=await chrome.storage.local.get(['ruxgetMethodMigrated','ruxgetDesktopMode','shiyingVideoPreference']);
+        if(done)return null;
+        const values={ruxgetMethodMigrated:true};
+        // Only while the desktop connection is still allowed; without it the old choice did nothing anyway.
+        if(preference?.method==='desktop'&&!['never','large','all'].includes(mode)&&await chrome.permissions.contains({permissions:['nativeMessaging']}).catch(()=>false))values.ruxgetDesktopMode='all';
+        await chrome.storage.local.set(values);
+        return values.ruxgetDesktopMode||null;
+    },
     // Turning takeover off is a clear answer: the card never opens by itself again.
     async never(){
         const state=await RuxgetOffer.state();
@@ -177,6 +190,7 @@ const RuxgetOffer={
 };
 if(typeof chrome!=='undefined'&&chrome.downloads&&typeof ServiceWorkerGlobalScope!=='undefined'&&self instanceof ServiceWorkerGlobalScope){
     // Size is known when the download starts (most servers), or later when Chrome learns it, or at the end.
+    RuxgetOffer.migrateMethod().catch(()=>{});
     chrome.downloads.onCreated.addListener(item=>{RuxgetOffer.note(item).catch(()=>{});});
     chrome.downloads.onChanged.addListener(change=>{
         if(!change.totalBytes&&!change.filename&&change.state?.current!=='complete')return;

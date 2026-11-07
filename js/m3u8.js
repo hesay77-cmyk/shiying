@@ -485,7 +485,7 @@ hls.on(Hls.Events.LEVEL_LOADED, function (event, data) {
         video.autoplay = false;
         hls.attachMedia(video);
         hls.on(Hls.Events.MEDIA_ATTACHED, function () {
-            video && video.play();
+            video && video.play()?.catch?.(() => {});
         });
         video.oncanplay = function () {
             hls.detachMedia(video);
@@ -959,7 +959,7 @@ $("#play").click(function () {
         hls.attachMedia($("#video")[0]);
         $(this).html(i18n.close).data("switch", "off");
         hls.on(Hls.Events.MEDIA_ATTACHED, function () {
-            video.play();
+            video.play()?.catch?.(() => {});
         });
         return;
     }

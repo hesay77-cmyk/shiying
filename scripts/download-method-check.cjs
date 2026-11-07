@@ -128,7 +128,7 @@ const checks=[];function check(name){checks.push(name);console.log('PASS '+name)
   await worker.evaluate(()=>chrome.storage.local.remove('ruxgetSaveSubtitles'));
   check('no separate 下载字幕 button; with the setting on, downloading the video also saves its subtitles');
   // Recent downloads: newest first, up to twenty (0.4.69), click opens the progress page.
-  await worker.evaluate(async()=>{const ids=[];const records={};for(let i=1;i<=7;i++){const id='job'+i;ids.push(id);records['shiyingJob:'+id]={id,title:'视频 '+i,format:i===7?'mp3':'mp4',height:1080,status:i===7?'complete':i===6?'error':'downloading',stage:'正在合并画面与声音',error:i===6?'下载失败':'',progress:40};}await chrome.storage.local.set({shiyingJobIds:ids,...records});});
+  await worker.evaluate(async()=>{const ids=[];const records={};for(let i=1;i<=7;i++){const id='job'+i;ids.push(id);records['shiyingJob:'+id]={id,title:'视频 '+i,createdAt:new Date(Date.now()-(7-i)*1000).toISOString(),format:i===7?'mp3':'mp4',height:1080,status:i===7?'complete':i===6?'error':'downloading',stage:'正在合并画面与声音',error:i===6?'下载失败':'',progress:40};}await chrome.storage.local.set({shiyingJobIds:ids,...records});});
   await ready();await page.locator('#tabDownloads').click();
   const recent=await page.locator('#recentList li').allInnerTexts();assert.equal(recent.length,7);assert.match(recent[0],/视频 7[\s\S]*MP3 · 下载完成/);assert.match(recent[1],/视频 6[\s\S]*下载失败/);assert.match(recent[2],/视频 5[\s\S]*正在合并画面与声音 · 40%/);
   await page.waitForTimeout(250);await page.screenshot({path:path.join(report,'recent-360.png')});

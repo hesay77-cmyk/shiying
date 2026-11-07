@@ -49,7 +49,7 @@ function pumpCollection() {
         try {
             const catalog=await platformRead({url:item.url,collection:true});
             const latest=await collectionGet();if(latest?.id!==queue.id||latest.paused)return;
-            const choice=catalog.choices.find(c=>c.height<=queue.height)||catalog.choices.at(-1);
+            const choice=catalog.choices.find(c=>(parseInt(c.label)||c.height)<=queue.height)||catalog.choices.at(-1);
             const job=await platformStart({id:catalog.id,format:queue.format,height:choice?.height,saveAs:false,collectionId:queue.id});
             item.status='running';item.jobId=job.id;
             const after=await collectionGet();if(after?.paused){await cancelPlatformJob(job.id);return;}

@@ -1317,16 +1317,16 @@
     "message": "Ruxget did not respond. Try again."
   },
   "uiDesktopConnectionMissing": {
-    "message": "Desktop downloader is not connected"
+    "message": "Ruxget Desktop isn’t connected"
   },
   "uiDesktopConnectionFailed": {
-    "message": "Cannot connect to the desktop downloader"
+    "message": "Can’t reach Ruxget Desktop right now"
   },
   "uiDesktopConnectionMissingNote": {
-    "message": "If it is not installed, download it below. If it is installed, repair the connection. You can also keep using Chrome."
+    "message": "If it isn’t installed, download it free (3 MB). If it is, repair the connection. You can also keep downloading in Chrome."
   },
   "uiDesktopConnectionFailedNote": {
-    "message": "Pairing or startup may have failed. Repair the connection first; reinstalling is usually unnecessary."
+    "message": "The connection permission or the app’s start-up may have failed. Repair the connection first; there is no need to reinstall."
   },
   "uiDesktopInstallAction": {
     "message": "Download installer"
@@ -1338,7 +1338,7 @@
     "message": "Continue with Chrome"
   },
   "uiDesktopConnectionPending": {
-    "message": "The desktop is not connected. You can continue downloading with Chrome"
+    "message": "Ruxget Desktop isn’t connected. You can keep downloading in Chrome."
   },
   "flowVideo": {
     "message": "Video MP4"

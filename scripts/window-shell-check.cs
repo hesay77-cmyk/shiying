@@ -49,8 +49,15 @@ class WindowShellCheck {
   string partial=Path.Combine(manager.DataDirectory,"preserved-partial.bin");File.WriteAllText(partial,"preserve partial data across asynchronous close");string hash=ComponentStore.Hash(partial);Size normal=window.ClientSize;
   using(var owned=new Form{Text="Private owned details fixture",ShowInTaskbar=false})using(var held=new ManualResetEventSlim()){
    owned.Show(window);typeof(MainWindow).GetField("preview",Private).SetValue(window,false); // Constructor stays in isolated review mode; exercise the production close event only.
+   // 0.4.72: the first X asks (quit, or keep running in the tray) instead of hiding at once; "remember" makes the
+   // answer the setting, and from then on the X just does it.
+   manager.Config.CloseAction="";
+   Call(window,"PluginMessage","{\"command\":\"window\",\"action\":\"close\"}");var askWatch=System.Diagnostics.Stopwatch.StartNew();while(askWatch.ElapsedMilliseconds<600){Application.DoEvents();Thread.Sleep(30);}
+   Require(window.Visible&&!window.IsDisposed,"The first X should ask (quit or keep in the tray), not hide or quit at once");
+   Call(window,"PluginMessage","{\"command\":\"closeChoice\",\"action\":\"tray\",\"remember\":true}");Pump(()=>!window.Visible,"Choosing 收到右下角 did not hide the window");
+   Require(manager.Config.CloseAction=="tray"&&!window.IsDisposed,"The remembered answer did not become the setting");window.Show();
    var worker=Task.Run(()=>{lock(Field(manager,"gate")){held.Set();Thread.Sleep(2100);}});Require(held.Wait(1000),"Slow shutdown fixture did not acquire the manager gate");
-   // 0.4.70: the window's X hides to the tray and keeps running; quitting is the tray's "完全退出".
+   // With 「收到右下角」 chosen, the X hides to the tray and keeps running; quitting is the tray's 「退出 Ruxget」.
    Call(window,"PluginMessage","{\"command\":\"window\",\"action\":\"close\"}");Pump(()=>!window.Visible,"The X did not hide the window");Require(!window.IsDisposed,"The X closed the app instead of hiding it to the tray");window.Show();
    var watch=System.Diagnostics.Stopwatch.StartNew();Call(window,"PluginMessage","{\"command\":\"window\",\"action\":\"quit\"}");long requestMs=watch.ElapsedMilliseconds;
    bool immediatelyHidden=!window.Visible&&!owned.Visible,pending=!window.IsDisposed;window.RestoreFromTray();bool restoreSuppressed=!window.Visible;window.Close();

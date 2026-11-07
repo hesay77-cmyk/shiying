@@ -4,19 +4,19 @@ body.settings-page{width:auto;min-height:100vh}
 .settings-head{display:flex;align-items:center;gap:12px;margin-bottom:20px}
 .settings-head h1{margin:0;font-size:20px}
 .settings-head p{margin:2px 0 0;color:var(--muted);font-size:13px}
-.settings-card{margin:0 0 14px;padding:16px 18px;border:1px solid var(--line);border-radius:14px;background:rgba(8,18,30,.35)}
+.settings-card{margin:0 0 14px;padding:16px 18px;border:1px solid var(--line);border-radius:14px;background:#FBF8EF}
 .settings-card h2{margin:0 0 10px;font-size:15px;font-weight:600}
 .settings-note{margin:0 0 12px;color:var(--muted);font-size:12.5px;line-height:1.7}
 .settings-choices{display:grid;gap:6px}
 .settings-choices label{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid transparent;border-radius:10px;cursor:pointer}
 .settings-choices label:hover{background:var(--wash)}
-.settings-choices label:has(input:checked){border-color:rgba(102,188,255,.45);background:rgba(78,150,215,.14)}
+.settings-choices label:has(input:checked){border-color:rgba(62,90,44,0.45);background:rgba(62,90,44,0.084)}
 .settings-choices input{margin:3px 0 0;accent-color:var(--blue)}
 .settings-choices b{display:block;font-size:13.5px;font-weight:500}
 .settings-choices small{display:block;margin-top:2px;color:var(--muted);font-size:12px;line-height:1.6}
 .settings-status{margin:12px 0 0;font-size:12.5px;color:var(--muted)}
-.settings-status[data-state=ready]{color:#7fe0a8}
-.settings-status[data-state=missing],.settings-status[data-state=unknown]{color:#f0c27b}
+.settings-status[data-state=ready]{color:#4E6114}
+.settings-status[data-state=missing],.settings-status[data-state=unknown]{color:#A4502A}
 .settings-actions{display:flex;flex-wrap:wrap;gap:16px;margin-top:8px}
 .settings-actions .text-button,.settings-foot a{color:var(--blue);font-size:12.5px;text-decoration:none;background:none;border:0;padding:4px 0;cursor:pointer}
 .settings-actions .text-button:hover,.settings-foot a:hover{text-decoration:underline}

@@ -31,6 +31,8 @@ window.ShiyingCollectionUI=(()=>{
         if(url&&(!$('collectionURL').value||replace)){$('collectionURL').value=url;catalog=null;$('collectionList').hidden=true;}
         $('collectionError').hidden=true;
         if(!$('collectionSheet').open)$('collectionSheet').showModal();
+        // 0.4.72: the list loads by itself when the sheet opens with a link (no extra 读取列表 click).
+        if(!catalog&&$('collectionURL').value.trim()&&$('collectionURL').checkValidity()&&!$('collectionRead').disabled)$('collectionForm').requestSubmit();
         try{queueView((await send('shiyingCollectionState')).queue);}catch{}
     }
     $('collectionOpen').onclick=()=>open(ShiyingPlatformUI.url());

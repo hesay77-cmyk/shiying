@@ -13,7 +13,7 @@ const VIDEO='https://www.bilibili.com/video/BV15z4y1U7HS/';
  try{
   await browser.route('https://www.bilibili.com/**',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>Fixture</title><video></video>'}));
   // The page read is stubbed; the video's length comes from storage so each case can set it.
-  await browser.addInitScript(url=>{if(location.protocol!=='chrome-extension:'||!location.pathname.endsWith('/shiying.html'))return;window.testCalls=[];window.nativeCalls=[];chrome.permissions.contains=async()=>true;chrome.permissions.request=async()=>true;chrome.runtime.sendNativeMessage=async(host,payload)=>{nativeCalls.push(payload);return payload.action==='add'?{ok:true,stage:'started',id:'desk-1',name:'卡片提示测试.mp4'}:{ok:true,version:'0.4.70'};};const send=chrome.runtime.sendMessage.bind(chrome.runtime);chrome.runtime.sendMessage=async message=>{testCalls.push(message);if(message.Message==='shiyingPlatformDesktop')return {ok:true,payload:{action:'add',kind:'video',format:message.format,height:message.height}};if(message.Message==='shiyingPlatformRead'){const {testDuration=60}=await chrome.storage.local.get('testDuration');return {ok:true,id:'catalog',url,title:'卡片提示测试',site:'bilibili',duration:testDuration,choices:[{height:720,label:'720p'}],audioAvailable:true,subtitles:[]};}return send(message);};},VIDEO);
+  await browser.addInitScript(url=>{if(location.protocol!=='chrome-extension:'||!location.pathname.endsWith('/shiying.html'))return;window.testCalls=[];window.nativeCalls=[];chrome.permissions.contains=async()=>true;chrome.permissions.request=async()=>true;chrome.runtime.sendNativeMessage=async(host,payload)=>{nativeCalls.push(payload);return payload.action==='add'?{ok:true,stage:'started',id:'desk-1',name:'卡片提示测试.mp4'}:{ok:true,version:'0.4.70'};};const send=chrome.runtime.sendMessage.bind(chrome.runtime);chrome.runtime.sendMessage=async message=>{testCalls.push(message);if(message.Message==='shiyingPlatformDesktop')return {ok:true,payload:{action:'add',kind:'video',format:message.format,height:message.height}};if(message.Message==='shiyingPlatformRead'){const {testDuration=60}=await chrome.storage.local.get('testDuration');return {ok:true,id:'catalog',url,title:'卡片提示测试',site:'bilibili',duration:testDuration,choices:[{height:720,label:'720p'}],audioAvailable:true,subtitles:[]};}if(message.Message==='shiyingPlatformStart')return {ok:true,id:'chrome-job',url,title:'卡片提示测试',format:message.format,height:message.height,label:'720p',status:'downloading',stage:'正在下载视频画面',progress:10};return send(message);};},VIDEO);
   const worker=browser.serviceWorkers()[0]||await browser.waitForEvent('serviceworker'),id=new URL(worker.url()).hostname;
   await worker.evaluate(()=>chrome.storage.local.set({ruxgetUiLanguage:'zh_CN'}));
   const site=await browser.newPage();await site.goto(VIDEO);
@@ -40,11 +40,28 @@ const VIDEO='https://www.bilibili.com/video/BV15z4y1U7HS/';
   await p.evaluate(()=>document.dispatchEvent(new CustomEvent('ruxget-i18n-applied')));await p.waitForTimeout(400);
   assert.equal(await p.locator('#cardHint').isVisible(),false,'the hint stays away for a video already sent');
   assert.equal(await p.locator('#platformDownload').innerText(),'下载视频');
-  assert.equal((await worker.evaluate(()=>chrome.storage.local.get('ruxgetDesktopMode'))).ruxgetDesktopMode,undefined);await p.close();
-  p=await open();assert.equal((await hint(p)).visible,false,'reopening the panel (it closes at every outside click) keeps the hint away');await p.close();
+  assert.equal((await worker.evaluate(()=>chrome.storage.local.get('ruxgetDesktopMode'))).ruxgetDesktopMode,undefined);
+  // 0.4.72: 下载视频 right after the hand-off doesn't silently start a second copy; the first click says so, a second one downloads.
+  await p.locator('#platformDownload').click();await p.waitForFunction(()=>/已经交给桌面版了/.test(document.querySelector('#platformNote').textContent));
+  assert.equal(await p.evaluate(()=>testCalls.some(c=>c.Message==='shiyingPlatformStart')),false);
+  await p.locator('#platformDownload').click();await p.waitForFunction(()=>testCalls.some(c=>c.Message==='shiyingPlatformStart'));
+  check('after a hand-off, 下载视频 first says 已经交给桌面版了 and only a second click downloads another copy');
+  await p.close();
+  p=await open();assert.equal((await hint(p)).visible,false,'reopening the panel (it closes at every outside click) keeps the hint away');
+  // User report (0.4.72): handed over once, panel reopened, then downloaded with the extension: the card must describe
+  // the extension's own download, not 「已交给桌面版」.
+  const extensionDownload=async(p,selector)=>{await p.locator(selector).click();await p.waitForFunction(()=>/已经交给桌面版了/.test(document.querySelector('#platformNote').textContent));
+   await p.locator(selector).click();await p.locator('#platformJob').waitFor({state:'visible'});
+   assert.doesNotMatch(await p.locator('#platformNote').innerText(),/桌面版/);assert.match(await p.locator('#platformStage').innerText(),/正在下载视频画面/);assert.doesNotMatch(await p.locator('#platformCard').innerText(),/已交给桌面版|已经交给桌面版/);};
+  await extensionDownload(p,'#platformDownload');await p.close();
+  check('handed over, panel reopened, then downloaded with the extension: the hand-over note is gone and the card shows the extension’s download');
   await worker.evaluate(()=>chrome.storage.session.remove('ruxgetDesktopSent'));
   check('long video: “改用桌面版” sends it to the desktop app at once, the hint goes away and stays away; no setting changes, no Chrome download');
   await state({ruxgetDesktopMode:'large'});p=await open();assert.equal((await hint(p)).visible,false);assert.equal(await p.locator('#platformDownload').innerText(),'用桌面版下载');await p.close();
+  // Desktop mode: 用桌面版下载 starts it in the app; 「这次用插件下载」 afterwards switches the card to the extension's download.
+  p=await open();await p.locator('#platformDownload').click();await p.waitForFunction(()=>/已交给桌面版/.test(document.querySelector('#platformNote').textContent));
+  await extensionDownload(p,'#platformUseBrowser');await p.close();await worker.evaluate(()=>chrome.storage.session.remove('ruxgetDesktopSent'));
+  check('desktop mode: after a hand-over, 「这次用插件下载」 replaces the hand-over note with the extension’s own download');
   await worker.evaluate(()=>chrome.storage.local.remove('ruxgetDesktopMode'));
   check('when the settings already send long videos to the desktop app, there is no hint');
 

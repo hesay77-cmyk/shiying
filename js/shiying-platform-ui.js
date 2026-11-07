@@ -13,7 +13,9 @@ const ShiyingPlatformUI = (() => {
     function updateDesktopLines(){const why=$('#desktopWhy'),promo=$('#desktopPromo');if(!why||!promo)return;const desktop=catalog&&effectiveMethod()==='desktop';
         why.hidden=!desktop;why.dataset.state=desktopState;why.textContent=desktopState==='ready'?pick('桌面版已连接 · 支持多线程下载与断点续传','Ruxget Desktop is connected · multi-connection downloads that resume'):pick('桌面版支持多线程下载与断点续传','Ruxget Desktop downloads with several connections and resumes after a break');
         promo.hidden=!(catalog&&!desktop&&!['ready','checking','idle'].includes(desktopState)&&Number(catalog.duration)<1800);promo.textContent=pick('大文件与断点续传，可使用 Ruxget 桌面版（免费，3 MB）','For large files and resumable downloads, use Ruxget Desktop (free, 3 MB)');}
-    function updateActions(){updateBrowserLink();updateDesktopLines();document.querySelector('label[for=formatVideo]').textContent=pick('视频','Video');document.querySelector('label[for=formatAudio]').textContent=pick('MP3 音频','MP3 audio');const active=starting||(currentJob?.url===catalog?.url&&!['complete','error','cancelled'].includes(currentJob?.status));const audio=selectedFormat()==='mp3';$('#formatAudio').disabled=!catalog||!catalog.audioAvailable;$('#formatVideo').disabled=!catalog;$('#platformQuality').hidden=audio;$('#platformAudioNote').hidden=!audio;$('#platformAudioNote').textContent=pick('原站最佳音轨','Best available audio');$('#platformDownload').disabled=!catalog||active||(audio&&!catalog.audioAvailable);$('#platformAudio').disabled=!catalog||active||!catalog.audioAvailable;const desktop=effectiveMethod()==='desktop';$('#platformMethod').disabled=!catalog||active;$('#platformDownload').textContent=desktop?(audio?pick('桌面版下载 MP3','Desktop MP3'):pick('用桌面版下载','Download in app')):audio?pick('下载 MP3','Download MP3'):pick('下载视频','Download video');$('#platformDownload').title=desktop?pick('交给 Ruxget 桌面版，可暂停续传','Send to Ruxget Desktop (pause and resume)'):pick('在 Chrome 里下载并保存','Download and save in Chrome');renderMethods();}
+    // B站 without signing in: one quiet line on why only 480p and lower are offered (see ShiyingPlatform.bilibiliCatalog).
+    function updateLoginNote(){const note=$('#platformLoginNote');if(!note)return;note.hidden=!catalog?.loginLimited;note.textContent=pick('B站未登录时最高提供 480p。在本浏览器登录 B站后，可选择更高清晰度。','Bilibili offers up to 480p to visitors who aren’t signed in. Sign in to Bilibili in this browser for higher qualities.');}
+    function updateActions(){updateBrowserLink();updateDesktopLines();updateLoginNote();document.querySelector('label[for=formatVideo]').textContent=pick('视频','Video');document.querySelector('label[for=formatAudio]').textContent=pick('MP3 音频','MP3 audio');const active=starting||(currentJob?.url===catalog?.url&&!['complete','error','cancelled'].includes(currentJob?.status));const audio=selectedFormat()==='mp3';$('#formatAudio').disabled=!catalog||!catalog.audioAvailable;$('#formatVideo').disabled=!catalog;$('#platformQuality').hidden=audio;$('#platformAudioNote').hidden=!audio;$('#platformAudioNote').textContent=pick('原站最佳音轨','Best available audio');$('#platformDownload').disabled=!catalog||active||(audio&&!catalog.audioAvailable);$('#platformAudio').disabled=!catalog||active||!catalog.audioAvailable;const desktop=effectiveMethod()==='desktop';$('#platformMethod').disabled=!catalog||active;$('#platformDownload').textContent=desktop?(audio?pick('桌面版下载 MP3','Desktop MP3'):pick('用桌面版下载','Download in app')):audio?pick('下载 MP3','Download MP3'):pick('下载视频','Download video');$('#platformDownload').title=desktop?pick('交给 Ruxget 桌面版，可暂停续传','Send to Ruxget Desktop (pause and resume)'):pick('在 Chrome 里下载并保存','Download and save in Chrome');renderMethods();}
     function savePreference(){const option=$('#platformQuality').selectedOptions[0];preference={...preference,format:selectedFormat(),height:parseInt(option?.textContent)||Number(option?.value)||preference.height};chrome.storage.local.set({shiyingVideoPreference:preference});updateActions();}
     // Download method: one main button; settings → 交给桌面版 decides who downloads (see effectiveMethod).
     const desktopNotes={idle:['可暂停续传，适合大文件','Pause, resume, large files'],checking:['正在检查桌面版…','Checking the desktop app…'],ready:['已连接 · 可暂停续传','Connected · pause and resume'],permission:['首次使用时允许连接即可','Allow the connection on first use'],missing:['还没有安装桌面版','Desktop app not installed'],connection:['已安装，需要重新连接','Installed, needs reconnecting']};
@@ -60,7 +62,7 @@ const ShiyingPlatformUI = (() => {
         if(sentList[desktopKey()]?.started){$('#platformError').hidden=true;$('#platformNote').textContent=pick('已经交给桌面版了，在「已下载」里看进度','Already sent to Ruxget Desktop; follow it in Downloads');return;}
         starting=true;updateActions();$('#platformError').hidden=true;$('#platformNote').textContent='';
         try{const key=desktopKey(),reply=await ShiyingNative.send(desktopPayload);desktopState='ready';rememberSent(key,reply?.stage==='started');$('#cardHint').hidden=true;$('#platformNote').textContent=reply?.stage==='started'?pick('已交给桌面版，在「已下载」里看进度', 'Sent to Ruxget Desktop; follow it in Downloads'):pick('已交给 Ruxget 桌面版，请在桌面窗口确认下载','Sent to Ruxget Desktop. Confirm it in the app window.');}
-        catch(error){if(error.cancelled){desktopState=error.connectionIssue||desktopState;if(error.desktopAction==='chrome'){/* the button is still disabled from the hand-off: enable it first, or download() returns at once */starting=false;updateActions();await download(selectedFormat());return;}if(error.connectionIssue)$('#platformNote').textContent=effectiveMethod()==='desktop'?pick('没有连上桌面版。打开桌面版后再点下载，或点「这次用插件下载」。','Ruxget Desktop isn’t connected. Open it and download again, or choose “Use the extension this time”.'):pick('没有连上桌面版。打开桌面版后再试，或直接点「下载视频」用插件下载。','Ruxget Desktop isn’t connected. Open it and try again, or click “Download video” to download it with the extension.');return;}$('#platformError').textContent=RuxgetText.tr(error.message);$('#platformError').hidden=false;}
+        catch(error){if(error.denied){$('#platformNote').textContent=effectiveMethod()==='desktop'?pick('没有允许连接桌面版。可点「这次用插件下载」。','Ruxget Desktop wasn’t allowed to connect. Choose “Use the extension this time”.'):pick(`没有允许连接桌面版。可点「${$('#platformDownload').textContent}」用插件下载。`,`Ruxget Desktop wasn’t allowed to connect. Click “${$('#platformDownload').textContent}” to download with the extension.`);return;}if(error.cancelled){desktopState=error.connectionIssue||desktopState;if(error.desktopAction==='chrome'){/* the button is still disabled from the hand-off: enable it first, or download() returns at once */starting=false;updateActions();await download(selectedFormat());return;}if(error.connectionIssue)$('#platformNote').textContent=effectiveMethod()==='desktop'?pick('没有连上桌面版。打开桌面版后再点下载，或点「这次用插件下载」。','Ruxget Desktop isn’t connected. Open it and download again, or choose “Use the extension this time”.'):pick('没有连上桌面版。打开桌面版后再试，或直接点「下载视频」用插件下载。','Ruxget Desktop isn’t connected. Open it and try again, or click “Download video” to download it with the extension.');return;}$('#platformError').textContent=RuxgetText.tr(error.message);$('#platformError').hidden=false;}
         finally{starting=false;updateActions();}
     }
     function desktopPayload(){if(!catalog)throw new Error('请先读取视频');return send('shiyingPlatformDesktop',{id:catalog.id,format:selectedFormat(),height:Number($('#platformQuality').value)});}
@@ -181,7 +183,7 @@ const ShiyingPlatformUI = (() => {
             const source = ShiyingPlatform.source($('#platformURL').value.trim());
             const result = await send('shiyingPlatformRead', {url:source.url});
             if (serial !== generation) return;
-            catalog = result;
+            catalog = result;pasteNote('');
             $('#platformTitle').textContent = result.title;
             $('#platformTitle').title = result.title;
             $('#platformTitle').dataset.liveTitle = result.title;
@@ -214,10 +216,31 @@ const ShiyingPlatformUI = (() => {
         } finally {if (serial === generation){$('#platformRead').disabled = false;updateActions();}}
     }
     // A share text from an app or site (title plus link) becomes just the link as soon as it is pasted.
-    $('#platformURL').addEventListener('input', () => {const field=$('#platformURL'),value=field.value.trim(),link=value.match(/https?:\/\/[^\s<>"'，。、；）)】」]+/i);if(link&&link[0]!==value)field.value=link[0];});
+    $('#platformURL').addEventListener('input', () => {pasteNote('');const field=$('#platformURL'),value=field.value.trim(),link=value.match(/https?:\/\/[^\s<>"'，。、；）)】」]+/i);if(link&&link[0]!==value)field.value=link[0];});
     const fileLink=value=>{try{const link=new URL(value);if(!/^https?:$/.test(link.protocol))return false;let name=link.pathname.split('/').pop()||'';try{name=decodeURIComponent(name);}catch{}return /\.[a-z0-9]{1,8}$/i.test(name)&&!/\.(html?|xhtml|php|aspx?|jsp|shtml|cgi)$/i.test(name);}catch{return false;}};
-    const say=text=>{if(typeof notify==='function')notify(text);else{$('#platformError').textContent=text;$('#platformError').hidden=false;}};
+    // 0.4.72: notes about the pasted link stay under the box (a toast vanished before a long one could be read) until
+    // the link is edited or read successfully.
+    function pasteNote(text,tone='warn'){const note=$('#platformPasteNote');if(!note)return;note.textContent=text?RuxgetText.tr(text):'';note.dataset.tone=tone;note.hidden=!text;}
+    const say=text=>pasteNote(text);
+    // A playlist link (.m3u8 / .mpd) is not a file: Chrome would save only its text. It opens in the extension's own
+    // stream page instead (m3u8.html merges the segments in the browser; mpd.html picks the tracks), after access to
+    // that one site. Called in the click, so Chrome can ask for the site.
+    const streamKind=link=>{const name=link.pathname.toLowerCase();return /\.m3u8$/.test(name)?'m3u8':/\.mpd$/.test(name)?'mpd':'';};
+    function openStream(url){
+        let link;try{link=new URL(url);}catch{return false;}
+        const kind=/^https?:$/.test(link.protocol)?streamKind(link):'';if(!kind)return false;
+        pasteNote('');
+        let name=link.pathname.split('/').pop()||'';try{name=decodeURIComponent(name);}catch{}name=name.replace(/\.(m3u8?|mpd)$/i,'')||pick('网页视频','Web video');
+        chrome.permissions.request({origins:[link.protocol+'//'+link.hostname+'/*']}).catch(()=>false).then(async granted=>{
+            if(!granted){pasteNote(pick('需要允许访问这个网站，才能读取这个播放列表。','Allow access to this site to read the playlist.'));return;}
+            const result=await chrome.runtime.sendMessage({Message:'shiyingDownload',tabId:currentTab?.id,data:{url:link.href,ext:kind,title:name,webUrl:link.href}});
+            if(!result?.ok)throw new Error(result?.error||'没有打开下载页，请重试');
+            pasteNote(kind==='m3u8'?pick('这是分段视频的播放列表，已在新标签页中下载并合并，完成后由 Chrome 保存。','This is a streaming playlist. It is downloading and merging in a new tab; Chrome saves the file when it is done.'):pick('这是音画分轨的播放列表，已在新标签页中打开，选好画面和声音后下载。','This is a DASH playlist with separate tracks. It opened in a new tab; pick the video and audio there, then download.'),'info');
+        }).catch(error=>pasteNote(error.message||String(error)));
+        return true;
+    }
     $('#platformForm').addEventListener('submit', event => {event.preventDefault();let url=$('#platformURL').value.trim();
+        if(/^BV[0-9A-Za-z]{10}$/.test(url)){url='https://www.bilibili.com/video/'+url+'/';$('#platformURL').value=url;}
         if(url&&!/^[a-z][a-z0-9+.-]*:/i.test(url)&&/^[\w-]+(\.[\w-]+)+(\/|\?|$)/.test(url)){url='https://'+url;$('#platformURL').value=url;}
         let parsed=null;try{parsed=new URL(url);}catch{}
         if(!parsed||!/^https?:$/.test(parsed.protocol)){say(/^magnet:/i.test(url)?pick('磁力链接请用 Ruxget 桌面版下载：打开桌面版，点「新建下载」（复制的链接会自动填好）。','Magnet links download in Ruxget Desktop: open it and click “New download” (a copied link is filled in).'):pick('请粘贴完整的网址，例如 https://www.bilibili.com/video/…','Paste a full link, such as https://www.bilibili.com/video/…'));return;}
@@ -225,6 +248,7 @@ const ShiyingPlatformUI = (() => {
         const bv=/^(b23\.tv|bili2233\.cn)$/i.test(parsed.hostname)&&parsed.pathname.match(/^\/(BV[0-9A-Za-z]{10})\/?$/);if(bv){url='https://www.bilibili.com/video/'+bv[1]+'/';$('#platformURL').value=url;parsed=new URL(url);}
         let videoPage=true;try{ShiyingPlatform.source(url);}catch{videoPage=false;}
         if(!videoPage&&/^(b23\.tv|bili2233\.cn|v\.douyin\.com|v\.kuaishou\.com|xhslink\.com)$/i.test(parsed.hostname)){say(pick('这是 App 分享的短链接，这里读不出来。先在浏览器里打开它，跳到视频页后再点 Ruxget。','This is an app share link that can’t be read here. Open it in the browser first, then click Ruxget on the video page.'));return;}
+        if(!videoPage&&openStream(url))return;
         if(!videoPage&&fileLink(url)&&document.querySelector('#linkDownload')){$('#linkDownloadURL').value=url;$('#linkDownloadError').hidden=true;$('#linkDownload').showModal();return;}
        if(parsed.searchParams.has('list')&&!parsed.searchParams.has('v')){window.ShiyingCollectionUI.open(url,true);return;}read();});
     // Some video servers need the page as Referer; that requires an optional permission for them, asked once per site.
@@ -238,14 +262,19 @@ const ShiyingPlatformUI = (() => {
         const selectedCatalog=catalog, serial=generation;starting=true;savePreference();
         $('#platformDownload').disabled = true;
         $('#platformAudio').disabled = true;
-        $('#platformError').hidden = true;
+        // 0.4.72: the note describes the download happening now: an earlier 「已交给桌面版」 goes once the extension downloads.
+        $('#platformError').hidden = true;$('#platformNote').textContent = '';
         try {const job=await send('shiyingPlatformStart', {id:selectedCatalog.id,format,height:format === 'mp3' ? undefined : Number($('#platformQuality').value),saveAs:$('#saveAs').checked});if(serial!==generation)return;renderJob(job);saveSubtitles(selectedCatalog,format);document.body.classList.remove('choices-open');$('#platformChoices').setAttribute('aria-expanded','false');}
         catch (error) {$('#platformError').textContent = RuxgetText.tr(error.message); $('#platformError').hidden = false;}
         finally {starting=false;updateActions();}
     }
     $('#platformSubtitles').addEventListener('click',async()=>{if(!catalog)return;const button=$('#platformSubtitles'),label=button.textContent;button.disabled=true;$('#platformError').hidden=true;try{await send('shiyingPlatformSubtitle',{id:catalog.id,index:Number($('#platformSubtitleLang').value||0),saveAs:$('#saveAs').checked});$('#platformNote').textContent=pick('字幕已保存为 SRT 文件','Subtitles saved as an SRT file');}catch(error){$('#platformError').textContent=RuxgetText.tr(error.message);$('#platformError').hidden=false;}finally{button.disabled=false;button.textContent=label;}});
-    $('#platformDownload').addEventListener('click', () => effectiveMethod()==='desktop'?sendDesktop():download(selectedFormat()));
-    $('#platformUseBrowser').addEventListener('click', () => download(selectedFormat()));
+    // 0.4.72: a video the desktop app already started (same format and quality) isn't downloaded a second time by a
+    // stray click: the first click only says so, a second one downloads another copy with the extension.
+    let againKey='';
+    function downloadHere(){const key=desktopKey();if(sentList[key]?.started&&againKey!==key){againKey=key;$('#platformError').hidden=true;$('#platformNote').textContent=pick('已经交给桌面版了，在「已下载」里看进度。如需再用插件下载一份，请再点一次。','Already sent to Ruxget Desktop; follow it in Downloads. Click again to download another copy with the extension.');return;}againKey='';download(selectedFormat());}
+    $('#platformDownload').addEventListener('click', () => effectiveMethod()==='desktop'?sendDesktop():downloadHere());
+    $('#platformUseBrowser').addEventListener('click', downloadHere);
     $('#platformAudio').addEventListener('click', () => download('mp3'));
     $('#desktopPromo')?.addEventListener('click', () => chrome.tabs.create({url:ShiyingNative.DESKTOP_RELEASE_URL}));
     async function bind(tab) {
@@ -263,11 +292,11 @@ const ShiyingPlatformUI = (() => {
         let source;
         try {source = ShiyingPlatform.source(tab.url);} catch {}
         layout(!!source);
-        $('#platformURL').value = source?.url || '';
+        $('#platformURL').value = source?.url || '';pasteNote('');
         $('#platformEntry').hidden = false;
         if (source && serial === generation) {await read();try{await restoreJob(tab);}catch{/* The existing catalog remains usable if no job snapshot is available. */}}
     }
-    return {bind,url:()=>currentTab?.url||$('#platformURL').value,refresh:() => $('#platformCard').hidden ? Promise.resolve() : read(),desktop:desktopPayload};
+    return {bind,stream:openStream,url:()=>currentTab?.url||$('#platformURL').value,refresh:() => $('#platformCard').hidden ? Promise.resolve() : read(),desktop:desktopPayload};
 })();
 
 

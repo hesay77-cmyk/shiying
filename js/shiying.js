@@ -55,7 +55,9 @@ function render() {
     const minor = ordered.filter(item => focus.get(item.url) === 'minor');
     const folding = !search && minor.length > 0 && !showMinor;
     const visible = folding ? ordered.filter(item => focus.get(item.url) !== 'minor') : ordered;
-    $('#count').textContent = real;
+    // 0.4.72: the count (and the 本页视频 badge, which follows it) is what the list shows; folded ads and previews
+    // count once 展开 shows them, page sounds under 100 KB never.
+    $('#count').textContent = visible.filter(item => !tiny(item)).length;
     $('#copyAll').disabled = !matching.length;
     $('#empty').hidden = !!visible.length;
     document.body.classList.toggle('no-media',!real);
@@ -70,7 +72,7 @@ function render() {
     $('#empty p').textContent = real ? pick('换一个类型，或清空搜索词再试试。','Try another type, or clear the search.') : restricted ? pick('请切换到视频页，或在上方粘贴视频链接。','Switch to a video page, or paste a video link above.') : pick('播放网页里的视频，或在上方粘贴视频链接。','Play the video on the page, or paste a video link above.');
     const fragments = media.filter(item => Shiying.kind(item) === 'fragment').length;
     $('#fragmentNote').hidden = !fragments;
-    $('#fragmentNote').textContent = pick(`另有 ${fragments} 个音视频切片，已折叠。可在高级工具中查看和处理。`, `${fragments} more media segments are folded. See them in Advanced tools.`);
+    $('#fragmentNote').textContent = pick(`另有 ${fragments} 个音视频分段（播放器自动加载的片段），已折叠，一般无需单独下载。`, `${fragments} more media segments (pieces the player loads by itself) are folded; there is usually no need to download them.`);
     const list = $('#mediaList');
     list.replaceChildren();
     const urls = new Set(media.map(item => item.url));
@@ -143,7 +145,7 @@ function render() {
             if (/^https?:\/\//i.test(url) && !['hls', 'dash'].includes(kind)) {
                 // Asked first, while Chrome still counts this as the click (it shows its prompt only then).
                 const granted = await chrome.permissions.request({permissions: ['nativeMessaging']}).catch(() => false);
-                if (!granted) { failure(new Error('未允许连接桌面版，仍可使用原有下载入口')); return; }
+                if (!granted) { failure(new Error('没有允许连接桌面版，可以继续用插件下载')); return; }
                 const same = value => RuxgetTakeover.sameLink(value, url);
                 const {ruxgetTakeoverLog: log = []} = await chrome.storage.local.get('ruxgetTakeoverLog').catch(() => ({}));
                 // A second click within a few seconds sends it again on purpose (say the desktop task failed or was deleted).
@@ -172,7 +174,7 @@ function render() {
             }
             ShiyingDesktop.send(() => {
                 const headers=Object.fromEntries(Object.entries(data.requestHeaders||{}).map(([key,value])=>[key.toLowerCase(),value]));
-                if(data.cookie||headers.cookie||headers.authorization) throw new Error('这个媒体需要认证信息，请使用原有下载入口');
+                if(data.cookie||headers.cookie||headers.authorization) throw new Error('这个媒体需要登录凭据，请使用网站自带的下载方式');
                 return {action:'add',kind:['hls','dash'].includes(kind)?'video':'file',url:card.querySelector('select').value||data.url,title:Shiying.filename(data).split('/').pop(),referer:headers.referer||data.webUrl||currentSite.url,userAgent:headers['user-agent']||navigator.userAgent};
             }).then(reply=>notify(reply?.stage==='started'?pick('已交给桌面版，在「已下载」里看进度', 'Sent to Ruxget Desktop; follow it in Downloads'):pick('已交给 Ruxget 桌面版，请在桌面窗口确认下载', 'Sent to Ruxget Desktop; confirm it in the desktop window'))).catch(failure);
         });
@@ -250,7 +252,7 @@ $('#allowSite').addEventListener('click', () => {
     const requestedSite = currentSite;
     // Invoke the browser permission prompt before any await or message hop.
     ShiyingAccess.request(accessPatterns).then(async granted => {
-        if (!granted) {notify('没有允许这个网站。已允许的网站和已有的下载不受影响');return;}
+        if (!granted) {$('#siteAccessNote').textContent = RuxgetI18n.pick('未获得此网站的访问权限，Ruxget 无法检测本页视频。需要时可再次点击「允许此网站」。', 'This site wasn’t allowed, so Ruxget can’t find videos on this page. Click “Allow this site” whenever you need it.');return;}
         const result = await message('shiyingSyncAccess');
         if (!result?.ok) throw new Error(result?.error || '网站授权未能更新');
         const tab = await chrome.tabs.get(requestedSite.id);
@@ -374,6 +376,7 @@ $('#linkDownloadCancel').addEventListener('click',()=>{if(!linkDownloadBusy)$('#
 $('#linkDownload').addEventListener('cancel',event=>{if(linkDownloadBusy)event.preventDefault();});
 $('#linkDownloadForm').addEventListener('submit',async event=>{
     event.preventDefault();if(linkDownloadBusy)return;
+    if(typeof ShiyingPlatformUI!=="undefined"&&ShiyingPlatformUI.stream?.($('#linkDownloadURL').value.trim())){$('#linkDownload').close();return;}
     try{const payload=ShiyingNative.file($('#linkDownloadURL').value);linkDownloadState(true);$('#linkDownloadError').hidden=true;await chrome.downloads.download({url:payload.url,saveAs:$('#saveAs').checked});$('#linkDownload').close();notify('已交给 Chrome 下载');}catch(error){linkDownloadFailure(error);}finally{linkDownloadState(false);}
 });
 $('#linkUseDesktop').addEventListener('click',()=>{

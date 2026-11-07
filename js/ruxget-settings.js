@@ -88,7 +88,7 @@
     async function allow() {
         let granted = false;
         try { granted = await chrome.permissions.request({permissions: ['nativeMessaging']}); } catch { granted = false; }
-        if (!granted) toast(pick('你没有允许 Ruxget 连接桌面版，设置保持「从不」', 'You didn’t allow Ruxget to connect to the desktop app, so this stays at “Never”'));
+        if (!granted) toast(pick('Chrome 中未允许 Ruxget 插件连接桌面版，此项设置没有更改', 'Ruxget wasn’t allowed in Chrome to connect to the desktop app, so this setting is unchanged'));
         return granted;
     }
     async function setMode(next) {

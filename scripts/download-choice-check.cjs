@@ -19,7 +19,7 @@ const checks=[],check=(value,name)=>{assert(value,name);checks.push(name);};
  const manifest=JSON.parse(fs.readFileSync(path.join(extension,'manifest.json'),'utf8'));manifest.background.service_worker='choice-bootstrap.js';fs.writeFileSync(path.join(extension,'manifest.json'),JSON.stringify(manifest));
  fs.mkdirSync(path.join(report,'profile','Default'),{recursive:true});fs.writeFileSync(path.join(report,'profile','Default','Preferences'),JSON.stringify({download:{default_directory:path.join(report,'files'),prompt_for_download:false}}));
  context=await chromium.launchPersistentContext(path.join(report,'profile'),{executablePath:'E:/ai/.tmp/shiying-browser/chromium-1234/chrome-win64/chrome.exe',channel:'chromium',headless:true,acceptDownloads:true,downloadsPath:path.join(report,'files'),ignoreDefaultArgs:['--disable-extensions'],args:['--mute-audio','--autoplay-policy=user-gesture-required',`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--disable-background-networking']});
- const errors=[];context.on('page',p=>p.on('pageerror',e=>errors.push(e.message)));
+ const errors=[];context.on('page',p=>p.on('pageerror',e=>{/* the stream pages opened for a pasted playlist can't reach example.test */if(!/\/(m3u8|mpd)\.html/.test(p.url()))errors.push(e.message);}));
  // No public requests or media are allowed in this test.
  await context.route('**/*',route=>new URL(route.request().url()).hostname==='127.0.0.1'||route.request().url().startsWith('chrome-extension:')?route.continue():route.abort());
  const worker=context.serviceWorkers()[0]||await context.waitForEvent('serviceworker');const id=new URL(worker.url()).hostname;
@@ -52,7 +52,10 @@ const checks=[],check=(value,name)=>{assert(value,name);checks.push(name);};
  await popup.locator('#platformURL').fill('b23.tv/BV15z4y1U7HS');await popup.locator('#platformRead').click();await popup.waitForFunction(()=>document.querySelector('#platformURL').value==='https://www.bilibili.com/video/BV15z4y1U7HS/');
  check(true,'b23.tv/BV… is read as the Bilibili video page');
  await popup.locator('#platformURL').fill('随便一段文字');await popup.locator('#platformRead').click();await popup.waitForFunction(()=>/请粘贴完整的网址/.test(document.body.innerText));
- await popup.locator('#platformURL').fill('example.test/files/manual.bin');await popup.locator('#platformRead').click();await popup.locator('#linkDownload').waitFor({state:'visible'});
+ // 0.4.72: the note stays under the box (no 3.5 s toast) until the link is edited.
+ await popup.waitForTimeout(4200);check(await popup.locator('#platformPasteNote').isVisible()&&/请粘贴完整的网址/.test(await popup.locator('#platformPasteNote').innerText())&&await popup.locator('#toast').isHidden(),'a paste-box note stays inline under the box after 4 s, without a toast');
+ await popup.locator('#platformURL').fill('example.test/files/manual.bin');check(await popup.locator('#platformPasteNote').isHidden(),'editing the link clears the paste-box note');
+ await popup.locator('#platformRead').click();await popup.locator('#linkDownload').waitFor({state:'visible'});
  assert.equal(await popup.locator('#linkDownloadURL').inputValue(),'https://example.test/files/manual.bin');await popup.locator('#linkDownloadCancel').click();
  check(true,'a link without https:// is read as https; plain text and app share links say what to do instead of nothing');
  const callsBefore=await worker.evaluate(()=>choiceSpy.native.length);await show();check(await popup.locator('#linkDownload').isVisible(),'a pasted file link (not a video page) opens the file chooser, filled in');await popup.locator('#linkDownloadCancel').click();check(await worker.evaluate(()=>choiceSpy.native.length)===callsBefore,'canceling the manual chooser does not launch or download');
@@ -65,6 +68,22 @@ const checks=[],check=(value,name)=>{assert(value,name);checks.push(name);};
  await popup.evaluate(()=>{chrome.runtime.sendNativeMessage=async(host,payload)=>{popupNative.push({host,payload});return {ok:true,stage:'started',id:'desk-2',name:'manual.bin'};};});
  await show();await popup.locator('#linkDownloadURL').fill(signed);await popup.locator('#linkUseDesktop').click();await popup.waitForFunction(()=>/已交给桌面版，在「已下载」里看进度/.test(document.body.innerText));check(await popup.locator('#linkDownload').isHidden(),'the 0.4.70 desktop app starts a pasted link at once; the note points to 已下载');
  await show();await popup.locator('#linkDownloadURL').fill('blob:https://example.test/temporary');await popup.locator('#linkUseDesktop').click();check(await popup.locator('#linkDownloadError').isVisible(),'browser-only temporary URL keeps a clear inline error');check(await popup.evaluate(()=>popupNative.length===2&&popupPermissions===2),'unsupported URL is rejected before native permission or transport');await popup.locator('#linkDownloadCancel').click();
+ // 0.4.72: a pasted playlist (.m3u8 / .mpd) is never a plain-file download of its text: it opens the extension's
+ // stream page, after asking for that one site; denied, a quiet note stays under the box.
+ const streamTab=name=>worker.evaluate(async name=>{for(let n=0;n<100;n++){const tab=(await chrome.tabs.query({})).find(t=>(t.url||t.pendingUrl||'').includes('/'+name+'.html?'));if(tab){await chrome.tabs.remove(tab.id).catch(()=>{});return tab.url||tab.pendingUrl;}await new Promise(r=>setTimeout(r,50));}return '';},name);
+ await popup.evaluate(()=>{window.streamRequests=[];chrome.permissions.request=async request=>{streamRequests.push(request);return window.streamDenied!==true;};});
+ const downloadsBefore=await worker.evaluate(async()=>(await chrome.downloads.search({})).length);
+ await popup.locator('#platformURL').fill('https://example.test/live/index.m3u8?token=1');await popup.locator('#platformRead').click();
+ const hls=new URL(await streamTab('m3u8'));check(hls.searchParams.get('url')==='https://example.test/live/index.m3u8?token=1'&&hls.searchParams.get('autoDown')==='1','a pasted .m3u8 opens the extension’s HLS page (download and merge), not the file chooser');
+ check(await popup.locator('#linkDownload').isHidden()&&/分段视频的播放列表/.test(await popup.locator('#platformPasteNote').innerText()),'the box says where the playlist went');
+ assert.deepEqual(await popup.evaluate(()=>streamRequests.at(-1)),{origins:['https://example.test/*']});
+ await popup.evaluate(()=>{window.streamDenied=true;});await popup.locator('#platformURL').fill('https://example.test/dash/manifest.mpd');await popup.locator('#platformRead').click();
+ await popup.waitForFunction(()=>/需要允许访问这个网站/.test(document.querySelector('#platformPasteNote').textContent));check(await popup.locator('#linkDownload').isHidden(),'access denied for a playlist: a quiet note, no download, no file chooser');
+ await popup.evaluate(()=>{window.streamDenied=false;});await popup.locator('#platformRead').click();
+ check(new URL(await streamTab('mpd')).searchParams.get('url')==='https://example.test/dash/manifest.mpd','a pasted .mpd opens the extension’s DASH track page');
+ await show();await popup.locator('#linkDownloadURL').fill('https://example.test/again/playlist.M3U8');await popup.locator('#linkUseChrome').click();
+ check(new URL(await streamTab('m3u8')).searchParams.get('url')==='https://example.test/again/playlist.M3U8'&&await popup.locator('#linkDownload').isHidden(),'a playlist typed into the file chooser goes to the HLS page too');
+ check(await worker.evaluate(async()=>(await chrome.downloads.search({})).length)===downloadsBefore,'no Chrome download of a playlist text file');
  assert.deepEqual(errors,[]);
  fs.writeFileSync(path.join(report,'summary.json'),JSON.stringify({ok:true,checks,method:'isolated headless unpacked extension; real menu registration and Chrome downloads of 1 KiB generated bytes; registered context handler called directly with permission/native spies; physical menu gesture and real personal native-host launch not exercised',personalBrowserUsed:false,physicalMouseMoved:false,videoDownloaded:false,nativeHostStarted:false,ordinaryDownloadsIntercepted:false,publicNetworkUsed:false,published:false},null,2));console.log('DOWNLOAD CHOICE PASSED',report);
  }finally{await context?.close();await new Promise(resolve=>server.close(resolve));}})().catch(error=>{console.error(error);process.exitCode=1});

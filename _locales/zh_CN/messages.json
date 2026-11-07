@@ -1312,16 +1312,16 @@
     "message": "Ruxget 暂时没有响应，请重试"
   },
   "uiDesktopConnectionMissing": {
-    "message": "还没有连接桌面下载器"
+    "message": "尚未连接 Ruxget 桌面版"
   },
   "uiDesktopConnectionFailed": {
-    "message": "桌面下载器暂时无法连接"
+    "message": "暂时无法连接 Ruxget 桌面版"
   },
   "uiDesktopConnectionMissingNote": {
-    "message": "尚未安装可以下载；已经安装，请检查或重新配对。也可以继续使用 Chrome 下载。"
+    "message": "如未安装，可免费下载（3 MB）；如已安装，请修复连接。也可以继续用 Chrome 下载。"
   },
   "uiDesktopConnectionFailedNote": {
-    "message": "可能是配对权限或程序启动异常，请先修复连接，无需反复下载安装。"
+    "message": "可能是连接权限或桌面版启动异常。请先修复连接，无需重新安装。"
   },
   "uiDesktopInstallAction": {
     "message": "下载安装"
@@ -1333,7 +1333,7 @@
     "message": "继续用 Chrome"
   },
   "uiDesktopConnectionPending": {
-    "message": "桌面连接尚未完成，可以继续使用 Chrome 下载"
+    "message": "尚未连接桌面版，可以继续用 Chrome 下载"
   },
   "flowVideo": {
     "message": "视频 MP4"

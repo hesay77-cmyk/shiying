@@ -20,6 +20,24 @@ assert.throws(()=>platform.bilibiliCatalog({site:'bilibili'},{video:Array(101),a
  assert.equal(new URL(c.audio[0].url).hostname,'upos-sz-mirrorcoso1.bilivideo.com');assert.equal(c.audio[0].backups.length,0);
  assert(![...c.video,...c.audio].some(t=>[t.url,...t.backups].some(u=>/mountaintoys|:\d+\//.test(u))),'PCDN and port addresses are never used');
  assert.throws(()=>platform.bilibiliCatalog({site:'bilibili'},{title:'x',video:[{...v,backup_url:[]}],audio:[a],duration:60}),/没有取得可合并的画面与声音/);}
+// 0.4.72: qualities are named by the short side (a 480×852 vertical video is 480p, not 852p); the height stays the id.
+{const path='/upgcxcode/1/2/3/3-1-30032.m4s';const track=(id,width,height)=>({id,width,height,bandwidth:id*1000,codecs:'avc1.64001F',base_url:'https://upos-sz-mirrorcos.bilivideo.com'+path});
+ const a={id:30216,bandwidth:67000,codecs:'mp4a.40.2',base_url:'https://upos-sz-mirrorcos.bilivideo.com'+path};
+ const vertical=platform.bilibiliCatalog({site:'bilibili'},{title:'竖屏',video:[track(32,480,852),track(16,360,640)],audio:[a],duration:30});
+ assert.deepEqual(vertical.choices,[{height:852,label:'480p'},{height:640,label:'360p'}]);
+ assert.deepEqual(platform.bilibiliCatalog({site:'bilibili'},{title:'横屏',video:[track(80,1920,1080),track(64,1280,720)],audio:[a],duration:30}).choices.map(c=>c.label),['1080p','720p']);
+ // B站 without signing in: the card says why only when B站 says signed out, lists more, and nothing above 480p came.
+ const read=extra=>platform.bilibiliCatalog({site:'bilibili'},{title:'x',video:[track(32,852,480),track(16,640,360)],audio:[a],duration:30,...extra}).loginLimited;
+ assert.equal(read({loggedIn:false,accept:[80,64,32,16]}),true);
+ assert.equal(vertical.loginLimited,false,'no login data: nothing is said');
+ assert.equal(read({loggedIn:null,accept:[80,64,32,16]}),false,'login unknown: nothing is said');
+ assert.equal(read({loggedIn:true,accept:[80,64,32,16]}),false,'signed in: nothing is said');
+ assert.equal(read({loggedIn:false,accept:[32,16]}),false,'the video has nothing higher: nothing is said');
+ assert.equal(platform.bilibiliCatalog({site:'bilibili'},{title:'x',video:[track(64,1280,720)],audio:[a],duration:30,loggedIn:false,accept:[80,64]}).loginLimited,false,'720p came back: nothing is said');
+ const reader=platform.readBilibiliPage.toString();assert(/x\/web-interface\/nav/.test(reader)&&/isLogin/.test(reader)&&/accept_quality/.test(reader),'the B站 read reports sign-in state and the qualities B站 lists');
+ // The quality name reaches 已下载 and the progress page through job.label.
+ const fsx=require('node:fs'),rootx=require('node:path').resolve(__dirname,'..');
+ assert(/job\.label \|\|/.test(fsx.readFileSync(rootx+'/js/shiying-recent.js','utf8'))&&/job\.label\|\|/.test(fsx.readFileSync(rootx+'/js/shiying-task.js','utf8'))&&/\.\.\.\(label\?\{label\}:\{\}\)/.test(fsx.readFileSync(rootx+'/js/shiying-background.js','utf8')));}
 const root=require('node:path').resolve(__dirname,'..'),background=fs.readFileSync(root+'/js/shiying-background.js','utf8'),engine=fs.readFileSync(root+'/js/shiying-engine.js','utf8');
 assert(!/17863|SHIYING_HELPER|server\.cjs|node\.exe|yt-dlp|ffmpeg/i.test(background+engine));
 assert(JSON.parse(fs.readFileSync(root+'/manifest.json','utf8')).permissions.includes('offscreen'));

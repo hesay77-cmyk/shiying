@@ -20,7 +20,7 @@ async function refresh() {
         $('#taskTitle').title = job.title || '';
         document.body.dataset.status = job.status;
         $('#taskLabel').textContent = job.status === 'complete' ? pick('下载完成','Download complete') : pick('下载进度','Download progress');
-        $('#taskMeta').textContent = job.format === 'mp3' ? pick('MP3 · 仅声音','MP3 · audio only') : `${job.height}p · MP4 · ${pick('含声音','with audio')}`;
+        $('#taskMeta').textContent = job.format === 'mp3' ? pick('MP3 · 仅声音','MP3 · audio only') : `${job.label||job.height+'p'} · MP4 · ${pick('含声音','with audio')}`;
         $('#taskStage').textContent = tr(job.stage);
         const progress = Number.isFinite(Number(job.progress)) ? Math.max(0,Math.min(100,Number(job.progress))) : 0;
         $('#taskProgress').value = progress;

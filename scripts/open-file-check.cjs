@@ -28,7 +28,7 @@ const server=http.createServer((q,r)=>{
  await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin='http://127.0.0.1:'+server.address().port;
  const exe=fs.existsSync('C:/Program Files/Google/Chrome/Application/chrome.exe')?'C:/Program Files/Google/Chrome/Application/chrome.exe':process.env.SHIYING_CHROMIUM;
  const PORT=9300+Math.floor(Math.random()*500);
- const chrome=spawn(exe,[`--user-data-dir=${profile}`,`--remote-debugging-port=${PORT}`,'--enable-unsafe-extension-debugging','--no-first-run','--no-default-browser-check','--headless=new','--window-size=900,800','about:blank'],{stdio:'ignore'});
+ const chrome=spawn(exe,[`--user-data-dir=${profile}`,`--remote-debugging-port=${PORT}`,'--enable-unsafe-extension-debugging','--no-first-run','--no-default-browser-check','--headless=new','--mute-audio','--autoplay-policy=user-gesture-required','--window-size=900,800','about:blank'],{stdio:'ignore'});
  let socket;
  try{
   const version=await until(async()=>(await fetch(`http://127.0.0.1:${PORT}/json/version`)).json(),20000);

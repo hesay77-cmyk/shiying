@@ -30,6 +30,14 @@ const ShiyingPlatform = {
         try {const response = await fetch(url, {credentials:'omit'});if (!response.ok) throw new Error('字幕读取失败，请刷新视频网页后重试');return {data:await response.json()};}
         catch (error) {return {error:error.message || String(error)};}
     },
+    // 0.4.72: a quality is named by the short side, as the sites do: a 480×852 vertical video is "480p", not "852p".
+    // The height stays the choice's id (it picks the track); only the label and the order follow the short side.
+    shortSide(item) {const height=Number(item?.height)||0,width=Number(item?.width)||0;return width>0&&height>0?Math.min(width,height):height;},
+    choices(video) {
+        const sides=new Map();
+        for(const item of video){const side=this.shortSide(item);if(!sides.has(item.height)||side<sides.get(item.height))sides.set(item.height,side);}
+        return [...sides].sort((a,b)=>b[1]-a[1]||b[0]-a[0]).map(([height,side])=>({height,label:side+'p'}));
+    },
     bilibiliCatalog(source,data) {
         if(!data||!Array.isArray(data.video)||!Array.isArray(data.audio)||data.video.length>100||data.audio.length>30)throw new Error('没有读到完整视频，请重新读取');
         // 0.4.69: B站 now often puts a PCDN address first (*.edge.mountaintoys.cn:4483, *.mcdn.bilivideo.cn:8082) and its
@@ -40,7 +48,12 @@ const ShiyingPlatform = {
         const video=data.video.map(track).filter(item=>item.url&&item.height>0&&item.codec.startsWith('avc')).sort((a,b)=>b.bitrate-a.bitrate);
         const audio=data.audio.map(track).filter(item=>item.url&&item.codec.startsWith('mp4a')).sort((a,b)=>b.bitrate-a.bitrate);
         if(!video.length||!audio.length)throw new Error('没有取得可合并的画面与声音');
-        return {...source,parts:Math.max(1,Math.min(1000,Number(data.parts)||1)),title:String(data.title).slice(0,300),artist:String(data.artist||'').slice(0,100),cover:this.coverURL(data.cover),subtitles:(Array.isArray(data.subtitles)?data.subtitles:[]).slice(0,20).map(item=>({lang:String(item.lang||'').slice(0,20),name:String(item.name||item.lang||'').slice(0,40),url:this.subtitleURL(item.url)})).filter(item=>item.url),duration:Number(data.duration),video,audio,choices:[...new Set(video.map(item=>item.height))].sort((a,b)=>b-a).map(height=>({height,label:height+'p'}))};
+        // B站 gives visitors who aren't signed in at most 480p. Said only when the read is clear about it: B站 reports
+        // the person as signed out, lists a higher quality for this video (accept_quality, qn above 32 = 480P),
+        // and no track above 480p came back. Anything less certain says nothing.
+        const top=Math.max(...video.map(item=>this.shortSide(item)));
+        const loginLimited=data.loggedIn===false&&top<=480&&Array.isArray(data.accept)&&data.accept.some(qn=>Number(qn)>32);
+        return {...source,loginLimited,parts:Math.max(1,Math.min(1000,Number(data.parts)||1)),title:String(data.title).slice(0,300),artist:String(data.artist||'').slice(0,100),cover:this.coverURL(data.cover),subtitles:(Array.isArray(data.subtitles)?data.subtitles:[]).slice(0,20).map(item=>({lang:String(item.lang||'').slice(0,20),name:String(item.name||item.lang||'').slice(0,40),url:this.subtitleURL(item.url)})).filter(item=>item.url),duration:Number(data.duration),video,audio,choices:this.choices(video)};
     },
     source(value) {
         let url;
@@ -75,9 +88,12 @@ const ShiyingPlatform = {
         if (!page) throw new Error('没有找到这个分 P，请检查视频网址');
         const play = await get('/x/player/playurl', {...identity, cid:String(page.cid), qn:'127', fnval:'4048', fnver:'0', fourk:'1'});
         if (!play.dash?.video?.length || !play.dash?.audio?.length) throw new Error('没有取得完整音视频轨，请在 B站播放后重试');
+        // Signed in or not, from B站's own answer (data.isLogin); unknown stays null and the panel says nothing.
+        let loggedIn = null;
+        try {const nav = await (await fetch('https://api.bilibili.com/x/web-interface/nav', {credentials:'include'})).json();if (typeof nav?.data?.isLogin === 'boolean') loggedIn = nav.data.isLogin;} catch {}
         let subtitles = [];
         try {const player = await get('/x/player/v2', {...identity, cid:String(page.cid)});subtitles = (player.subtitle?.subtitles || []).map(item => ({lang:item.lan, name:item.lan_doc, url:item.subtitle_url}));} catch {}
-        return {subtitles, parts:view.pages.length, title:view.pages.length > 1 ? `${view.title} - P${part} ${page.part}` : view.title, duration:page.duration || play.dash.duration, userAgent:navigator.userAgent, video:play.dash.video, audio:play.dash.audio, artist:view.owner?.name || '', cover:view.pic || '', pageTitle:view.title};
+        return {loggedIn, accept:Array.isArray(play.accept_quality) ? play.accept_quality.slice(0, 30) : [], subtitles, parts:view.pages.length, title:view.pages.length > 1 ? `${view.title} - P${part} ${page.part}` : view.title, duration:page.duration || play.dash.duration, userAgent:navigator.userAgent, video:play.dash.video, audio:play.dash.audio, artist:view.owner?.name || '', cover:view.pic || '', pageTitle:view.title};
         } catch (error) {return {error:error.message || String(error)};}
     }
 };

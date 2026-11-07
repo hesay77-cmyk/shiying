@@ -16,7 +16,8 @@ const root=path.resolve(__dirname,'..'),run=path.join(root,'.checks','access-'+D
   assert.equal(await popup.locator('.media-item').count(),0);
   // Simulate the user's denial, without interacting with a native prompt.
   await popup.evaluate(()=>{chrome.permissions.request=async request=>{globalThis.testRequest=request;return false}});await popup.locator('#allowSite').click();
-  await popup.getByText('没有允许这个网站。已允许的网站和已有的下载不受影响',{exact:true}).waitFor();
+  // 0.4.72: the denial is said once, quietly, where the button is (no toast), and says what it means.
+  await popup.locator('#siteAccessNote',{hasText:'未获得此网站的访问权限，Ruxget 无法检测本页视频'}).waitFor();assert.equal(await popup.locator('#toast').isVisible(),false);
   const request=await popup.evaluate(()=>globalThis.testRequest);assert.deepEqual(request.origins,['http://127.0.0.1/*']);
   assert(!(await worker.evaluate(()=>chrome.permissions.getAll())).origins.some(origin=>origin.includes('127.0.0.1')));
   assert.equal(await worker.evaluate(tabId=>(cacheData[tabId]||[]).length,tabId),0);
@@ -24,7 +25,7 @@ const root=path.resolve(__dirname,'..'),run=path.join(root,'.checks','access-'+D
   const settings=await context.newPage();await settings.goto(`chrome-extension://${id}/shiying-help.html#site-access`);await settings.locator('#sitePermissionForm').waitFor();
   await settings.evaluate(()=>{chrome.permissions.request=async request=>{globalThis.testRequest=request;return false}});
   await settings.locator('#sitePermissionURL').fill('https://cdn.example/video.mp4');await settings.locator('#sitePermissionForm button').click();
-  await settings.getByText('未授权，网站访问范围保持原样。',{exact:true}).waitFor();assert.deepEqual((await settings.evaluate(()=>globalThis.testRequest)).origins,['https://cdn.example/*']);
+  await settings.getByText('未获得访问权限，网站权限没有变化。',{exact:true}).waitFor();assert.deepEqual((await settings.evaluate(()=>globalThis.testRequest)).origins,['https://cdn.example/*']);
   const report={passed:true,initialOrigins:origins,unapprovedSiteCapture:false,concreteRequest:true,denialCallback:'simulated',nativeApproval:'manual verification required',unapprovedMediaRejected:true,siteSettings:true};
   fs.writeFileSync(path.join(run,'result.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));
  }finally{if(context)await context.close();server.close()}

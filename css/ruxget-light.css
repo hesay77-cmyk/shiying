@@ -89,6 +89,10 @@ progress::-webkit-progress-bar{background:var(--edge)!important;border-radius:99
 progress::-webkit-progress-value{background:var(--olive)!important;border-radius:9999px}
 
 #platformForm{margin:0 16px 16px!important;padding-top:0!important;border-top:0!important}
+/* 0.4.72: what the paste box has to say stays under it until the link is edited or read (no toast). */
+.paste-note{margin:8px 4px 0;color:var(--sub);font-size:12px;line-height:16px;overflow-wrap:anywhere}
+.paste-note[data-tone=warn]{color:var(--warn)}
+.login-note{margin:12px 0 0;color:var(--sub);font-size:12px;line-height:16px}
 .link-input{border-radius:12px!important;border:1px solid var(--edge)!important;background:var(--card)!important;box-shadow:none!important;overflow:hidden}
 .link-input input{background:transparent!important;color:var(--fg)!important;font-size:14px!important}
 .link-input input::placeholder{color:var(--faint)!important}
@@ -127,7 +131,7 @@ progress::-webkit-progress-value{background:var(--olive)!important;border-radius
 .recent-confirm{background:var(--warn-soft)!important;color:var(--fg)!important;border-radius:12px!important}
 .recent-danger{background:var(--warn)!important;color:#FFFEFA!important}
 .recent-plain{border-color:var(--edge)!important;color:var(--fg)!important}
-.recent-foot{padding:0 16px 16px!important}
+.recent-foot{padding:0 16px 16px!important;justify-content:space-between!important;gap:12px}
 .recent-downloads li .recent-bar{background:linear-gradient(90deg,var(--olive) var(--progress,0%),var(--edge) var(--progress,0%))!important}
 
 /* offer card, dialogs, toast */
@@ -194,6 +198,7 @@ h1,h2,h3{color:var(--fg)}
 a{color:var(--olive)}
 .key-hint{background:var(--raise)!important;color:var(--fg)!important;border-color:var(--edge)!important}
 .help-intro{max-width:none!important}
+.help-intro,.start-steps{padding:24px!important;border:1px solid var(--edge)!important;border-radius:16px!important;margin-bottom:24px!important}
 #sitePermissionForm button{background:var(--olive)!important;color:var(--olive-ink)!important;border-radius:8px!important;font-weight:600}
 #sitePermissionForm button:hover{background:var(--olive-hover)!important}
 #grantedSites button{background:var(--raise)!important;color:var(--fg)!important;border-radius:8px!important}

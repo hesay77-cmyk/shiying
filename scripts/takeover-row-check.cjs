@@ -28,7 +28,7 @@ const server=http.createServer((q,r)=>{
  await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin='http://127.0.0.1:'+server.address().port;
  const exe=fs.existsSync('C:/Program Files/Google/Chrome/Application/chrome.exe')?'C:/Program Files/Google/Chrome/Application/chrome.exe':process.env.SHIYING_CHROMIUM;
  const PORT=9300+Math.floor(Math.random()*500);
- const chrome=spawn(exe,[`--user-data-dir=${profile}`,`--remote-debugging-port=${PORT}`,'--enable-unsafe-extension-debugging','--no-first-run','--no-default-browser-check','--headless=new','--window-size=900,800','about:blank'],{stdio:'ignore'});
+ const chrome=spawn(exe,[`--user-data-dir=${profile}`,`--remote-debugging-port=${PORT}`,'--enable-unsafe-extension-debugging','--no-first-run','--no-default-browser-check','--headless=new','--mute-audio','--autoplay-policy=user-gesture-required','--window-size=900,800','about:blank'],{stdio:'ignore'});
  let socket;
  try{
   const version=await until(async()=>(await fetch(`http://127.0.0.1:${PORT}/json/version`)).json(),20000);
@@ -84,7 +84,7 @@ const server=http.createServer((q,r)=>{
   // Refusing the connection: one refusal message, no prompt loop and nothing added.
   await ev(`window.adds=[];chrome.permissions.request=async()=>false;chrome.permissions.contains=async()=>false;document.querySelector('#error').hidden=true;'ok'`,p.pp);
   await row(p.pp,'.desktop-button');await wait(800);
-  check((await adds(p.pp))===0&&(await ev(`!document.querySelector('#error').hidden&&document.querySelector('#error').textContent.includes('未允许连接桌面版')`,p.pp)),'refusing the connection adds nothing and says so once');
+  check((await adds(p.pp))===0&&(await ev(`!document.querySelector('#error').hidden&&document.querySelector('#error').textContent.includes('没有允许连接桌面版，可以继续用插件下载')`,p.pp)),'refusing the connection adds nothing and says so once');
   await p.close();await reset();
 
   // 1c. Takeover on, "桌面下载" clicked while the hand-over is still waiting for the desktop: one hand-over, no second task.

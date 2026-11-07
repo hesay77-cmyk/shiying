@@ -16,11 +16,18 @@ async function restoreOpenFloatingControls(){
  for(const tab of tabs)try{await ensureFloatingControl(tab.id);}catch{/* Closed, restricted or non-video tabs need no control. */}
 }
 chrome.runtime.onInstalled?.addListener(()=>restoreOpenFloatingControls().catch(()=>{}));
+// 0.4.72: 已下载 lists only this browser session, like Chrome's own download bubble. The start is written when Chrome
+// starts (storage.session is emptied when it closes); two minutes earlier covers a download that woke this worker.
+// After an extension update or reload there is no start until Chrome restarts, and 已下载 shows everything as before.
+chrome.runtime.onStartup?.addListener(()=>{chrome.storage.session.set({ruxgetSessionStart:Date.now()-120000}).catch(()=>{});});
+// Installed or updated in the middle of a session: start counting now rather than showing the whole history
+// (it stays one click away in 「全部下载记录」).
+chrome.runtime.onInstalled?.addListener(()=>{chrome.storage.session.get('ruxgetSessionStart').then(data=>{if(!data.ruxgetSessionStart)return chrome.storage.session.set({ruxgetSessionStart:Date.now()-120000});}).catch(()=>{});});
 async function sourceTab(source,requestedId){
  const tabs=await chrome.tabs.query({});
  const matching=tabs.filter(tab=>{try{return ShiyingPlatform.source(tab.url).url===source.url}catch{return false}});
  let tab=matching.find(tab=>tab.id===requestedId)||matching[0];
- if(!tab){tab=await chrome.tabs.create({url:source.url,active:false});tab.shiyingOwned=true;}
+ if(!tab){tab=await chrome.tabs.create({url:source.url,active:false});tab.shiyingOwned=true;chrome.tabs.update(tab.id,{muted:true}).catch(()=>{});}
  if(tab.status!=='complete')try{await new Promise((resolve,reject)=>{const timer=setTimeout(()=>{chrome.tabs.onUpdated.removeListener(changed);reject(new Error('视频网页加载超时，请重新读取'))},45000);function changed(id,info){if(id===tab.id&&info.status==='complete'){clearTimeout(timer);chrome.tabs.onUpdated.removeListener(changed);resolve()}}chrome.tabs.onUpdated.addListener(changed);chrome.tabs.get(tab.id).then(current=>{if(current.status==='complete')changed(tab.id,{status:'complete'})})});}catch(error){if(tab.shiyingOwned)await chrome.tabs.remove(tab.id).catch(()=>{});throw error;}
  return tab;
 }
@@ -39,7 +46,7 @@ async function platformRead(event){
  const previous=(await chrome.storage.session.get('shiyingCatalogIds')).shiyingCatalogIds||[];
  if(previous.length>=20)await chrome.storage.session.remove(NATIVE_CATALOG_PREFIX+previous.shift());
  await chrome.storage.session.set({[NATIVE_CATALOG_PREFIX+catalog.id]:catalog,shiyingCatalogIds:[...previous,catalog.id]});
- return {id:catalog.id,site:catalog.site,parts:catalog.parts||1,url:catalog.url,title:catalog.title,duration:catalog.duration,choices:catalog.choices,audioAvailable:true,native:true,siteName:catalog.siteName,listUrl:catalog.listUrl,muxed:!!catalog.muxed,mediaOrigins:ShiyingPlatform.mediaOrigins?.[catalog.site]||[],subtitles:(catalog.subtitles||[]).map(({lang,name})=>({lang,name}))};
+ return {id:catalog.id,site:catalog.site,parts:catalog.parts||1,url:catalog.url,title:catalog.title,duration:catalog.duration,choices:catalog.choices,audioAvailable:true,native:true,siteName:catalog.siteName,listUrl:catalog.listUrl,muxed:!!catalog.muxed,loginLimited:!!catalog.loginLimited,mediaOrigins:ShiyingPlatform.mediaOrigins?.[catalog.site]||[],subtitles:(catalog.subtitles||[]).map(({lang,name})=>({lang,name}))};
  }finally{if(tab.shiyingOwned)await chrome.tabs.remove(tab.id).catch(()=>{});}
 }
 async function jobRead(id){const job=(await chrome.storage.local.get(NATIVE_JOB_PREFIX+id))[NATIVE_JOB_PREFIX+id];if(!job)throw new Error('没有找到下载记录，请重新开始');return job}
@@ -70,7 +77,9 @@ async function platformStart(event){
  const existing=await chrome.storage.local.get(ids.map(id=>NATIVE_JOB_PREFIX+id));
  if(!engineCreation&&!await chrome.offscreen.hasDocument())for(const job of Object.values(existing))if(['queued','downloading','verifying'].includes(job.status))Object.assign(job,await jobUpdate(job.id,{status:'error',stage:'下载已中断',error:'下载被打断了（Chrome 或 Ruxget 重新启动过），请重新读取视频后下载'}));
  if(Object.values(existing).filter(job=>['queued','downloading','verifying','saving'].includes(job.status)).length>=3)throw new Error('已有下载正在处理，请稍后再添加');
- const job={ok:true,id:crypto.randomUUID(),url:catalog.url,title:catalog.title,format,height,status:'queued',stage:'正在准备下载',progress:0,createdAt:new Date().toISOString(),native:true,...(event.collectionId?{collectionId:event.collectionId}:{}),...(typeof event.saveAs==='boolean'?{saveAs:event.saveAs}:{})};
+ // label: the quality as the panel names it (short side, 0.4.72), for 已下载 and the progress page.
+ const label=format==='mp4'?catalog.choices.find(choice=>choice.height===height)?.label:undefined;
+ const job={ok:true,id:crypto.randomUUID(),url:catalog.url,title:catalog.title,format,height,...(label?{label}:{}),status:'queued',stage:'正在准备下载',progress:0,createdAt:new Date().toISOString(),native:true,...(event.collectionId?{collectionId:event.collectionId}:{}),...(typeof event.saveAs==='boolean'?{saveAs:event.saveAs}:{})};
  await chrome.storage.local.set({[NATIVE_JOB_PREFIX+job.id]:job,shiyingJobIds:[...ids.slice(-49),job.id]});
  const dropped=ids.slice(0,Math.max(0,ids.length-49));if(dropped.length)await chrome.storage.local.remove(dropped.map(id=>NATIVE_JOB_PREFIX+id)).catch(()=>{});
  const mediaHosts=ShiyingPlatform.mediaDomains[catalog.site]||[];

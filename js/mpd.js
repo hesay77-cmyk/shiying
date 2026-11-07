@@ -142,7 +142,7 @@ function parseMPD(mpdContent) {
     for (let key in mpdJson.playlists) {
         $("#mpdVideoLists").append(`<option value='${key}'>${mpdJson.playlists[key].attributes.NAME
             } | ${(mpdJson.playlists[key].attributes.BANDWIDTH / 1024).toFixed(1)
-            } kbps |  ${mpdJson.playlists[key].attributes["FRAME-RATE"].toFixed(1)
+            } kbps |  ${Number(mpdJson.playlists[key].attributes["FRAME-RATE"]||0).toFixed(1)
             } fps |  ${mpdJson.playlists[key].attributes.RESOLUTION.width
             } x ${mpdJson.playlists[key].attributes.RESOLUTION.height
             }</option>`);

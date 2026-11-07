@@ -22,12 +22,12 @@ class SetupToggle:CheckBox {
         ButtonRenderer.DrawParentBackground(e.Graphics,ClientRectangle,this);var g=e.Graphics;g.SmoothingMode=SmoothingMode.AntiAlias;
         float s=g.DpiX/96f;int w=(int)(36*s),h=(int)(20*s),y=(Height-h)/2;var track=new Rectangle(0,y,w,h);
         int alpha=Enabled?255:110;
-        using(var path=SetupWindow.Round(track,h))using(var fill=new SolidBrush(Checked?Color.FromArgb(alpha,102,188,255):Color.FromArgb(Enabled?60:30,255,255,255)))g.FillPath(fill,path);
+        using(var path=SetupWindow.Round(track,h))using(var fill=new SolidBrush(Checked?Color.FromArgb(alpha,62,90,44):Color.FromArgb(Enabled?255:120,214,207,186)))g.FillPath(fill,path);
         int knob=h-(int)(6*s),kx=Checked?track.Right-knob-(int)(3*s):track.Left+(int)(3*s);
-        using(var brush=new SolidBrush(Color.FromArgb(alpha,Checked?0:235,Checked?25:242,Checked?45:250)))g.FillEllipse(brush,kx,y+(h-knob)/2,knob,knob);
-        if(Focused&&ShowFocusCues)using(var pen=new Pen(Color.FromArgb(150,140,200,255),1.5f*s))using(var ring=SetupWindow.Round(Rectangle.Inflate(track,(int)(3*s),(int)(3*s)),h+(int)(6*s)))g.DrawPath(pen,ring);
+        using(var brush=new SolidBrush(Color.FromArgb(alpha,255,254,250)))g.FillEllipse(brush,kx,y+(h-knob)/2,knob,knob);
+        if(Focused&&ShowFocusCues)using(var pen=new Pen(Color.FromArgb(150,62,90,44),1.5f*s))using(var ring=SetupWindow.Round(Rectangle.Inflate(track,(int)(3*s),(int)(3*s)),h+(int)(6*s)))g.DrawPath(pen,ring);
         var text=new Rectangle(w+(int)(12*s),0,Width-w-(int)(12*s),Height);
-        TextRenderer.DrawText(g,Text,Font,text,Enabled?Color.White:Color.FromArgb(150,176,196,218),TextFormatFlags.VerticalCenter|TextFormatFlags.Left|TextFormatFlags.EndEllipsis|TextFormatFlags.SingleLine);
+        TextRenderer.DrawText(g,Text,Font,text,Enabled?Color.FromArgb(42,53,32):Color.FromArgb(150,106,108,85),TextFormatFlags.VerticalCenter|TextFormatFlags.Left|TextFormatFlags.EndEllipsis|TextFormatFlags.SingleLine);
     }
 }
 class SetupProgress:Control {
@@ -39,10 +39,10 @@ class SetupProgress:Control {
     protected override void Dispose(bool disposing){if(disposing)timer.Dispose();base.Dispose(disposing);}
     protected override void OnPaint(PaintEventArgs e){
         var g=e.Graphics;g.SmoothingMode=SmoothingMode.AntiAlias;var all=new Rectangle(0,0,Width-1,Height-1);
-        using(var path=SetupWindow.Round(all,Height))using(var track=new SolidBrush(Color.FromArgb(40,255,255,255)))g.FillPath(track,path);
+        using(var path=SetupWindow.Round(all,Height))using(var track=new SolidBrush(Color.FromArgb(226,220,201)))g.FillPath(track,path);
         Rectangle bar=style==ProgressBarStyle.Marquee?new Rectangle((int)((phase-0.4f)*Width),0,(int)(Width*0.4f),Height-1):new Rectangle(0,0,(int)((Width-1)*value/100f),Height-1);
         bar.Intersect(all);if(bar.Width<2)return;
-        using(var path=SetupWindow.Round(bar,Height))using(var fill=new LinearGradientBrush(new Rectangle(bar.X-1,0,bar.Width+2,Height),Color.FromArgb(102,188,255),Color.FromArgb(127,224,200),LinearGradientMode.Horizontal))g.FillPath(fill,path);
+        using(var path=SetupWindow.Round(bar,Height))using(var fill=new LinearGradientBrush(new Rectangle(bar.X-1,0,bar.Width+2,Height),Color.FromArgb(62,90,44),Color.FromArgb(122,143,51),LinearGradientMode.Horizontal))g.FillPath(fill,path);
     }
 }
 class SetupButton:Button {
@@ -52,17 +52,17 @@ class SetupButton:Button {
     protected override void OnPaint(PaintEventArgs e){
         ButtonRenderer.DrawParentBackground(e.Graphics,ClientRectangle,this);var g=e.Graphics;g.SmoothingMode=SmoothingMode.AntiAlias;float s=g.DpiX/96f;
         var box=new Rectangle(0,0,Width-1,Height-1);
-        Color top=!Enabled?Color.FromArgb(44,70,96):pressed?Color.FromArgb(80,166,236):hover?Color.FromArgb(140,206,255):Color.FromArgb(110,192,255),bottom=!Enabled?Color.FromArgb(38,60,84):pressed?Color.FromArgb(70,150,220):hover?Color.FromArgb(118,192,250):Color.FromArgb(86,172,245);
+        Color top=!Enabled?Color.FromArgb(226,220,201):pressed?Color.FromArgb(52,77,37):hover?Color.FromArgb(82,113,61):Color.FromArgb(70,100,50),bottom=!Enabled?Color.FromArgb(226,220,201):pressed?Color.FromArgb(46,68,33):hover?Color.FromArgb(76,107,55):Color.FromArgb(62,90,44);
         using(var path=SetupWindow.Round(box,(int)(14*s)))using(var fill=new LinearGradientBrush(box,top,bottom,LinearGradientMode.Vertical))g.FillPath(fill,path);
-        if(Focused&&ShowFocusCues)using(var pen=new Pen(Color.FromArgb(220,255,255,255),1.5f*s))using(var path=SetupWindow.Round(Rectangle.Inflate(box,-(int)(3*s),-(int)(3*s)),(int)(11*s)))g.DrawPath(pen,path);
-        TextRenderer.DrawText(g,Text,Font,box,Enabled?Color.FromArgb(0,25,45):Color.FromArgb(160,190,214),TextFormatFlags.HorizontalCenter|TextFormatFlags.VerticalCenter|TextFormatFlags.SingleLine);
+        if(Focused&&ShowFocusCues)using(var pen=new Pen(Color.FromArgb(220,247,244,234),1.5f*s))using(var path=SetupWindow.Round(Rectangle.Inflate(box,-(int)(3*s),-(int)(3*s)),(int)(11*s)))g.DrawPath(pen,path);
+        TextRenderer.DrawText(g,Text,Font,box,Enabled?Color.FromArgb(247,244,234):Color.FromArgb(138,136,117),TextFormatFlags.HorizontalCenter|TextFormatFlags.VerticalCenter|TextFormatFlags.SingleLine);
     }
 }
 class SetupCard:Panel {
     public SetupCard(){SetStyle(ControlStyles.UserPaint|ControlStyles.AllPaintingInWmPaint|ControlStyles.OptimizedDoubleBuffer|ControlStyles.SupportsTransparentBackColor|ControlStyles.ResizeRedraw,true);BackColor=Color.Transparent;}
     protected override void OnPaint(PaintEventArgs e){
         var g=e.Graphics;g.SmoothingMode=SmoothingMode.AntiAlias;float s=g.DpiX/96f;var box=new Rectangle(0,0,Width-1,Height-1);
-        using(var path=SetupWindow.Round(box,(int)(14*s))){using(var fill=new SolidBrush(Color.FromArgb(22,200,225,255)))g.FillPath(fill,path);using(var pen=new Pen(Color.FromArgb(38,195,222,246)))g.DrawPath(pen,path);}
+        using(var path=SetupWindow.Round(box,(int)(14*s))){using(var fill=new SolidBrush(Color.FromArgb(251,248,239)))g.FillPath(fill,path);using(var pen=new Pen(Color.FromArgb(226,220,201)))g.DrawPath(pen,path);}
     }
 }
 public class SetupWindow:Form {
@@ -71,7 +71,7 @@ public class SetupWindow:Form {
     [System.Runtime.InteropServices.DllImport("user32.dll")]static extern IntPtr SendMessage(IntPtr handle,int message,IntPtr wparam,IntPtr lparam);
     [System.Runtime.InteropServices.DllImport("user32.dll",CharSet=System.Runtime.InteropServices.CharSet.Unicode)]static extern uint PrivateExtractIcons(string file,int index,int cx,int cy,IntPtr[] icons,int[] ids,uint count,uint flags);
     [System.Runtime.InteropServices.DllImport("user32.dll")]static extern bool DestroyIcon(IntPtr icon);
-    static readonly Color Muted=Color.FromArgb(176,196,218),Warn=Color.FromArgb(255,196,128);
+    static readonly Color Muted=Color.FromArgb(106,108,85),Warn=Color.FromArgb(164,80,42);
     readonly string target;
     readonly bool review;
     readonly SetupButton install=new SetupButton();
@@ -93,17 +93,17 @@ public class SetupWindow:Form {
     }
     public SetupWindow(string directory,bool isReview=false){
         target=directory;review=isReview;
-        Text=SetupText.L("安装 Ruxget","Install Ruxget");Icon=Icon.ExtractAssociatedIcon(Application.ExecutablePath);Font=new Font("Microsoft YaHei UI",9.5f);ForeColor=Color.White;BackColor=Color.FromArgb(9,16,25);
+        Text=SetupText.L("安装 Ruxget","Install Ruxget");Icon=MainWindow.AppIcon();Font=new Font("Microsoft YaHei UI",9.5f);ForeColor=Color.FromArgb(42,53,32);BackColor=Color.FromArgb(244,240,228);
         FormBorderStyle=FormBorderStyle.None;MaximizeBox=false;MinimizeBox=false;StartPosition=FormStartPosition.CenterScreen;AutoScaleMode=AutoScaleMode.None;KeyPreview=true;DoubleBuffered=true;
         using(var g=CreateGraphics())scale=g.DpiX/96f;
         logo=LoadLogo(P(64));
         brand.Text=SetupText.L("Ruxget 安装程序","Ruxget Setup");brand.ForeColor=Muted;brand.Font=new Font(Font.FontFamily,8.5f);
         closeBox.Text="✕";closeBox.ForeColor=Muted;closeBox.TextAlign=ContentAlignment.MiddleCenter;closeBox.Cursor=Cursors.Hand;closeBox.Font=new Font("Segoe UI",10f);
-        closeBox.MouseEnter+=(s,e)=>closeBox.ForeColor=Color.White;closeBox.MouseLeave+=(s,e)=>closeBox.ForeColor=Muted;closeBox.Click+=(s,e)=>Close();
+        closeBox.MouseEnter+=(s,e)=>closeBox.ForeColor=Color.FromArgb(42,53,32);closeBox.MouseLeave+=(s,e)=>closeBox.ForeColor=Muted;closeBox.Click+=(s,e)=>Close();
         heading.Text=SetupText.L("安装 Ruxget","Install Ruxget");heading.Font=new Font(Font.FontFamily,17f,FontStyle.Bold);heading.TextAlign=ContentAlignment.TopCenter;
         subtitle.Text=SetupText.L("免费、无广告的下载器。装好后自动连接 Chrome 插件。","A free downloader with no ads. Connects to the Chrome extension automatically.");subtitle.ForeColor=Muted;subtitle.TextAlign=ContentAlignment.TopCenter;
         caption.Text=SetupText.L("安装位置","Install location");caption.ForeColor=Muted;caption.Font=new Font(Font.FontFamily,8.5f);
-        tag.Text=SetupText.L("无需管理员权限","No admin rights needed");tag.ForeColor=Color.FromArgb(127,224,168);tag.Font=new Font(Font.FontFamily,8.5f);tag.TextAlign=ContentAlignment.TopRight;
+        tag.Text=SetupText.L("无需管理员权限","No admin rights needed");tag.ForeColor=Color.FromArgb(78,97,20);tag.Font=new Font(Font.FontFamily,8.5f);tag.TextAlign=ContentAlignment.TopRight;
         path.Text=target;path.AutoEllipsis=true;
         location.Controls.AddRange(new Control[]{caption,tag,path});
         shortcuts.Text=SetupText.L("创建桌面和开始菜单快捷方式","Create desktop and Start menu shortcuts");shortcuts.Checked=true;
@@ -111,7 +111,7 @@ public class SetupWindow:Form {
         message.Text=SetupText.L("已有的下载记录和组件会保留。","Your existing downloads and components are kept.");message.ForeColor=Muted;message.Font=new Font(Font.FontFamily,9f);message.TextAlign=ContentAlignment.TopCenter;
         progress.Visible=false;
         install.Text=SetupText.L("安装并连接","Install and connect");install.Font=new Font(Font.FontFamily,10.5f,FontStyle.Bold);
-        footer.Text=SetupText.L("版本 ","Version ")+Util.Version+SetupText.L(" · 免费开源，无广告"," · Free and open source, no ads");footer.ForeColor=Color.FromArgb(120,140,162);footer.Font=new Font(Font.FontFamily,8.5f);footer.TextAlign=ContentAlignment.TopCenter;
+        footer.Text=SetupText.L("版本 ","Version ")+Util.Version+SetupText.L(" · 免费开源，无广告"," · Free and open source, no ads");footer.ForeColor=Color.FromArgb(138,136,117);footer.Font=new Font(Font.FontFamily,8.5f);footer.TextAlign=ContentAlignment.TopCenter;
         foreach(var label in new[]{brand,closeBox,heading,subtitle,message,caption,tag,path,footer})label.BackColor=Color.Transparent;
         Controls.AddRange(new Control[]{brand,closeBox,heading,subtitle,location,shortcuts,launch,message,progress,install,footer});
         AcceptButton=install;Arrange();
@@ -154,20 +154,20 @@ public class SetupWindow:Form {
         location.Visible=shortcuts.Visible=launch.Visible=false;progress.Visible=false;message.ForeColor=Muted;message.Text=SetupText.L("以后可以在开始菜单找到 Ruxget。","You can find Ruxget in the Start menu.");install.Text=SetupText.L("完成","Done");Arrange();
     }
     protected override CreateParams CreateParams{get{var value=base.CreateParams;value.ClassStyle|=0x20000;return value;}}
-    protected override void OnHandleCreated(EventArgs e){base.OnHandleCreated(e);MainWindow.ApplyDarkFrame(this);try{int round=2;DwmSetWindowAttribute(Handle,33,ref round,4);}catch(DllNotFoundException){}catch(EntryPointNotFoundException){}}
+    protected override void OnHandleCreated(EventArgs e){base.OnHandleCreated(e);MainWindow.ApplyLightFrame(this);try{int round=2;DwmSetWindowAttribute(Handle,33,ref round,4);}catch(DllNotFoundException){}catch(EntryPointNotFoundException){}}
     protected override void OnPaintBackground(PaintEventArgs e){
         var g=e.Graphics;var all=ClientRectangle;if(all.Width<1||all.Height<1)return;g.SmoothingMode=SmoothingMode.AntiAlias;
-        using(var fill=new LinearGradientBrush(all,Color.FromArgb(16,29,45),Color.FromArgb(6,11,18),LinearGradientMode.Vertical))g.FillRectangle(fill,all);
+        using(var fill=new LinearGradientBrush(all,Color.FromArgb(248,245,236),Color.FromArgb(240,235,221),LinearGradientMode.Vertical))g.FillRectangle(fill,all);
         var glow=new Rectangle(all.Width/2-P(170),P(-40),P(340),P(260));
-        using(var path=new GraphicsPath()){path.AddEllipse(glow);using(var brush=new PathGradientBrush(path){CenterColor=Color.FromArgb(done?46:56,done?95:102,done?211:188,done?154:255),SurroundColors=new[]{Color.FromArgb(0,9,16,25)}})g.FillPath(brush,path);}
-        using(var pen=new Pen(Color.FromArgb(46,195,222,246)))g.DrawRectangle(pen,0,0,all.Width-1,all.Height-1);
+        using(var path=new GraphicsPath()){path.AddEllipse(glow);using(var brush=new PathGradientBrush(path){CenterColor=Color.FromArgb(done?70:44,214,235,120),SurroundColors=new[]{Color.FromArgb(0,244,240,228)}})g.FillPath(brush,path);}
+        using(var pen=new Pen(Color.FromArgb(226,220,201)))g.DrawRectangle(pen,0,0,all.Width-1,all.Height-1);
     }
     protected override void OnPaint(PaintEventArgs e){
         base.OnPaint(e);var g=e.Graphics;g.SmoothingMode=SmoothingMode.AntiAlias;g.InterpolationMode=InterpolationMode.HighQualityBicubic;
         var spot=new Rectangle((ClientSize.Width-P(64))/2,P(54),P(64),P(64));
         if(!done){using(var clip=Round(spot,P(30)))g.SetClip(clip);g.DrawImage(logo,spot);g.ResetClip();return;}
-        using(var path=Round(spot,P(22)))using(var fill=new LinearGradientBrush(spot,Color.FromArgb(70,95,211,154),Color.FromArgb(24,95,211,154),LinearGradientMode.ForwardDiagonal))g.FillPath(fill,path);
-        using(var pen=new Pen(Color.FromArgb(127,224,168),P(4)){StartCap=LineCap.Round,EndCap=LineCap.Round,LineJoin=LineJoin.Round})g.DrawLines(pen,new[]{new Point(spot.X+P(20),spot.Y+P(33)),new Point(spot.X+P(29),spot.Y+P(42)),new Point(spot.X+P(45),spot.Y+P(24))});
+        using(var path=Round(spot,P(22)))using(var fill=new LinearGradientBrush(spot,Color.FromArgb(76,107,55),Color.FromArgb(62,90,44),LinearGradientMode.ForwardDiagonal))g.FillPath(fill,path);
+        using(var pen=new Pen(Color.FromArgb(247,244,234),P(4)){StartCap=LineCap.Round,EndCap=LineCap.Round,LineJoin=LineJoin.Round})g.DrawLines(pen,new[]{new Point(spot.X+P(20),spot.Y+P(33)),new Point(spot.X+P(29),spot.Y+P(42)),new Point(spot.X+P(45),spot.Y+P(24))});
     }
     protected override void Dispose(bool disposing){if(disposing&&logo!=null)logo.Dispose();base.Dispose(disposing);}
     public void Review(string folder){Directory.CreateDirectory(folder);Show();Application.DoEvents();CaptureSetup(folder,"setup-100.png");
@@ -182,6 +182,10 @@ public class SetupWindow:Form {
 public static class SetupProgram {
     [STAThread] public static int Main(string[] args){Application.EnableVisualStyles();Application.SetCompatibleTextRenderingDefault(false);try{
         if(args.Length>1&&args[0]=="--review"){if(args.Length>2)SetupText.Chinese=args[2]!="en";using(var window=new SetupWindow(@"C:\Users\User\AppData\Local\Programs\Shiying",true))window.Review(args[1]);return 0;}
+        // 0.4.72: automatic update, no window. "--update <pid> [--start <args…>]": wait for that Ruxget to end (and every
+        // process of the install), install this setup's payload quietly (tasks, settings and shortcuts kept), note the
+        // result for the app, and open Ruxget again when asked. Tests pass "--root <dir> --registry <HKCU subkey>".
+        if(args.Length>=2&&args[0]=="--update")return QuietUpdate(args);
         if(args.Length>0&&args[0]=="--uninstall"){
             string path=Path.Combine(Installation.DefaultRoot,"installation.json");var receipt=Util.Json().Deserialize<InstallReceipt>(File.ReadAllText(path));
             if(Installation.Running(Installation.DefaultRoot))throw new Exception(SetupText.L("请先关闭 Ruxget，再卸载；任务和成品文件会保留。","Close Ruxget before uninstalling. Your tasks and downloaded files are kept."));
@@ -196,5 +200,43 @@ public static class SetupProgram {
         }
         using(var window=new SetupWindow(Installation.DefaultRoot))Application.Run(window);return 0;
     }catch(Exception ex){MessageBox.Show(ex.Message,SetupText.L("Ruxget 安装","Ruxget Setup"),MessageBoxButtons.OK,MessageBoxIcon.Information);return 1;}}
+    static int QuietUpdate(string[] args){
+        string root=Installation.DefaultRoot,registryPath=null;int pid;Int32.TryParse(args[1],out pid);
+        // The test options (--root, --registry) are read only before --start; what follows --start is Ruxget's own.
+        var rest=args.Skip(2).ToList();int startAt=rest.IndexOf("--start");var options=startAt<0?rest:rest.Take(startAt).ToList();int at;
+        if((at=options.IndexOf("--root"))>=0&&at+1<options.Count)root=Path.GetFullPath(options[at+1]);
+        if((at=options.IndexOf("--registry"))>=0&&at+1<options.Count)registryPath=options[at+1];
+        bool start=startAt>=0;var startArgs=start?rest.Skip(startAt+1).Where(a=>a!="--after-update").ToArray():new string[0];
+        string data=Path.Combine(root,"data"),folder=Path.Combine(data,"update"),applying=Path.Combine(folder,"applying.json");
+        // One quiet install at a time; another one already running opens Ruxget when it is done.
+        var gate=Updater.TakeLock();if(gate==null){if(start)Updater.RequestStart(data);return 0;}
+        int code=0;
+        using(gate){
+        try{
+            if(pid>0)try{using(var process=Process.GetProcessById(pid))process.WaitForExit(60000);}catch(ArgumentException){}
+            var watch=Stopwatch.StartNew();while(Installation.Running(root)&&watch.Elapsed.TotalSeconds<90)System.Threading.Thread.Sleep(500);
+            if(Installation.Running(root))throw new Exception("Ruxget is still running");
+            // A download engine left over from a crash would keep bin\aria2c.exe locked.
+            foreach(var engine in Process.GetProcessesByName("aria2c"))using(engine)try{if(String.Equals(engine.MainModule.FileName,Path.Combine(root,"bin","aria2c.exe"),StringComparison.OrdinalIgnoreCase)){engine.Kill();engine.WaitForExit(5000);}}catch{}
+            Directory.CreateDirectory(folder);File.WriteAllText(applying,Util.Json().Serialize(new{version=Util.Version,at=DateTime.UtcNow.ToString("o")}));
+            using(var payload=typeof(SetupProgram).Assembly.GetManifestResourceStream("ShiyingPayload")){
+                if(payload==null)throw new Exception("setup payload missing");
+                RegistryKey registry=registryPath==null?Registry.CurrentUser:Registry.CurrentUser.CreateSubKey(registryPath);
+                try{Installation.Apply(root,registry,payload,Application.ExecutablePath,false);}finally{if(registryPath!=null)registry.Dispose();}
+            }
+            foreach(string name in new[]{"pending.json","failed.json","applying.json","launched.json"})try{File.Delete(Path.Combine(folder,name));}catch{}
+            try{File.WriteAllText(Path.Combine(folder,"done.json"),Util.Json().Serialize(new{version=Util.Version,ok=true,at=DateTime.UtcNow.ToString("o")}));}catch{}
+        }catch(Exception ex){
+            // Rolled back to the old version: counted, so a version that keeps failing is given up after a few tries,
+            // and Ruxget opens normally meanwhile (--after-update: no second try at that start).
+            Updater.RecordFailure(data,Util.Version,ex.Message);foreach(string file in new[]{applying,Path.Combine(folder,"launched.json")})try{File.Delete(file);}catch{}
+            code=1;
+        }
+        }
+        // Opened only after the lock is released, or the new Ruxget would take the update for still running.
+        if(start||Updater.TakeStartRequest(data))TryStart(root,startArgs);return code;
+    }
+    static void TryStart(string root,string[] args){try{string exe=Path.Combine(root,"Ruxget.exe");if(File.Exists(exe))Process.Start(new ProcessStartInfo(exe,String.Join(" ",args.Concat(new[]{"--after-update"}).Select(Util.Quote))){UseShellExecute=false,WorkingDirectory=root}).Dispose();}catch{}}
+
 }
 }

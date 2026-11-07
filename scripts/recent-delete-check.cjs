@@ -17,7 +17,7 @@ const checks=[];function check(name){checks.push(name);console.log('PASS '+name)
   // Two finished downloads with real files, and one still running.
   const saved=async name=>worker.evaluate(async url=>{const downloadId=await chrome.downloads.download({url});for(let i=0;i<100;i++){const [item]=await chrome.downloads.search({id:downloadId});if(item?.state==='complete')return {downloadId,file:item.filename};await new Promise(r=>setTimeout(r,50));}throw new Error('fixture download did not finish');},origin+'/'+name);
   const a=await saved('keep.bin'),b=await saved('delete.bin');
-  await worker.evaluate(({a,b})=>{const job=(id,title,extra)=>({id,title,format:'mp4',height:720,progress:100,stage:'下载完成',...extra});
+  await worker.evaluate(({a,b})=>{const job=(id,title,extra)=>({id,title,format:'mp4',height:720,progress:100,stage:'下载完成',createdAt:new Date().toISOString(),...extra});
    return chrome.storage.local.set({shiyingJobIds:['keep','gone','running'],'shiyingJob:keep':job('keep','保留文件的视频',{status:'complete',downloadId:a.downloadId,file:a.file}),'shiyingJob:gone':job('gone','要删除的视频',{status:'complete',downloadId:b.downloadId,file:b.file}),'shiyingJob:running':job('running','正在下载的视频',{status:'downloading',progress:40,stage:'正在下载画面'})});},{a,b});
   assert(fs.existsSync(a.file)&&fs.existsSync(b.file));
   const popup=await browser.newPage();await popup.goto(`chrome-extension://${id}/shiying.html`);

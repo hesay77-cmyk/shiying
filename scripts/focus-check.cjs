@@ -64,21 +64,26 @@ const kind=item=>/\.m3u8/.test(item.url)?'hls':/\.mp3/.test(item.url)?'audio':'v
   assert.deepEqual(await names(),['main.webm','second.mp4']);
   assert.equal(await popup.locator('#mediaList .media-item').first().locator('.main-tag').innerText(),'页面主视频');
   assert.match(await popup.locator('#focusNote').innerText(),/另有 5 个可能是广告、预览或很小的片段，已收起。\s*展开/);
-  assert.equal(await popup.locator('#count').innerText(),'7');
+  // 0.4.72: the count and the tab badge are what the list shows (2), not the 5 folded under the line.
+  await popup.waitForFunction(()=>document.querySelector('#count').textContent==='2'&&document.querySelector('#tabPage .tab-count').textContent==='2');
   await popup.screenshot({path:path.join(report,'folded-zh.png')});
+  // explore-ext 低 14: with the light theme no tall element has a gradient background (the dark theme's repeated every ~256px).
+  assert.deepEqual(await popup.evaluate(()=>[...document.querySelectorAll('*')].filter(e=>/gradient/.test(getComputedStyle(e).backgroundImage)&&e.getBoundingClientRect().height>=120).map(e=>e.id||String(e.className)||e.tagName)),[]);check('light theme: no gradient on the panel background or tall blocks, so no seams on a tall panel');
   check('the popup shows the main video first, keeps the second video, and folds 5 ads/previews/tiny clips under one line');
   await popup.locator('#focusNote').getByRole('button',{name:'展开'}).click();
   const all=await names();assert.equal(all.length,7);assert.deepEqual(all.slice(0,2),['main.webm','second.mp4']);
+  await popup.waitForFunction(()=>document.querySelector('#count').textContent==='7'&&document.querySelector('#tabPage .tab-count').textContent==='7');
   assert.equal(await popup.locator('#mediaList .media-item.is-minor').count(),5);
   assert.match(await popup.locator('#focusNote').innerText(),/已放在最后[\s\S]*收起/);
   await popup.screenshot({path:path.join(report,'unfolded-zh.png')});
   await popup.locator('#focusNote').getByRole('button',{name:'收起'}).click();assert.equal((await names()).length,2);
-  check('“展开” shows everything (folded ones last, dimmed); “收起” folds them again');
+  assert.equal(await popup.locator('#count').innerText(),'2');
+  check('“展开” shows everything (folded ones last, dimmed); “收起” folds them again; the count and badge follow what is listed');
   // 0.4.71: type filters and search only show for a long list (more than 8).
   assert.equal(await popup.locator('.filters').isVisible(),false);assert.equal(await popup.locator('footer').isVisible(),false);
   check('with 7 items there is no filter or search row, and no footer');
   await popup.evaluate(()=>localStorage.setItem('extra','2'));await popup.reload();await popup.locator('#focusNote',{hasText:'5'}).waitFor({state:'visible'});
-  assert.equal(await popup.locator('#count').innerText(),'9');await popup.locator('#search').waitFor({state:'visible'});
+  assert.equal(await popup.locator('#count').innerText(),String((await names()).length));await popup.locator('#search').waitFor({state:'visible'});
   await popup.fill('#search','preview');await popup.locator('#search').dispatchEvent('input');
   for(let i=0;i<20&&(await names()).length!==3;i++)await popup.waitForTimeout(50);
   assert.deepEqual(await names(),['preview1.mp4','preview2.mp4','preview3.mp4']);assert.equal(await popup.locator('#focusNote').isVisible(),false);

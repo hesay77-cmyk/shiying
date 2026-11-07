@@ -76,16 +76,19 @@ public partial class MainWindow {
     async void PluginMessage(string json){try{
         if(json.Length>3*1024*1024)throw new Exception("操作内容过长");var data=Util.Json().Deserialize<Dictionary<string,object>>(json);if(data==null)return;
         string command=Util.Str(data,"command"),id=Util.Str(data,"id");
-        if(command=="ready"){pluginReady=true;PushPluginState();if(editorToken.Length>0)PluginEditor(editorInput);return;}
+        if(command=="ready"){pluginReady=true;PushPluginState();var updated=Updater.TakeDoneNotice(manager.DataDirectory);if(updated!=null)PluginNotice(updated);if(editorToken.Length>0)PluginEditor(editorInput);return;}
         if(closingWindow)return;
         if(command=="cancelEditor"){if(Util.Str(data,"token")==editorToken){editorToken="";editorInput=null;playlistCatalog=null;if(playlistCancel!=null)playlistCancel.Cancel();}return;}
         if(command=="cancelBatch"){batchFolder="";return;}
         if(command=="mini"||command=="expand"){if(command=="mini"&&!String.IsNullOrEmpty(id))SelectTask(id);SetMini(command=="mini");return;}
         if(command=="window"){
-            string action=Util.Str(data,"action");if(action=="close")HideToTray();else if(action=="quit")Quit();else if(action=="minimize")WindowState=FormWindowState.Minimized;else if(action=="maximize"){ToggleMaximize();PushPluginState();}return;
+            string action=Util.Str(data,"action");if(action=="close")CloseRequested();else if(action=="quit")Quit();else if(action=="minimize")WindowState=FormWindowState.Minimized;else if(action=="maximize"){ToggleMaximize();PushPluginState();}return;
         }
         if(command=="resize"){int hit;if(Int32.TryParse(Util.Str(data,"hit"),out hit))BeginNativeResize(hit);return;}
         if(command=="hide"){HideToTray();return;}
+        // 0.4.72: the answer to the first × ("quit" or "tray"), optionally remembered as the setting.
+        if(command=="closeChoice"){string choice=Util.Str(data,"action")=="quit"?"quit":"tray";bool remember=data.ContainsKey("remember")&&data["remember"] is bool&&(bool)data["remember"];
+            if(remember){manager.Config.CloseAction=choice;try{await Task.Run(()=>manager.SaveSettings());}catch{}}if(choice=="quit")Quit();else HideToTray();return;}
         if(command=="next"){var jobs=manager.Snapshot();if(jobs.Count>0){int n=jobs.FindIndex(job=>job.Id==miniId);miniId=jobs[(n+1)%jobs.Count].Id;UpdateMini();PushPluginState();}return;}
         if(command=="dropRejected"){PluginNotice("未能读取拖入的种子，请重试或使用“导入 BT 种子”");return;}
         if(command=="new"||command=="dropLink"){
@@ -150,8 +153,8 @@ public partial class MainWindow {
             }else if(command=="settingsSave"){
                 var values=data["config"] as Dictionary<string,object>;if(values==null)throw new Exception("设置内容无效");string proxy=Util.Str(values,"Proxy").Trim();Util.CheckProxy(proxy);
                 var next=Util.Json().Deserialize<Settings>(Util.Json().Serialize(values));next.Proxy=proxy;next.Folder=manager.Config.Folder;next.FollowBrowser=manager.Config.FollowBrowser;var previous=Util.Json().Deserialize<Settings>(Util.Json().Serialize(manager.Config));
-                Action<Settings> apply=value=>{manager.Config.Proxy=value.Proxy;manager.Config.Connections=value.Connections;manager.Config.RateKiB=value.RateKiB;manager.Config.BtUploadKiB=value.BtUploadKiB;manager.Config.AutoCategorize=value.AutoCategorize;manager.Config.SaveSubtitles=value.SaveSubtitles;manager.Config.UiLanguage=(value.UiLanguage=="en"||value.UiLanguage=="zh_CN"||value.UiLanguage=="auto")?value.UiLanguage:"auto";};
-                try{apply(next);await Task.Run(()=>manager.SaveSettings());}catch{apply(previous);throw;}PluginNotice("设置已保存","settings");
+                Action<Settings> apply=value=>{manager.Config.Proxy=value.Proxy;manager.Config.Connections=value.Connections;manager.Config.RateKiB=value.RateKiB;manager.Config.BtUploadKiB=value.BtUploadKiB;manager.Config.AutoCategorize=value.AutoCategorize;manager.Config.SaveSubtitles=value.SaveSubtitles;manager.Config.CloseAction=value.CloseAction=="tray"||value.CloseAction=="quit"?value.CloseAction:"";manager.Config.AutoUpdate=value.AutoUpdate;if(!value.AutoUpdate)Updater.Discard(manager.DataDirectory);manager.Config.UiLanguage=(value.UiLanguage=="en"||value.UiLanguage=="zh_CN"||value.UiLanguage=="auto")?value.UiLanguage:"auto";};
+                try{apply(next);await Task.Run(()=>manager.SaveSettings());}catch{apply(previous);throw;}UpdateTrayText();PluginNotice("设置已保存","settings");
             }
         }finally{pluginBusy=false;RefreshJobs();}
     }catch(Exception ex){PluginNotice(Util.SafeError(ex.GetBaseException().Message));}}

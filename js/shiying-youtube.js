@@ -32,7 +32,7 @@ if (typeof ShiyingPlatform !== 'undefined') {
         const video=formats.filter(item=>/video\/mp4; codecs="avc1/.test(item.mimeType)).map(item=>{try{return convert(item);}catch{return null;}}).filter(Boolean).sort((a,b)=>b.bitrate-a.bitrate);
         const audio=formats.filter(item=>/audio\/mp4; codecs="mp4a/.test(item.mimeType)&&item.audioTrack?.audioIsDefault!==false).map(item=>{try{return convert(item);}catch{return null;}}).filter(Boolean).sort((a,b)=>b.bitrate-a.bitrate);
         if(!video.length||!audio.length)throw new Error('暂时没读到完整音视频轨，请播放视频后重新读取');
-        return {...source,title:String(data.videoDetails.title).slice(0,300),duration:Number(data.videoDetails.lengthSeconds),video,audio,choices:[...new Set(video.map(item=>item.height))].sort((a,b)=>b-a).map(height=>({height,label:height+'p'}))};
+        return {...source,title:String(data.videoDetails.title).slice(0,300),duration:Number(data.videoDetails.lengthSeconds),video,audio,choices:this.choices(video)};
     };
     // Background only: read formats through the page's visitor identity, then fetch the player response.
     ShiyingPlatform.readers.youtube = async (source, tab) => {

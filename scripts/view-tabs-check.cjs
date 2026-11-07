@@ -41,6 +41,19 @@ const checks=[];function check(name){checks.push(name);console.log('PASS '+name)
   assert.equal(await view(popup),'downloads');assert.equal(await popup.locator('#pageView').isVisible(),false);assert.equal(await popup.locator('#recentEmpty').isVisible(),true);
   assert.equal(await popup.locator('#openDownloadFolder').isVisible(),true);
   check('a page with nothing to download opens on 已下载 (empty: it says so; the downloads folder is one click away)');
+  // 0.4.72: only this browser session, like Chrome's own bubble. A video saved before Chrome started is not listed;
+  // one saved now is. 「全部下载记录」 opens Chrome's own download page.
+  {await worker.evaluate(()=>chrome.storage.session.set({ruxgetSessionStart:Date.now()-60000}));const now=Date.now();
+   await worker.evaluate(now=>chrome.storage.session.set({ruxgetDesktopStatus:{at:now,running:true,active:0,jobs:[{id:'d1d1d1d1d1d1d1d1',title:'yesterday-handed.iso',file:'yesterday-handed.iso',state:'done',progress:100,at:now-86400000}]}}),now);
+   await worker.evaluate(now=>chrome.storage.local.set({shiyingJobIds:['old','new'],'shiyingJob:old':{id:'old',title:'昨天的视频',format:'mp4',height:720,status:'complete',progress:100,stage:'下载完成',createdAt:new Date(now-86400000).toISOString()},'shiyingJob:new':{id:'new',title:'刚才的视频',format:'mp4',height:720,status:'complete',progress:100,stage:'下载完成',createdAt:new Date(now).toISOString()}}),now);
+   const p=await open(tabs.blank);await p.locator('#tabDownloads').click();await p.waitForTimeout(400);
+   const text=await p.locator('#recentList').innerText();assert(text.includes('刚才的视频')&&!text.includes('昨天的视频'),'only this session: '+text);
+   assert(text.includes('yesterday-handed.iso'),'a desktop task handed over before Chrome started but finished now is listed: '+text);
+   const before=browser.pages().length;await p.locator('#openDownloadHistory').click();await p.waitForTimeout(800);
+   assert(browser.pages().some(page=>page.url().startsWith('chrome://downloads')),'「全部下载记录」 opens chrome://downloads');assert(browser.pages().length>before);
+   for(const page of browser.pages())if(page.url().startsWith('chrome://downloads'))await page.close();await p.close();
+   await worker.evaluate(()=>chrome.storage.local.remove(['shiyingJobIds','shiyingJob:old','shiyingJob:new']));
+   check('已下载 lists only this browser session; 「全部下载记录」 opens Chrome’s own download page');}
   await popup.waitForTimeout(1600);await worker.evaluate(({tabId,origin})=>new Promise(r=>chrome.runtime.sendMessage({Message:'popupAddData',data:{tabId,url:origin+'/late.mp4',name:'late.mp4',ext:'mp4',type:'video/mp4',size:1048576,title:'Plain page',webUrl:origin+'/',requestId:'r0'}},()=>r())),{tabId:tabs.blank,origin}).catch(()=>{});
   await popup.waitForFunction(()=>!document.querySelector('#tabPage .tab-count').hidden,null,{timeout:8000});
   assert.equal(await view(popup),'downloads');assert.equal(await popup.locator('#tabPage .tab-count').innerText(),'1');

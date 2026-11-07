@@ -144,3 +144,14 @@ input::placeholder,textarea::placeholder,.link-input input::placeholder,.sheet i
   .desktop-toolbar .folder-chip{grid-area:chip;justify-self:end;max-width:140px}
 }
 @media(max-width:419px){.desktop-toolbar .brand h1{display:none}}
+/* 0.4.72: the footer holds only 批量添加, on the right (the "free, no ads" line is gone). */
+#fullSurface>footer{justify-content:flex-end}
+/* 0.4.72: the close question: quitting is an ordinary choice, not a destructive one (olive, not the red of delete). */
+#closeDialog .delete-actions .download-button{background:var(--olive);color:var(--olive-ink);border-color:transparent}#closeDialog .delete-actions .download-button:hover{background:var(--olive-hover)}
+/* 0.4.72: the 「下载 N」 heading is for screen readers only; the status filters already show what is there. */
+.queue-toolbar .list-heading.visually-hidden{position:absolute}
+/* 0.4.72: the ⋯ menu (the shared sheet makes .menu .menu-panel dark navy) and the link icon in the add box. */
+.menu .menu-panel,.menu-panel{background:var(--field);border-color:var(--edge);backdrop-filter:none;box-shadow:0 2px 4px rgba(60,58,30,.07),0 16px 32px -12px rgba(60,58,30,.25)}
+.menu-panel button,.menu-panel label{color:var(--fg)}.menu-panel button:hover{background:var(--raise)}
+.menu-panel .version-note,.menu-panel .menu-links,.menu-panel .menu-links button{color:var(--sub)}
+.desktop-toolbar .link-input>span{display:grid;place-items:center;width:16px;height:16px;font-size:0}.desktop-toolbar .link-input>span svg{width:16px;height:16px}

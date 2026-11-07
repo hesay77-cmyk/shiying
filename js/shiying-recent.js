@@ -5,7 +5,7 @@
 // first. A finished row's small folder button shows the file in its folder (desktop downloads too, without the desktop
 // window); unfinished rows keep their click (desktop window, progress page). The bin deletes after a confirm.
 (() => {
-    const box = document.querySelector('#recentDownloads'), list = document.querySelector('#recentList'), empty = document.querySelector('#recentEmpty'), folder = document.querySelector('#openDownloadFolder');
+    const box = document.querySelector('#recentDownloads'), list = document.querySelector('#recentList'), empty = document.querySelector('#recentEmpty'), folder = document.querySelector('#openDownloadFolder'), history = document.querySelector('#openDownloadHistory');
     if (!box || !list) return;
     const pick = (zh, en) => window.RuxgetI18n ? RuxgetI18n.pick(zh, en) : zh, tr = text => window.RuxgetText ? RuxgetText.tr(text) : text;
     const SHOWN = 20, HIDDEN_KEY = 'ruxgetRecentHidden';
@@ -138,10 +138,21 @@
         const keys = ids.slice(-SHOWN).reverse().map(id => 'shiyingJob:' + id), records = await chrome.storage.local.get(keys);
         const browser = keys.map(key => records[key]).filter(Boolean).map(job => Object.assign({}, job, {time: Date.parse(job.createdAt) || 0}));
         const siteDownloads = new Set(browser.map(job => job.downloadId).filter(Number.isInteger));
-        const jobs = [...browser, ...await desktopJobs(), ...await chromeJobs(siteDownloads)].sort((a, b) => b.time - a.time).slice(0, SHOWN);
-        if (empty) { empty.hidden = jobs.length > 0; empty.textContent = pick('还没有下载记录。下载的文件会出现在这里，双击就能打开。', 'No downloads yet. Files you download show up here; double-click one to open it.'); }
+        // 0.4.72: only this browser session (since Chrome started), like Chrome's own download bubble; anything still
+        // running or paused stays. The full history is one click away in Chrome's download page.
+        const {ruxgetSessionStart: since = 0} = await chrome.storage.session.get('ruxgetSessionStart').catch(() => ({}));
+        // A desktop task counts from when it finished (first seen done), not from when it was handed over.
+        const {ruxgetDesktopDoneAt: doneAt = {}} = await chrome.storage.session.get('ruxgetDesktopDoneAt').catch(() => ({}));
+        const desktop = await desktopJobs(), seen = Object.assign({}, doneAt);
+        for (const job of desktop) if (job.state === 'done' && !seen[job.id]) seen[job.id] = Date.now();
+        if (Object.keys(seen).length !== Object.keys(doneAt).length) chrome.storage.session.set({ruxgetDesktopDoneAt: seen}).catch(() => {});
+        for (const job of desktop) if (job.state === 'done') job.time = Math.max(job.time, seen[job.id] || 0);
+        const current = job => !since || job.time >= since || (job.desktop ? job.state !== 'done' : !done(job));
+        const jobs = [...browser, ...desktop, ...await chromeJobs(siteDownloads)].filter(current).sort((a, b) => b.time - a.time).slice(0, SHOWN);
+        if (empty) { empty.hidden = jobs.length > 0; empty.textContent = pick('这次打开 Chrome 后还没有下载。下载的文件会出现在这里，双击即可打开；以前的下载在「全部下载记录」中。', 'Nothing downloaded since Chrome started. Files you download show up here; double-click one to open it. Earlier downloads are in “All downloads”.'); }
         box.setAttribute('aria-label', pick('已下载', 'Downloads'));
         if (folder) folder.textContent = pick('打开下载文件夹', 'Open downloads folder');
+        if (history) history.textContent = pick('全部下载记录', 'All downloads');
         const running = jobs.filter(job => job.desktop ? job.state === 'active' : job.chrome ? job.status === 'running' : !done(job)).length;
         window.RuxgetTabs?.count('downloads', running);
         renderedRunningChrome = jobs.some(job => job.chrome && job.status === 'running');
@@ -179,7 +190,7 @@
                 showLabel = pick('下载详情', 'Download details');
                 if (job.status === 'complete' && Number.isInteger(job.downloadId)) { open = () => RuxgetOpen.file(job.downloadId, say); show = chromeFolder(job.downloadId); showLabel = inFolder; }
                 const state = job.status === 'complete' ? pick('下载完成', 'Downloaded') : job.status === 'error' ? tr(job.error || job.stage) : job.status === 'cancelled' ? pick('已取消', 'Cancelled') : tr(job.stage) + ' · ' + percent + '%';
-                meta.textContent = 'Ruxget · ' + (job.format === 'mp3' ? 'MP3' : (job.height ? job.height + 'p' : 'MP4')) + ' · ' + state + (open ? hint : '');
+                meta.textContent = 'Ruxget · ' + (job.format === 'mp3' ? 'MP3' : (job.label || (job.height ? job.height + 'p' : 'MP4'))) + ' · ' + state + (open ? hint : '');
             }
             button.append(title, meta);
             if (bar >= 0) { const line = document.createElement('i'); line.className = 'recent-bar'; line.style.setProperty('--progress', bar + '%'); button.append(line); }
@@ -231,6 +242,8 @@
     chrome.permissions.contains({permissions: ['nativeMessaging']}).then(granted => { if (granted) chrome.runtime.sendMessage({Message: 'ruxgetDesktopRefresh'}).catch(() => {}); }).catch(() => {});
 
     folder?.addEventListener('click', () => { try { chrome.downloads.showDefaultFolder(); } catch { /* nothing to show */ } });
+    // Chrome keeps the full history; Ruxget doesn't keep a second copy.
+    history?.addEventListener('click', () => { chrome.tabs.create({url: 'chrome://downloads/'}).catch(() => {}); });
     document.addEventListener('ruxget-i18n-applied', later);
     document.addEventListener('ruxget-view', event => { if (event.detail === 'downloads') later(); });
     document.addEventListener('keydown', event => { if (event.key === 'Escape' && confirming && !working) { confirming = ''; render().catch(() => {}); } });

@@ -35,7 +35,7 @@ function native(caller,bytes,program=exe){return new Promise((resolve,reject)=>{
  catalog.createdAt=0;assert.equal((await dispatch(720)).ok,false);
  let nativeCalls=0,opened=[];const helperContext={chrome:{permissions:{contains:async()=>false,request:async()=>false},runtime:{getURL:file=>file,sendNativeMessage:async()=>{nativeCalls++;throw new Error('Specified native messaging host not found.');}},tabs:{create:async tab=>opened.push(tab)}},document:{querySelector:()=>null}};
  vm.createContext(helperContext);vm.runInContext(fs.readFileSync(path.join(root,'js/shiying-native.js'),'utf8')+fs.readFileSync(path.join(root,'js/shiying-desktop.js'),'utf8')+'\nglobalThis.api=ShiyingDesktop;',helperContext);
- await assert.rejects(helperContext.api.send(()=>({action:'add',url:'https://example.test/'})),/未允许/);assert.equal(nativeCalls,0);
+ await assert.rejects(helperContext.api.send(()=>({action:'add',url:'https://example.test/'})),/没有允许连接桌面版/);assert.equal(nativeCalls,0);
  helperContext.chrome.permissions.request=async()=>true;await assert.rejects(helperContext.api.send(()=>({action:'add',url:'https://example.test/'})),error=>error.cancelled&&error.connectionIssue==='missing');assert.equal(opened.length,1);assert(opened[0].url.includes('shiying-get-desktop.html?reason=missing'));
  const manifest=JSON.parse(fs.readFileSync(path.join(root,'manifest.json'))),identity=JSON.parse(fs.readFileSync(path.join(root,'desktop','identity.json')));
  const stable=require('node:crypto').createHash('sha256').update(Buffer.from(manifest.key,'base64')).digest('hex').slice(0,32).replace(/[0-9a-f]/g,x=>String.fromCharCode(97+parseInt(x,16)));assert.equal(stable,identity.extensionId);

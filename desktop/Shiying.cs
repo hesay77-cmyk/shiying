@@ -41,6 +41,8 @@ public class Download {
     public string ETag, Modified, WorkName;
     public long ExpectedSize;
     public bool HasMetadata, AutoName, AutoCategorize;
+    // 0.4.72: aria2 finished this file but it couldn't be moved into the download folder; 「继续」 only saves it again.
+    public bool PlacePending;
     public string BtHash,BtFolder,BtPhase,BtReason,BtAdvice;
     public TorrentFileInfo[] BtFiles=new TorrentFileInfo[0];
     public int[] BtSelected;
@@ -63,6 +65,10 @@ public class Settings {
     public bool AutoCategorize = true;
     public bool SaveSubtitles;
     public string UiLanguage = "auto";
+    // 0.4.72: what the window's × does: "" asks (the first time, until "remember" is ticked), "tray" or "quit".
+    public string CloseAction = "";
+    // 0.4.72: check hidaydream.cloud for a signed update (at most once a day) and install it quietly.
+    public bool AutoUpdate = true;
     public int VideoHeight=1080;public string VideoKind="video";
     // On: Folder is kept as <Chrome's download folder>\Ruxget, so the extension and the app save side by side.
     // Picking a folder in the app turns it off.
@@ -142,13 +148,17 @@ static class Util {
     // Windows proxy for HTTPS traffic, as http://host:port, or "" when the system proxy is off or uses only a PAC script.
     public static string SystemProxy(){try{using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Internet Settings")){if(key==null||Convert.ToInt32(key.GetValue("ProxyEnable",0))!=1)return "";string server=Convert.ToString(key.GetValue("ProxyServer","")).Trim();if(server.Contains("=")){var parts=server.Split(';').Select(p=>p.Split(new[]{'='},2)).Where(p=>p.Length==2).ToDictionary(p=>p[0].Trim().ToLowerInvariant(),p=>p[1].Trim());server=parts.ContainsKey("https")?parts["https"]:parts.ContainsKey("http")?parts["http"]:"";}if(server.Length==0)return "";if(!server.Contains("://"))server="http://"+server;Uri uri;return Uri.TryCreate(server,UriKind.Absolute,out uri)&&(uri.Scheme=="http"||uri.Scheme=="https"||uri.Scheme.StartsWith("socks"))?server:"";}}catch{return "";}}
     public static void CheckProxy(string value){if(value.Length>0&&value!=SystemProxyMode)Url(value);}
-    public const string Version="0.4.71";
+    public const string Version="0.4.72";
     // Links added without a browser's own name (pasted, batch, magnet-free files) go out with an ordinary browser name.
     // Many CDNs refuse the download engine's default "aria2/x.y": Aliyun's answers "403 denied by UA ACL = blacklist" (0.4.63).
     public const string BrowserAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
     public static readonly string Root = AppDomain.CurrentDomain.BaseDirectory;
     public static readonly string PipeName = "shiying.desktop.v1." + WindowsIdentity.GetCurrent().User.Value.Replace('-', '_');
     public static JavaScriptSerializer Json() { return new JavaScriptSerializer { MaxJsonLength = 8 * 1024 * 1024 }; }
+    // 0.4.72: FileSlots/VideoSlots are no longer settings (both are fixed at 10). An odd value left in an old
+    // settings.json (null, 3.5, "three", too large) must not make the whole file count as damaged and reset the
+    // download folder and proxy, so the retired fields are read as 10 whatever they hold.
+    public static string SettingsText(string json) { return Regex.Replace(json ?? "", "\"(FileSlots|VideoSlots)\"\\s*:\\s*(?:\"(?:[^\"\\\\]|\\\\.)*\"|[^,}\\s]+)", "\"$1\":10"); }
     public static string Str(IDictionary<string,object> value, string key, string fallback = "") { object v; return value.TryGetValue(key, out v) && v != null ? Convert.ToString(v) : fallback; }
     public static string Url(string value) {
         Uri uri;
@@ -279,7 +289,7 @@ public partial class Manager : IDisposable {
     public ComponentStore Components {get{lock(gate){return components??(components=new ComponentStore(Util.Root));}}}
     public string RecoveryNotice="";
     T ReadSaved<T>(string path) where T:class {
-        Func<string,T> load=source=>{var value=Util.Json().Deserialize<T>(System.IO.File.ReadAllText(source,Encoding.UTF8));if(value==null)throw new Exception("空记录");var records=value as List<Download>;if(records!=null)foreach(var job in records){if(job==null||!Regex.IsMatch(job.Id??"",@"^[a-f0-9]{16}$")||job.Title==null||job.Status==null||String.IsNullOrWhiteSpace(job.Folder))throw new Exception("任务记录不完整");SavedSource(job);Path.GetFullPath(job.Folder);if(!String.IsNullOrEmpty(job.WorkName)&&Path.GetFileName(job.WorkName)!=job.WorkName)throw new Exception("任务临时文件名无效");}return value;};
+        Func<string,T> load=source=>{string text=System.IO.File.ReadAllText(source,Encoding.UTF8);if(typeof(T)==typeof(Settings))text=Util.SettingsText(text);var value=Util.Json().Deserialize<T>(text);if(value==null)throw new Exception("空记录");var records=value as List<Download>;if(records!=null)foreach(var job in records){if(job==null||!Regex.IsMatch(job.Id??"",@"^[a-f0-9]{16}$")||job.Title==null||job.Status==null||String.IsNullOrWhiteSpace(job.Folder))throw new Exception("任务记录不完整");SavedSource(job);Path.GetFullPath(job.Folder);if(!String.IsNullOrEmpty(job.WorkName)&&Path.GetFileName(job.WorkName)!=job.WorkName)throw new Exception("任务临时文件名无效");}return value;};
         try{return load(path);}
         catch(Exception primary){
             try{var value=load(path+".bak");System.IO.File.Copy(path,path+".damaged-"+DateTime.UtcNow.Ticks);RecoveryNotice="任务或设置记录损坏，已从上次备份恢复；损坏文件已另存保留。";return value;}
@@ -317,7 +327,7 @@ public partial class Manager : IDisposable {
     public void SaveSettings() {
         lock(gate) { NormalizeSettings();if(btAria!=null&&!btAria.HasExited)BtRpc("changeGlobalOption",new Dictionary<string,string>{{"max-overall-upload-limit",Config.BtUploadKiB+"K"}});Util.Atomic(Path.Combine(dataRoot,"settings.json"),Config); }
     }
-    void NormalizeSettings(){Config.UiLanguage=(Config.UiLanguage=="en"||Config.UiLanguage=="zh_CN"||Config.UiLanguage=="auto")?Config.UiLanguage:"auto";Config.Proxy=Config.Proxy??"";Util.CheckProxy(Config.Proxy);Config.Connections=Math.Max(1,Math.Min(16,Config.Connections));// 0.4.70: no setting any more; 10 tasks at once, videos and files together (VideoSlots is kept only for old settings files).
+    void NormalizeSettings(){Config.CloseAction=Config.CloseAction=="tray"||Config.CloseAction=="quit"?Config.CloseAction:"";Config.UiLanguage=(Config.UiLanguage=="en"||Config.UiLanguage=="zh_CN"||Config.UiLanguage=="auto")?Config.UiLanguage:"auto";Config.Proxy=Config.Proxy??"";Util.CheckProxy(Config.Proxy);Config.Connections=Math.Max(1,Math.Min(16,Config.Connections));// 0.4.70: no setting any more; 10 tasks at once, videos and files together (VideoSlots is kept only for old settings files).
         Config.FileSlots=10;Config.VideoSlots=10;Config.RateKiB=Math.Max(0,Math.Min(102400,Config.RateKiB));Config.BtUploadKiB=Math.Max(16,Math.Min(8192,Config.BtUploadKiB));Config.Folder=Path.GetFullPath(String.IsNullOrWhiteSpace(Config.Folder)?new Settings().Folder:Config.Folder);}
     void PublishSnapshot(){snapshotJson=Util.Json().Serialize(jobs);}
     void Save() { PublishSnapshot(); Util.Atomic(Path.Combine(dataRoot,"tasks.json"),jobs); }
@@ -341,7 +351,11 @@ public partial class Manager : IDisposable {
     }
     static void Writable(string folder){
         try{Directory.CreateDirectory(folder);string probe=Path.Combine(folder,".ruxget-write-check");System.IO.File.WriteAllText(probe,"");System.IO.File.Delete(probe);}
-        catch(Exception){throw new IOException("下载文件夹不能写入（"+folder+"）。换一个下载文件夹后重试");}
+        // 0.4.72: say when the folder path itself is too long for Windows, instead of a vague "not writable".
+        catch(Exception ex){
+            if(ex is PathTooLongException||(folder??"").Length>=240)throw new IOException("下载文件夹的路径太长（"+(folder??"").Length+" 个字符），Windows 无法在里面保存文件。换一个路径更短的下载文件夹后重试");
+            throw new IOException("下载文件夹不能写入（"+folder+"）。换一个下载文件夹后重试");
+        }
     }
     // A task that holds one of the 10 places: downloading, waiting for the engine, pausing, preparing, or running a child.
     static bool Running(Download j){return j.Child!=null||j.Status=="下载中"||j.Status=="等待下载"||j.Status=="正在暂停"||j.Status=="准备组件";}
@@ -450,6 +464,19 @@ public partial class Manager : IDisposable {
     void BeginFile(Download job) {
         string token=Guid.NewGuid().ToString("N");job.ProbeToken=token;job.Status="等待下载";job.PauseRequested=false;
         Task.Run(()=>{
+            // A file aria2 already finished is only saved again: no server request (the link may have expired) and
+            // nothing downloaded twice, whatever its size.
+            if(job.PlacePending)lock(gate){
+                if(job.ProbeToken!=token)return;
+                string data=Path.Combine(Work(job),String.IsNullOrEmpty(job.WorkName)?Util.Name(job.Title):job.WorkName);
+                if(System.IO.File.Exists(data)&&!System.IO.File.Exists(data+".aria2")){
+                    job.ProbeToken=null;
+                    try{job.File=Util.PlaceFile(data,Util.OutputFolder(job),job.Title,path=>Claimed(path,job));}
+                    catch(Exception ex){job.Status="失败";job.Error=PlaceError(ex);Save();return;}
+                    TidyWork(job);job.Status="已完成";job.Progress=100;job.Speed="";job.Error="";job.PlacePending=false;job.NetdiskCookie="";lock(relayGate)relayJobs.Remove(job.Id);TransferData.Complete(job);Save();return;
+                }
+                job.PlacePending=false;
+            }
             RemoteMetadata metadata=null;Exception failure=null;
             ChooseWork(job);
             try{Writable(Util.OutputFolder(job));metadata=Metadata(job);}catch(Exception ex){failure=ex;}
@@ -469,7 +496,8 @@ public partial class Manager : IDisposable {
         if(Work(job)!=Path.Combine(dataRoot,"partial",job.Id)&&job.HasMetadata&&job.Transfer!=null&&job.Transfer.Completed>0&&!Directory.Exists(Work(job)))throw new Exception("找不到这个下载已下好的部分（下载文件夹可能被移动、改名或拔掉了）。把文件夹放回原处后再继续，或新建下载");
         Directory.CreateDirectory(Work(job));
         string name=String.IsNullOrEmpty(job.WorkName)?Util.Name(job.Title):job.WorkName;
-        string data=Path.Combine(Work(job),name);if(System.IO.File.Exists(data)&&!System.IO.File.Exists(data+".aria2")){System.IO.File.Delete(data);if(job.Transfer!=null)job.Transfer.Completed=0;job.Progress=0;}
+        string data=Path.Combine(Work(job),name);
+        if(System.IO.File.Exists(data)&&!System.IO.File.Exists(data+".aria2")){System.IO.File.Delete(data);if(job.Transfer!=null)job.Transfer.Completed=0;job.Progress=0;}
         var metadata=probed??Metadata(job);
         if(job.HasMetadata&&System.IO.File.Exists(Path.Combine(Work(job),name)+".aria2")) {
             if(metadata.Resume!=true)throw new Exception("服务器不支持或无法确认分段续传，原有未完成数据已保留；请新建任务重新下载");
@@ -486,6 +514,18 @@ public partial class Manager : IDisposable {
         Rpc("addUri",new[]{String.IsNullOrEmpty(job.NetdiskProvider)?job.Url:NetdiskRelayUrl(job)},options); job.Status="等待下载";
     }
     class RemoteMetadata {public string ETag, Modified, Name;public long Size;public bool? Resume;}
+    // A finished download that could not be saved into its folder: say what blocks it, without internal paths, and
+    // that 「继续」 saves it again without downloading anything.
+    static string PlaceError(Exception ex){
+        string why=ex is PathTooLongException||ex.Message.Contains("路径")&&ex.Message.Contains("长")?"保存路径太长"
+            :ex is UnauthorizedAccessException?"没有写入下载文件夹的权限"
+            :ex is DirectoryNotFoundException?"下载文件夹不存在或已被移走"
+            :Regex.IsMatch(ex.Message,"同名文件|already exists",RegexOptions.IgnoreCase)?"下载文件夹里有同名的文件或文件夹挡住了"
+            :Regex.IsMatch(ex.Message,"磁盘空间|not enough space|disk is full",RegexOptions.IgnoreCase)?"磁盘空间不足"
+            :Regex.IsMatch(ex.Message,"另一进程|being used by another process",RegexOptions.IgnoreCase)?"文件正被其他程序占用"
+            :"无法写入下载文件夹";
+        return "已下载完成，但没能保存到下载文件夹（"+why+"）。处理后点「继续」即可重新保存，不会重新下载。";
+    }
     static string ResponseName(string header){
         if(String.IsNullOrEmpty(header))return "";
         var encoded=Regex.Match(header,@"filename\*\s*=\s*UTF-8'[^']*'([^;]+)",RegexOptions.IgnoreCase);
@@ -624,7 +664,10 @@ public partial class Manager : IDisposable {
                 if(status=="active"&&!job.PauseRequested)job.Status="下载中";
                 if(status=="waiting"&&!job.PauseRequested)job.Status="等待下载";
                 if(status=="complete") {
-                    string file=Path.Combine(Work(job),String.IsNullOrEmpty(job.WorkName)?Util.Name(job.Title):job.WorkName); job.File=Util.PlaceFile(file,Util.OutputFolder(job),job.Title,path=>Claimed(path,job));TidyWork(job);job.Status="已完成";job.Progress=100;job.Speed="";job.NetdiskCookie="";lock(relayGate)relayJobs.Remove(job.Id);TransferData.Complete(job);Save();
+                    string file=Path.Combine(Work(job),String.IsNullOrEmpty(job.WorkName)?Util.Name(job.Title):job.WorkName);
+                    try{job.File=Util.PlaceFile(file,Util.OutputFolder(job),job.Title,path=>Claimed(path,job));}
+                    catch(Exception ex){job.Status="失败";job.Speed="";job.PlacePending=true;job.Error=PlaceError(ex);Save();continue;}
+                    TidyWork(job);job.Status="已完成";job.Progress=100;job.Speed="";job.PlacePending=false;job.NetdiskCookie="";lock(relayGate)relayJobs.Remove(job.Id);TransferData.Complete(job);Save();
                 }else if(status=="error"||status=="removed") {job.Status="失败";job.Speed="";job.Error=Util.SafeError(Util.Str(state,"errorMessage","下载中断，请重试"));Save();if(status=="error"&&Regex.IsMatch(Util.Str(state,"errorMessage",""),"No URI available|416|Invalid range header",RegexOptions.IgnoreCase))ExplainPartial(job);}
                 else if(status=="paused"){job.Status="已暂停";job.Speed="";Save();}
             }catch(Exception ex){job.Status="失败";job.Speed="";job.Error=Util.SafeError(ex.Message);Save();}
@@ -739,7 +782,9 @@ static class BrowserBridge {
             if(!((IEnumerable)host["allowed_origins"]).Cast<object>().Select(Convert.ToString).Contains(origin))throw new Exception("这个扩展尚未连接桌面版");
             byte[] frame=ReadFrame(Console.OpenStandardInput());
             var message=Util.Json().Deserialize<Dictionary<string,object>>(Encoding.UTF8.GetString(frame));
-            if(Util.Str(message,"action")=="ping"){var saved=new Settings();try{string file=Path.Combine(Util.Root,"data","settings.json");if(System.IO.File.Exists(file))saved=Util.Json().Deserialize<Settings>(System.IO.File.ReadAllText(file))??saved;}catch{}WriteFrame(Console.OpenStandardOutput(),Encoding.UTF8.GetBytes(Util.Json().Serialize(new{ok=true,version=Util.Version,paired=true,netdisk=true,netdiskApi=2,folder=saved.Folder,followBrowser=saved.FollowBrowser})));return 0;}
+            // While the desktop app is being updated (a few seconds), nothing is opened or started from here.
+            if(Updater.Busy())throw new Exception("桌面版正在更新，请几秒后再试");
+            if(Util.Str(message,"action")=="ping"){var saved=new Settings();try{string file=Path.Combine(Util.Root,"data","settings.json");if(System.IO.File.Exists(file))saved=Util.Json().Deserialize<Settings>(Util.SettingsText(System.IO.File.ReadAllText(file)))??saved;}catch{}WriteFrame(Console.OpenStandardOutput(),Encoding.UTF8.GetBytes(Util.Json().Serialize(new{ok=true,version=Util.Version,paired=true,netdisk=true,netdiskApi=2,folder=saved.Folder,followBrowser=saved.FollowBrowser})));return 0;}
             if(Util.Str(message,"action")=="netdiskSeal"||Util.Str(message,"action")=="netdiskOpen"){
                 string value=Util.Str(message,"value");if(Util.Str(message,"provider")!="baidu"||value.Length<1||value.Length>16384||value.Any(Char.IsControl))throw new Exception("网盘授权信息无效");
                 bool seal=Util.Str(message,"action")=="netdiskSeal";string result=seal?Netdisk.Protect(value):Netdisk.Cookie(new Download{NetdiskCookie=value});
@@ -864,9 +909,18 @@ static class Program {
                 window.Show();Application.DoEvents();using(var bitmap=new Bitmap(window.Width,window.Height)){window.DrawToBitmap(bitmap,new Rectangle(0,0,bitmap.Width,bitmap.Height));bitmap.Save(args[1]);}window.Close();
             }return 0;
         }
+        // Being updated right now: the setup opens Ruxget when it is done (a hand-over from Chrome just waits for the next try).
+        if(Updater.Busy()){if(args.Contains("--background"))return 0;string data=Path.Combine(Util.Root,"data");Updater.RequestStart(data);
+            // The update may have ended just now, before it could see the request: then open normally.
+            if(Updater.Busy())return 0;Updater.TakeStartRequest(data);}
         bool owned;using(var mutex=new Mutex(true,"Local\\"+Util.PipeName,out owned)){
             if(!owned){if(args.Contains("--background"))return 0;try{using(var pipe=new NamedPipeClientStream(".",Util.PipeName,PipeDirection.InOut)){pipe.Connect(500);BrowserBridge.WriteFrame(pipe,Encoding.UTF8.GetBytes("{\"action\":\"show\"}"));BrowserBridge.ReadFrame(pipe);}}catch{}return 0;}
-            try{using(var manager=new Manager(Path.Combine(Util.Root,"data"))){var window=new MainWindow(manager);if(args.Contains("--background"))window.PrepareBackgroundStart();Application.Run(window);}}
+            // Not when Chrome just started it for a hand-over (--background): the task must not wait; it updates on quit.
+            if(!args.Contains("--background")&&!args.Contains("--after-update")&&Updater.Launch(Path.Combine(Util.Root,"data"),true,args))return 0;
+            try{using(var manager=new Manager(Path.Combine(Util.Root,"data"))){var window=new MainWindow(manager);if(args.Contains("--background"))window.PrepareBackgroundStart();Application.Run(window);}
+                // Quitting: an update downloaded meanwhile is installed now, quietly (Ruxget is not reopened).
+                // Not while Windows shuts down or signs out: the install could be cut off halfway.
+                if(!MainWindow.SessionEnding)Updater.Launch(Path.Combine(Util.Root,"data"),false,null);}
             catch(Exception ex){if(!args.Contains("--background"))MessageBox.Show("Ruxget 未能启动："+ex.Message+"\n任务文件已保留。","Ruxget");return 1;}
         }return 0;
     }

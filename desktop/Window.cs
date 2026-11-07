@@ -26,10 +26,10 @@ class QuietButton : Button {
     protected override void OnPaint(PaintEventArgs e){
         var bounds=new Rectangle(0,0,Math.Max(1,Width-1),Math.Max(1,Height-1));int d=Math.Min(18,Math.Min(bounds.Width,bounds.Height));
         using(var path=new GraphicsPath()){path.AddArc(0,0,d,d,180,90);path.AddArc(bounds.Right-d,0,d,d,270,90);path.AddArc(bounds.Right-d,bounds.Bottom-d,d,d,0,90);path.AddArc(0,bounds.Bottom-d,d,d,90,90);path.CloseFigure();e.Graphics.SmoothingMode=SmoothingMode.AntiAlias;
-            Color fill=!Enabled?Color.FromArgb(17,29,46):hover?(BackColor==Color.Black?Color.FromArgb(17,29,46):ControlPaint.Light(BackColor,.12f)):BackColor;using(var brush=new SolidBrush(fill))e.Graphics.FillPath(brush,path);
-            if(Focused){using(var pen=new Pen(Color.FromArgb(128,160,224),1.5f))e.Graphics.DrawPath(pen,path);}
+            Color fill=!Enabled?Color.FromArgb(237,232,217):hover?(BackColor==Color.FromArgb(244,240,228)?Color.FromArgb(237,232,217):ControlPaint.Light(BackColor,.12f)):BackColor;using(var brush=new SolidBrush(fill))e.Graphics.FillPath(brush,path);
+            if(Focused){using(var pen=new Pen(Color.FromArgb(62,90,44),1.5f))e.Graphics.DrawPath(pen,path);}
         }
-        TextRenderer.DrawText(e.Graphics,Text,Font,bounds,Enabled?ForeColor:Color.FromArgb(153,177,203),TextFormatFlags.HorizontalCenter|TextFormatFlags.VerticalCenter|TextFormatFlags.SingleLine|TextFormatFlags.EndEllipsis);
+        TextRenderer.DrawText(e.Graphics,Text,Font,bounds,Enabled?ForeColor:Color.FromArgb(138,136,117),TextFormatFlags.HorizontalCenter|TextFormatFlags.VerticalCenter|TextFormatFlags.SingleLine|TextFormatFlags.EndEllipsis);
     }
 }
 public class WindowLayout {
@@ -40,6 +40,12 @@ public partial class MainWindow : Form {
     [DllImport("dwmapi.dll")]static extern int DwmSetWindowAttribute(IntPtr handle,int attribute,ref int value,int size);
     internal static void ApplyDarkFrame(Form window){
         try{int dark=1,black=0,white=0xffffff,border=0x6f533b;DwmSetWindowAttribute(window.Handle,20,ref dark,4);DwmSetWindowAttribute(window.Handle,35,ref black,4);DwmSetWindowAttribute(window.Handle,36,ref white,4);DwmSetWindowAttribute(window.Handle,34,ref border,4);}catch(DllNotFoundException){}catch(EntryPointNotFoundException){}
+    }
+    // The program icon with all its sizes (embedded by build.ps1 as Ruxget.ico), so title bars and the tray get
+    // the hand-drawn 16 px picture instead of a downscaled 32 px one. Falls back to the exe's associated icon.
+    internal static Icon AppIcon(){
+        try{using(var stream=typeof(MainWindow).Assembly.GetManifestResourceStream("Ruxget.ico"))if(stream!=null)return new Icon(stream);}catch(ArgumentException){}catch(IOException){}
+        return Icon.ExtractAssociatedIcon(Application.ExecutablePath);
     }
     // 0.4.71: the main window is light (cream title area, dark ink text, warm edge), like the extension pages.
     internal static void ApplyLightFrame(Form window){
@@ -170,16 +176,30 @@ public partial class MainWindow : Form {
     readonly Dictionary<string,Button> navigation=new Dictionary<string,Button>();
     readonly Dictionary<string,DownloadDetailsWindow> detailWindows=new Dictionary<string,DownloadDetailsWindow>();
     readonly System.Windows.Forms.Timer timer=new System.Windows.Forms.Timer();
-    static readonly Color Blue=Color.FromArgb(95,185,255),Ink=Color.FromArgb(255,255,255),Muted=Color.FromArgb(196,214,235),Wash=Color.FromArgb(17,29,46),Line=Color.FromArgb(59,83,111);
+    static readonly Color Blue=Color.FromArgb(62,90,44),Ink=Color.FromArgb(42,53,32),Muted=Color.FromArgb(106,108,85),Wash=Color.FromArgb(237,232,217),Line=Color.FromArgb(226,220,201);
     string filter="all";
     bool ticking,closeReady,closingWindow,refreshing,batchBusy,quitRequested;
-    // Quitting for real (tray menu "完全退出"): saves tasks and stops downloads. The window's X only hides to the tray.
+    // Quitting for real (tray menu "退出 Ruxget", or × when chosen): saves tasks and stops downloads.
     public void Quit(){quitRequested=true;Close();}
+    // 0.4.72: the window's × (and Alt+F4) does what the person chose; the first time it asks in the window itself.
+    // Without the web interface (no WebView2) it keeps the old behaviour: hide to the tray.
+    internal static bool SessionEnding;
+    internal void CloseRequested(){string action=manager.Config.CloseAction;if(action=="quit"){Quit();return;}if(action=="tray"||!pluginReady){HideToTray();return;}
+        if(!Visible||WindowState==FormWindowState.Minimized)RestoreFromTray();int active=manager.Snapshot().Count(j=>j.Status=="下载中"||j.Status=="等待下载"||j.Status=="准备组件"||j.Status=="等待节点"||j.Status=="排队中");
+        PluginSend(new{type="closeAsk",active});}
+    // 0.4.72: the installed app looks for an update 90 seconds after it starts and then every 6 hours (Updater itself
+    // goes online at most once a day). Copies run from elsewhere (tests, the build folder) never check.
+    System.Threading.Timer updateTimer;
+    void StartUpdateChecks(){if(preview||!String.Equals(Path.GetFullPath(Util.Root).TrimEnd('\\'),Path.GetFullPath(Installation.DefaultRoot).TrimEnd('\\'),StringComparison.OrdinalIgnoreCase))return;
+        updateTimer=new System.Threading.Timer(_=>{try{Updater.Check(manager.DataDirectory,manager.Config.AutoUpdate,manager.ProxyUrl);}catch{}},null,90000,6*3600*1000);}
+    internal bool English(){string language=manager.Config.UiLanguage;return language=="en"||language=="auto"&&!System.Globalization.CultureInfo.CurrentUICulture.Name.StartsWith("zh",StringComparison.OrdinalIgnoreCase);}
+    internal void UpdateTrayText(){if(tray.ContextMenuStrip==null)return;bool en=English();tray.Text=en?"Ruxget · downloads":"Ruxget · 下载器";
+        tray.ContextMenuStrip.Items[0].Text=en?"Show Ruxget":"显示 Ruxget";tray.ContextMenuStrip.Items[1].Text=en?"Quit Ruxget":"退出 Ruxget";}
     Action<Form> inspectDialog;
 
     public MainWindow(Manager engine,bool isPreview=false) {
-        manager=engine;preview=isPreview;Text="Ruxget";Icon=Icon.ExtractAssociatedIcon(Application.ExecutablePath);
-        Font=new Font("Microsoft YaHei UI",9.5f);BackColor=Color.Black;ForeColor=Ink;AutoScaleDimensions=new SizeF(96,96);AutoScaleMode=AutoScaleMode.Dpi;
+        manager=engine;preview=isPreview;Text="Ruxget";Icon=AppIcon();
+        Font=new Font("Microsoft YaHei UI",9.5f);BackColor=Color.FromArgb(244,240,228);ForeColor=Ink;AutoScaleDimensions=new SizeF(96,96);AutoScaleMode=AutoScaleMode.Dpi;
         ClientSize=new Size(740,590);MinimumSize=new Size(696,562);StartPosition=FormStartPosition.CenterScreen;
         if(!preview)PreparePluginLayout();
         mainSurface.Dock=DockStyle.Fill;
@@ -202,8 +222,8 @@ public partial class MainWindow : Form {
         pause=Button("暂停");resume=Button("继续 / 重试");show=Button("打开文件夹");forget=Button("移除记录");detailToggle=Button("展开详情");
         foreach(var b in new[]{pause,resume,detailToggle,show,forget}){b.Width=104;b.Height=29;b.Margin=new Padding(0,0,6,0);selectionTools.Controls.Add(b);}
         pause.Click+=(s,e)=>Selected(j=>manager.Pause(j.Id),CanPause);resume.Click+=(s,e)=>{var selected=SelectedJobs();if(selected.Length==1&&selected[0].Status=="等待选文件")ChooseBt(selected[0].Id);else Selected(j=>manager.Resume(j.Id),CanResume);};forget.Click+=(s,e)=>Selected(j=>manager.Forget(j.Id),CanForget);show.Click+=(s,e)=>OpenFolder();detailToggle.Click+=(s,e)=>{var j=Selection();if(j!=null)OpenDetails(j.Id);};
-        grid.Dock=DockStyle.Fill;grid.BackgroundColor=Color.Black;grid.BorderStyle=BorderStyle.None;grid.AllowUserToAddRows=false;grid.AllowUserToDeleteRows=false;grid.AllowUserToResizeRows=false;grid.ReadOnly=true;grid.MultiSelect=true;grid.SelectionMode=DataGridViewSelectionMode.FullRowSelect;grid.RowHeadersVisible=false;grid.ColumnHeadersVisible=false;grid.AutoSizeColumnsMode=DataGridViewAutoSizeColumnsMode.Fill;grid.RowTemplate.Height=104;
-        grid.DefaultCellStyle=new DataGridViewCellStyle{BackColor=Color.Black,ForeColor=Color.FromArgb(255,255,255),Padding=new Padding(12,0,0,0),SelectionBackColor=Color.FromArgb(24,57,88),SelectionForeColor=Ink};grid.CellBorderStyle=DataGridViewCellBorderStyle.None;
+        grid.Dock=DockStyle.Fill;grid.BackgroundColor=Color.FromArgb(244,240,228);grid.BorderStyle=BorderStyle.None;grid.AllowUserToAddRows=false;grid.AllowUserToDeleteRows=false;grid.AllowUserToResizeRows=false;grid.ReadOnly=true;grid.MultiSelect=true;grid.SelectionMode=DataGridViewSelectionMode.FullRowSelect;grid.RowHeadersVisible=false;grid.ColumnHeadersVisible=false;grid.AutoSizeColumnsMode=DataGridViewAutoSizeColumnsMode.Fill;grid.RowTemplate.Height=104;
+        grid.DefaultCellStyle=new DataGridViewCellStyle{BackColor=Color.FromArgb(244,240,228),ForeColor=Color.FromArgb(42,53,32),Padding=new Padding(12,0,0,0),SelectionBackColor=Color.FromArgb(230,235,210),SelectionForeColor=Ink};grid.CellBorderStyle=DataGridViewCellBorderStyle.None;
         foreach(string column in new[]{"文件 / 视频","状态","进度","速度"})grid.Columns.Add(column,column);
         for(int n=0;n<4;n++){grid.Columns[n].SortMode=DataGridViewColumnSortMode.NotSortable;if(n>0)grid.Columns[n].Visible=false;}
         grid.Columns[0].MinimumWidth=400;grid.AccessibleName="下载任务";grid.AccessibleDescription="上下键选择，空格暂停或继续，回车展开详情，Shift+F10 打开任务菜单。Ctrl 或 Shift 可多选。";
@@ -215,7 +235,7 @@ public partial class MainWindow : Form {
         taskMenu.Font=Font;taskMenu.ShowImageMargin=false;taskMenu.Opening+=(s,e)=>BuildTaskMenu();grid.ContextMenuStrip=taskMenu;
         grid.KeyDown+=(s,e)=>{var j=Selection();if(j==null)return;if(e.KeyCode==Keys.Enter){OpenDetails(j.Id);e.Handled=true;e.SuppressKeyPress=true;}else if(e.KeyCode==Keys.Space){RowAction(j.Id);e.Handled=true;e.SuppressKeyPress=true;}};
         var list=new Panel{Dock=DockStyle.Fill,Padding=new Padding(24,0,24,0)};empty.Dock=DockStyle.Fill;empty.TextAlign=ContentAlignment.MiddleCenter;empty.ForeColor=Muted;empty.Font=new Font(Font.FontFamily,10);
-        quickEntry.Height=104;quickEntry.BackColor=Color.Black;quickEntry.Controls.Add(new Label{Text="从一个链接开始",AutoSize=true,Font=new Font(Font.FontFamily,16),Location=new Point(0,0)});
+        quickEntry.Height=104;quickEntry.BackColor=Color.FromArgb(244,240,228);quickEntry.Controls.Add(new Label{Text="从一个链接开始",AutoSize=true,Font=new Font(Font.FontFamily,16),Location=new Point(0,0)});
         quickLink.BorderStyle=BorderStyle.FixedSingle;quickLink.AccessibleName="粘贴下载链接";quickLink.SetBounds(0,44,390,29);quickEntry.Controls.Add(quickLink);
         var quickAdd=Button("添加链接",true);quickAdd.SetBounds(400,41,94,31);quickAdd.Click+=(s,e)=>{if(!String.IsNullOrWhiteSpace(quickLink.Text)){string link=quickLink.Text.Trim();NewDownload(new Dictionary<string,object>{{"url",link},{"kind",link.StartsWith("magnet:",StringComparison.OrdinalIgnoreCase)?"magnet":"file"}});}else quickLink.Focus();};quickEntry.Controls.Add(quickAdd);
         quickEntry.Controls.Add(new Label{Text="也可以从 Chrome 的 Ruxget 按钮发送视频",AutoSize=true,ForeColor=Muted,Location=new Point(0,82),Font=new Font(Font.FontFamily,8.5f)});
@@ -240,7 +260,7 @@ public partial class MainWindow : Form {
         var changeFolder=Button("选择文件夹…");changeFolder.Dock=DockStyle.Right;changeFolder.Width=100;changeFolder.AccessibleName="选择新任务默认保存文件夹";changeFolder.Click+=(s,e)=>{string path=PickFolder(this,manager.Config.Folder);if(path!=null)try{SetDefaultFolder(path);}catch(Exception ex){Alert(ex.Message);}};
         saveLocation.Controls.Add(defaultFolder);saveLocation.Controls.Add(changeFolder);defaultFolder.BringToFront();
         mainSurface.Controls.Add(list);mainSurface.Controls.Add(details);mainSurface.Controls.Add(selectionTools);mainSurface.Controls.Add(nav);mainSurface.Controls.Add(header);mainSurface.Controls.Add(saveLocation);mainSurface.Controls.Add(status);
-        miniSurface.Dock=DockStyle.Fill;miniSurface.Padding=new Padding(18,10,18,12);miniSurface.Visible=false;miniSurface.BackColor=Color.Black;
+        miniSurface.Dock=DockStyle.Fill;miniSurface.Padding=new Padding(18,10,18,12);miniSurface.Visible=false;miniSurface.BackColor=Color.FromArgb(244,240,228);
         var miniHeader=new Panel{Dock=DockStyle.Top,Height=30};miniCount.Text="Ruxget";miniCount.Dock=DockStyle.Fill;miniCount.ForeColor=Muted;miniCount.Font=new Font(Font.FontFamily,8);miniCount.TextAlign=ContentAlignment.MiddleLeft;var expand=Button("展开 ↗");expand.Dock=DockStyle.Right;expand.Width=70;expand.Height=26;expand.AccessibleName="展开完整窗口";expand.Click+=(s,e)=>SetMini(false);miniHeader.Controls.Add(miniCount);miniHeader.Controls.Add(expand);
         miniTitle.Dock=DockStyle.Top;miniTitle.Height=40;miniTitle.AutoEllipsis=true;miniTitle.Font=new Font(Font.FontFamily,10,FontStyle.Bold);miniTitle.TextAlign=ContentAlignment.MiddleLeft;
         miniProgress.Dock=DockStyle.Top;miniProgress.Height=22;miniMeta.Dock=DockStyle.Top;miniMeta.Height=30;miniMeta.AutoEllipsis=true;miniMeta.ForeColor=Muted;miniMeta.Font=new Font(Font.FontFamily,8.5f);
@@ -248,12 +268,14 @@ public partial class MainWindow : Form {
         miniSurface.Controls.Add(miniMeta);miniSurface.Controls.Add(miniProgress);miniSurface.Controls.Add(miniTitle);miniSurface.Controls.Add(miniHeader);miniSurface.Controls.Add(miniActions);
         Controls.Add(mainSurface);Controls.Add(miniSurface);
         if(!preview){mainSurface.Visible=false;miniSurface.Visible=false;}
-        tray.Icon=Icon;tray.Text="Ruxget · 后台下载";var trayMenu=new ContextMenuStrip();trayMenu.Items.Add("显示 Ruxget",null,(s,e)=>RestoreFromTray());trayMenu.Items.Add("完全退出",null,(s,e)=>Quit());tray.ContextMenuStrip=trayMenu;tray.DoubleClick+=(s,e)=>RestoreFromTray();
+        tray.Icon=new Icon(Icon,SystemInformation.SmallIconSize);var trayMenu=new ContextMenuStrip();trayMenu.Items.Add("显示 Ruxget",null,(s,e)=>RestoreFromTray());trayMenu.Items.Add("退出 Ruxget",null,(s,e)=>Quit());tray.ContextMenuStrip=trayMenu;tray.DoubleClick+=(s,e)=>RestoreFromTray();UpdateTrayText();
+        // 0.4.72: the tray icon stays while Ruxget runs, so quitting is always one right-click away.
+        if(!preview)tray.Visible=true;StartUpdateChecks();
         FormClosed+=(s,e)=>{taskMenu.Dispose();timer.Dispose();tray.Dispose();segmentTip.Dispose();menu.Dispose();trayMenu.Dispose();};
         KeyPreview=true;KeyDown+=(s,e)=>{if(e.KeyCode==Keys.Escape&&!String.IsNullOrEmpty(expandedId)&&!miniMode){expandedId="";UpdateDetails();e.Handled=true;}};
         timer.Interval=700;timer.Tick+=async(s,e)=>{if(ticking||closingWindow)return;ticking=true;try{await Task.Run(()=>manager.Tick());if(!IsDisposed&&!closingWindow)RefreshJobs();}catch(Exception ex){if(!IsDisposed)status.Text=ex.Message;}finally{ticking=false;}};
         if(!preview)timer.Start();RefreshJobs();
-        FormClosing+=async(s,e)=>{if(!quitRequested&&!closeReady&&!closingWindow&&!preview&&e.CloseReason==CloseReason.UserClosing){e.Cancel=true;SaveWindowLayout();HideToTray();return;}if(e.CloseReason==CloseReason.WindowsShutDown||e.CloseReason==CloseReason.TaskManagerClosing){timer.Stop();if(!closingWindow){closingWindow=true;try{manager.Dispose();}catch{}}return;}timer.Stop();if(!closeReady&&!closingWindow)SaveWindowLayout();if(preview||closeReady)return;e.Cancel=true;if(closingWindow)return;closingWindow=true;tray.Visible=false;foreach(Form owned in OwnedForms)owned.Hide();Hide();status.Text="正在保存任务…";try{await Task.Run(()=>manager.Dispose());}catch(Exception ex){Alert(ex.Message);}closeReady=true;Close();};
+        FormClosing+=async(s,e)=>{if(!quitRequested&&!closeReady&&!closingWindow&&!preview&&e.CloseReason==CloseReason.UserClosing){e.Cancel=true;SaveWindowLayout();CloseRequested();return;}if(e.CloseReason==CloseReason.WindowsShutDown||e.CloseReason==CloseReason.TaskManagerClosing){SessionEnding=true;timer.Stop();if(!closingWindow){closingWindow=true;try{manager.Dispose();}catch{}}return;}timer.Stop();if(!closeReady&&!closingWindow)SaveWindowLayout();if(preview||closeReady)return;e.Cancel=true;if(closingWindow)return;closingWindow=true;tray.Visible=false;foreach(Form owned in OwnedForms)owned.Hide();Hide();status.Text="正在保存任务…";try{await Task.Run(()=>manager.Dispose());}catch(Exception ex){Alert(ex.Message);}closeReady=true;Close();};
         if(!preview)Shown+=(s,e)=>StartPlugin();
         if(!preview)Shown+=(s,e)=>RestoreWindowMode();
         if(!preview)Shown+=(s,e)=>BrowserBridge.Listen(this);
@@ -273,7 +295,7 @@ public partial class MainWindow : Form {
         table.Controls.Add(new Label{Text=label,Dock=DockStyle.Fill,TextAlign=ContentAlignment.MiddleLeft,ForeColor=Muted,Margin=new Padding(0,0,0,5)},0,row);
         box.ReadOnly=true;box.BorderStyle=BorderStyle.None;box.BackColor=Wash;box.ForeColor=Muted;box.Dock=DockStyle.Fill;box.Margin=new Padding(0,0,0,5);box.AccessibleName=label;table.Controls.Add(box,1,row);
     }
-    Button Button(string text,bool primary=false){return new QuietButton{Text=text,AutoSize=false,Width=100,Height=34,Margin=new Padding(2,2,7,2),FlatStyle=FlatStyle.Flat,BackColor=primary?Blue:Color.Black,ForeColor=primary?Color.Black:Ink,FlatAppearance={BorderSize=primary?0:1,BorderColor=Color.FromArgb(218,225,235)}};}
+    Button Button(string text,bool primary=false){return new QuietButton{Text=text,AutoSize=false,Width=100,Height=34,Margin=new Padding(2,2,7,2),FlatStyle=FlatStyle.Flat,BackColor=primary?Blue:Color.FromArgb(244,240,228),ForeColor=primary?Color.FromArgb(247,244,234):Ink,FlatAppearance={BorderSize=primary?0:1,BorderColor=Color.FromArgb(214,207,186)}};}
     void Alert(string text){if(IsDisposed)return;if(preview){status.Text=text;return;}MessageBox.Show(this,text,"Ruxget",MessageBoxButtons.OK,MessageBoxIcon.Information);}
     Download Selection(){return grid.CurrentRow!=null&&grid.CurrentRow.Selected?grid.CurrentRow.Tag as Download:SelectedJobs().FirstOrDefault();}
     Download[] SelectedJobs(){return grid.SelectedRows.Cast<DataGridViewRow>().Select(row=>row.Tag as Download).Where(j=>j!=null).ToArray();}
@@ -302,7 +324,7 @@ public partial class MainWindow : Form {
         for(int i=0;i<items.Count;i++){var j=items[i];var row=grid.Rows[i];var previous=row.Tag as Download;descriptionsChanged|=previous==null||previous.Stage!=j.Stage||previous.Status!=j.Status;row.Tag=j;row.Cells[0].Value=j.Title;row.Cells[1].Value=j.Status;row.Cells[2].Value=j.Progress;row.Cells[3].Value=String.IsNullOrEmpty(j.Speed)?"—":j.Speed;row.Cells[0].ToolTipText=j.Title+"\n"+j.Status+" · "+TransferData.Remaining(j)+"\n双击展开详情 · 空格暂停或继续 · 右键更多操作";row.Cells[1].ToolTipText=j.Error;}
         if(descriptionsChanged)grid.Invalidate();
         empty.Visible=items.Count==0;quickEntry.Visible=all.Count==0;grid.Visible=!empty.Visible;empty.Text=all.Count==0?"":"这里暂时没有任务\n\n可切换上方分类查看其他下载。";
-        foreach(var entry in navigation){int count=entry.Key=="all"?all.Count:entry.Key=="active"?all.Count(Active):entry.Key=="complete"?all.Count(j=>j.Status=="已完成"):all.Count(j=>j.Status=="已暂停"||j.Status=="失败"||j.Status=="等待选文件");entry.Value.Text=entry.Value.Tag+"   "+count;entry.Value.BackColor=entry.Key==filter?Color.FromArgb(239,244,254):Color.Black;entry.Value.ForeColor=entry.Key==filter?Blue:Muted;}
+        foreach(var entry in navigation){int count=entry.Key=="all"?all.Count:entry.Key=="active"?all.Count(Active):entry.Key=="complete"?all.Count(j=>j.Status=="已完成"):all.Count(j=>j.Status=="已暂停"||j.Status=="失败"||j.Status=="等待选文件");entry.Value.Text=entry.Value.Tag+"   "+count;entry.Value.BackColor=entry.Key==filter?Color.FromArgb(230,235,210):Color.FromArgb(244,240,228);entry.Value.ForeColor=entry.Key==filter?Blue:Muted;}
         refreshing=false;status.Text=String.Format("{0} 个任务 · {1} 个正在下载　　双击查看详情 · 右键更多操作",all.Count,all.Count(j=>j.Status=="下载中"));UpdateButtons();UpdateDetails();UpdateMini();PushPluginState();
     }
     void UpdateDetails(){
@@ -312,7 +334,7 @@ public partial class MainWindow : Form {
         inlineValues[0].Text=(t.Estimated&&t.Total>=0?"约 ":"")+TransferData.Bytes(t.Total);inlineValues[1].Text=TransferData.Bytes(t.Completed);inlineValues[2].Text=active&&t.Speed>=0?TransferData.Bytes(t.Speed)+"/s":"—";inlineValues[3].Text=TransferData.Remaining(j);inlineValues[4].Text=TransferData.ResumeText(j);inlineValues[5].Text=active&&t.Connections>=0?t.Connections+" 个":"—";
         inlineMap.Segments=TransferData.Segments(j);inlineMap.Invalidate();segmentHint.Text=inlineMap.Segments.Length>0?"分段进度 · 按文件区间统计，悬停查看已完成量":j.Kind=="file"?"等待分段信息，未知数据不会推算成已完成":"当前媒体轨进度；内核暂不提供独立分片进度";
         detailError.Text=!String.IsNullOrEmpty(j.Error)?j.Error:bt?(j.BtReason??"")+" "+(j.BtAdvice??""):j.Kind!="file"&&j.Status!="已完成"?(t.Scope??"")+" · 音视频可能分轨下载，最终大小以完成文件为准":"";
-        detailError.ForeColor=String.IsNullOrEmpty(j.Error)?Muted:Color.FromArgb(255,181,181);
+        detailError.ForeColor=String.IsNullOrEmpty(j.Error)?Muted:Color.FromArgb(164,80,42);
     }
     void SetMini(bool value){
         if(value==miniMode)return;SuspendLayout();
@@ -377,7 +399,7 @@ public partial class MainWindow : Form {
         return new{ok=true,id=id};
     }
     void HideToTray(){hiddenToTray=true;if(!preview){tray.Visible=true;Hide();}}
-    public void RestoreFromTray(){if(closingWindow||IsDisposed)return;if(startingInBackground){showWhenReady=true;return;}bool wasHidden=hiddenToTray;hiddenToTray=false;if(!preview){if(wasHidden||!Visible)Show();if(WindowState==FormWindowState.Minimized)WindowState=FormWindowState.Normal;Activate();tray.Visible=false;}RefreshJobs();}
+    public void RestoreFromTray(){if(closingWindow||IsDisposed)return;if(startingInBackground){showWhenReady=true;return;}bool wasHidden=hiddenToTray;hiddenToTray=false;if(!preview){if(wasHidden||!Visible)Show();if(WindowState==FormWindowState.Minimized)WindowState=FormWindowState.Normal;Activate();}RefreshJobs();}
     static void Rounded(Graphics g,Color color,Rectangle bounds,int radius){using(var path=new GraphicsPath()){int d=radius*2;path.AddArc(bounds.Left,bounds.Top,d,d,180,90);path.AddArc(bounds.Right-d,bounds.Top,d,d,270,90);path.AddArc(bounds.Right-d,bounds.Bottom-d,d,d,0,90);path.AddArc(bounds.Left,bounds.Bottom-d,d,d,90,90);path.CloseFigure();using(var brush=new SolidBrush(color))g.FillPath(brush,path);}}
     Rectangle RowActionBounds(Rectangle row){return new Rectangle(row.Right-Ui(120),row.Top+Ui(16),Ui(64),Ui(29));}
     Rectangle RowMoreBounds(Rectangle row){return new Rectangle(row.Right-Ui(48),row.Top+Ui(16),Ui(32),Ui(29));}
@@ -398,12 +420,12 @@ public partial class MainWindow : Form {
     }
     void PaintCell(object sender,DataGridViewCellPaintingEventArgs e){
         if(e.RowIndex<0||e.ColumnIndex!=0)return;var j=grid.Rows[e.RowIndex].Tag as Download;if(j==null)return;
-        var g=e.Graphics;g.SmoothingMode=SmoothingMode.AntiAlias;var b=e.CellBounds;using(var white=new SolidBrush(Color.Black))g.FillRectangle(white,b);
+        var g=e.Graphics;g.SmoothingMode=SmoothingMode.AntiAlias;var b=e.CellBounds;using(var white=new SolidBrush(Color.FromArgb(244,240,228)))g.FillRectangle(white,b);
         var card=new Rectangle(b.Left,b.Top+Ui(3),b.Width-1,b.Height-Ui(8));bool selected=grid.Rows[e.RowIndex].Selected;
-        Rounded(g,selected?Color.FromArgb(245,248,254):Wash,card,Ui(12));
-        if(selected){using(var pen=new Pen(Color.FromArgb(223,232,248)))using(var path=new GraphicsPath()){int d=Ui(24);path.AddArc(card.Left,card.Top,d,d,180,90);path.AddArc(card.Right-d,card.Top,d,d,270,90);path.AddArc(card.Right-d,card.Bottom-d,d,d,0,90);path.AddArc(card.Left,card.Bottom-d,d,d,90,90);path.CloseFigure();g.DrawPath(pen,path);}}
+        Rounded(g,selected?Color.FromArgb(251,248,239):Wash,card,Ui(12));
+        if(selected){using(var pen=new Pen(Color.FromArgb(198,206,170)))using(var path=new GraphicsPath()){int d=Ui(24);path.AddArc(card.Left,card.Top,d,d,180,90);path.AddArc(card.Right-d,card.Top,d,d,270,90);path.AddArc(card.Right-d,card.Bottom-d,d,d,0,90);path.AddArc(card.Left,card.Bottom-d,d,d,90,90);path.CloseFigure();g.DrawPath(pen,path);}}
         bool audio=j.Kind=="audio",video=j.Kind=="video"||j.Kind=="tracks",bt=TorrentInfo.IsBt(j),complete=j.Status=="已完成";
-        var icon=new Rectangle(b.Left+Ui(16),b.Top+Ui(18),Ui(34),Ui(34));Rounded(g,Color.FromArgb(233,240,253),icon,Ui(9));
+        var icon=new Rectangle(b.Left+Ui(16),b.Top+Ui(18),Ui(34),Ui(34));Rounded(g,Color.FromArgb(237,232,217),icon,Ui(9));
         string type=bt?"BT":audio?"MP3":video?"视频":Path.GetExtension(j.Title).TrimStart('.').ToUpperInvariant();if(type.Length==0||type.Length>4)type="文件";
         using(var font=new Font(Font.FontFamily,7.5f,FontStyle.Bold))TextRenderer.DrawText(g,type,font,icon,Blue,TextFormatFlags.HorizontalCenter|TextFormatFlags.VerticalCenter);
         var action=RowActionBounds(b);var more=RowMoreBounds(b);int x=b.Left+Ui(62),width=Math.Max(1,action.Left-x-Ui(12));
@@ -413,21 +435,21 @@ public partial class MainWindow : Form {
         string amount=t.Completed>=0?TransferData.Bytes(t.Completed)+(t.Total>=0?" / "+(t.Estimated?"约 ":"")+TransferData.Bytes(t.Total):""):"大小待确认";
         string secondary=complete?(t.Total>=0?TransferData.Bytes(t.Total)+" · ":"")+host:amount+" · "+host;
         using(var small=new Font(Font.FontFamily,8f))TextRenderer.DrawText(g,secondary,small,new Rectangle(x,b.Top+Ui(42),Math.Max(1,b.Width-Ui(80)),Ui(18)),Muted,TextFormatFlags.EndEllipsis|TextFormatFlags.SingleLine);
-        Rounded(g,Color.Black,action,Ui(8));string verb=j.Status=="等待选文件"?"选文件":CanResume(j)?"继续":CanPause(j)?"暂停":"详情";
+        Rounded(g,Color.FromArgb(244,240,228),action,Ui(8));string verb=j.Status=="等待选文件"?"选文件":CanResume(j)?"继续":CanPause(j)?"暂停":"详情";
         TextRenderer.DrawText(g,verb,Font,action,batchBusy?Muted:Blue,TextFormatFlags.HorizontalCenter|TextFormatFlags.VerticalCenter);
         TextRenderer.DrawText(g,"···",Font,more,Muted,TextFormatFlags.HorizontalCenter|TextFormatFlags.VerticalCenter);
         string state=j.Status;if((j.Status=="下载中"||j.Status=="准备组件"||j.Status=="等待节点")&&!String.IsNullOrEmpty(j.Stage))state=j.Stage;
         if(j.Status=="下载中"&&!String.IsNullOrEmpty(j.Speed))state+=" · "+j.Speed;
         string percent=known?Math.Max(0,Math.Min(100,j.Progress)).ToString("0.#")+"%":"";
         using(var small=new Font(Font.FontFamily,8f)){
-            TextRenderer.DrawText(g,state,small,new Rectangle(x,b.Top+Ui(66),Math.Max(1,b.Width-Ui(144)),Ui(18)),j.Status=="失败"?Color.FromArgb(255,181,181):Muted,TextFormatFlags.EndEllipsis|TextFormatFlags.SingleLine);
+            TextRenderer.DrawText(g,state,small,new Rectangle(x,b.Top+Ui(66),Math.Max(1,b.Width-Ui(144)),Ui(18)),j.Status=="失败"?Color.FromArgb(164,80,42):Muted,TextFormatFlags.EndEllipsis|TextFormatFlags.SingleLine);
             TextRenderer.DrawText(g,percent,small,new Rectangle(b.Right-Ui(70),b.Top+Ui(66),Ui(52),Ui(18)),Muted,TextFormatFlags.Right|TextFormatFlags.SingleLine);
         }
-        var bar=new Rectangle(x,b.Top+Ui(87),Math.Max(1,b.Width-Ui(80)),Ui(4));Rounded(g,Color.FromArgb(59,83,111),bar,Math.Max(1,Ui(2)));
-        if(known&&j.Progress>0){var fill=bar;fill.Width=Math.Max(Ui(4),(int)(bar.Width*Math.Min(100,j.Progress)/100));Rounded(g,j.Status=="已暂停"?Color.FromArgb(169,184,207):Color.FromArgb(95,185,255),fill,Math.Max(1,Ui(2)));}
+        var bar=new Rectangle(x,b.Top+Ui(87),Math.Max(1,b.Width-Ui(80)),Ui(4));Rounded(g,Color.FromArgb(226,220,201),bar,Math.Max(1,Ui(2)));
+        if(known&&j.Progress>0){var fill=bar;fill.Width=Math.Max(Ui(4),(int)(bar.Width*Math.Min(100,j.Progress)/100));Rounded(g,j.Status=="已暂停"?Color.FromArgb(176,170,148):Color.FromArgb(62,90,44),fill,Math.Max(1,Ui(2)));}
         e.Handled=true;
     }
-    Form Dialog(string title,int width,int height){return new Form{Text=title,Icon=Icon,Font=Font,ClientSize=new Size(width,height),BackColor=Color.Black,FormBorderStyle=FormBorderStyle.FixedDialog,MaximizeBox=false,MinimizeBox=false,StartPosition=FormStartPosition.CenterParent,AutoScaleDimensions=new SizeF(96,96),AutoScaleMode=AutoScaleMode.Dpi};}
+    Form Dialog(string title,int width,int height){return new Form{Text=title,Icon=Icon,Font=Font,ClientSize=new Size(width,height),BackColor=Color.FromArgb(244,240,228),FormBorderStyle=FormBorderStyle.FixedDialog,MaximizeBox=false,MinimizeBox=false,StartPosition=FormStartPosition.CenterParent,AutoScaleDimensions=new SizeF(96,96),AutoScaleMode=AutoScaleMode.Dpi};}
     void LabelAt(Form f,string text,int x,int y){f.Controls.Add(new Label{Text=text,Left=x,Top=y,Width=Math.Max(1,f.ClientSize.Width-x-24),Height=25,ForeColor=Muted,AutoEllipsis=true});}
     static OpenFileDialog TorrentPicker(){return new OpenFileDialog{Title="选择 BT 种子文件",Filter="BT 种子 (*.torrent)|*.torrent",CheckFileExists=true,Multiselect=false};}
     public void NewDownload(IDictionary<string,object> input){if(closingWindow||IsDisposed)return;if(pluginView!=null){PluginEditor(input);return;}using(var form=Dialog("新建下载",590,424)){
