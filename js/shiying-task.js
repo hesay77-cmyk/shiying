@@ -7,6 +7,7 @@ async function request(Message) {
     if (!result?.ok) throw new Error(result?.error || '还没读到下载进度，请稍后重试');
     return result;
 }
+let savedDownload = null;
 async function refresh() {
     clearTimeout(timer);
     try {
@@ -31,6 +32,9 @@ async function refresh() {
         $('#deleteTask').dataset.file = job.status === 'complete' ? '1' : '';
         $('#taskResult').hidden = job.status !== 'complete';
         $('#openFile').hidden = job.status !== 'complete';
+        // 0.4.69: open the saved file itself (plays the video), not only its folder.
+        savedDownload = job.status === 'complete' && Number.isInteger(job.downloadId) ? job.downloadId : null;
+        $('#openTaskFile').hidden = savedDownload === null;
         if (job.status === 'complete') {
             const checked = job.verification || {};
             $('#taskResult').hidden = false;
@@ -59,7 +63,7 @@ $('#cancelTask').addEventListener('click',async()=>{try{await request('shiyingPl
 function showDeleted(stage) {
     clearTimeout(timer); document.body.dataset.status = 'deleted';
     $('#taskLabel').textContent = pick('已删除', 'Deleted'); $('#taskStage').textContent = stage; $('#taskError').hidden = true;
-    for (const node of ['#openFile', '#deleteTask', '#cancelTask', '#taskResult', '#reconnect']) $(node).hidden = true;
+    for (const node of ['#openTaskFile', '#openFile', '#deleteTask', '#cancelTask', '#taskResult', '#reconnect']) $(node).hidden = true;
     $('#taskNote').textContent = pick('可以关闭这个页面。', 'You can close this page.');
 }
 // Two clicks, like the popup: the first arms, the second deletes the saved file and its record.
@@ -76,6 +80,7 @@ $('#deleteTask').addEventListener('click', async () => {
     } catch (error) { $('#taskError').textContent = tr(error.message); $('#taskError').hidden = false; }
     finally { button.disabled = false; disarmDelete(); }
 });
+$('#openTaskFile').addEventListener('click',()=>{if(savedDownload!==null)RuxgetOpen.file(savedDownload,text=>{$('#taskError').textContent=text;$('#taskError').hidden=false;});});
 $('#openFile').addEventListener('click',async()=>{try{await request('shiyingPlatformOpen')}catch(error){$('#taskError').textContent=tr(error.message);$('#taskError').hidden=false}});
 // Wait for the language so the first paint is already in the right language; live progress then overwrites these.
 (window.RuxgetI18n ? RuxgetI18n.ready() : Promise.resolve()).catch(() => {}).then(() => {

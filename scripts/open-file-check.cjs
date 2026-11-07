@@ -1,4 +1,4 @@
-// 0.4.68: a finished download opens from the panel (double-click the row, or "打开" on a site download).
+// 0.4.68: a finished download opens from the panel (double-click the row, or "打开" on a site download). 0.4.69: also from "最近下载".
 // Real Chrome, real Chrome downloads, raw DevTools protocol, loopback server only. The test copy lists the optional
 // "downloads.open" as granted so no permission dialog is needed; chrome.downloads.open is checked for a real user
 // gesture without launching any program (it is called on a download that is still running, which Chrome rejects
@@ -93,6 +93,70 @@ const server=http.createServer((q,r)=>{
   check(html.includes('id="platformOpen"')&&html.indexOf('js/ruxget-open.js')<html.indexOf('js/shiying-platform-ui.js'),'the panel loads the opener before the site-download card');
   check(/platformOpen'\)\.hidden=!\(job\.status==='complete'&&Number\.isInteger\(job\.downloadId\)\)/.test(ui)&&ui.includes("$('#platformJob').addEventListener('dblclick'"),'the site-download card opens only finished Chrome files');
   const privacy=fs.readFileSync(path.join(root,'PRIVACY.md'),'utf8');check(privacy.includes('downloads.open'),'privacy notes explain downloads.open');
+
+  // 5. "最近下载" (0.4.69): double-click (or Enter) opens a finished file without the desktop window. One click on a
+  //    finished row does nothing, so even a slow double-click can't bring up the desktop window or a tab first; the old
+  //    single-click target moved to the small button beside the bin. Unfinished rows keep their one click.
+  const centre=selector=>ev(`(()=>{const r=document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect();return {x:r.x+Math.min(60,r.width/2),y:r.y+Math.min(14,r.height/2)};})()`,pp);
+  const press=async(box,count)=>{for(const type of ['mousePressed','mouseReleased'])await send('Input.dispatchMouseEvent',{type,x:box.x,y:box.y,button:'left',clickCount:count},pp);};
+  const click=async selector=>press(await centre(selector),1);
+  // Two clicks the given time apart; Windows still counts up to 500 ms as a double-click. between() runs in the gap.
+  const slowDouble=async(selector,gap,between)=>{const box=await centre(selector);await press(box,1);await wait(gap/2);if(between)await between();await wait(gap/2);await press(box,2);};
+  await ev(`(async()=>{window.opened=[];chrome.downloads.open=async id=>{opened.push({id,active:navigator.userActivation.isActive});};
+   chrome.downloads.search=q=>Promise.resolve([{id:q.id,state:'complete',exists:true}]);
+   window.said=[];window.notify=t=>said.push(t);window.native=[];window.nativeReply={ok:true};
+   chrome.runtime.sendNativeMessage=async(host,m)=>{native.push(m.action+(m.id?':'+m.id:''));return m.action==='open'?nativeReply:{ok:true};};
+   window.tabsMade=[];chrome.tabs.create=async o=>{tabsMade.push(o.url);return {};};window.shown=[];chrome.downloads.show=id=>{shown.push(id);};
+   window.desktopStatus=n=>chrome.storage.session.set({ruxgetDesktopStatus:{at:Date.now(),running:true,active:1,jobs:[{id:'0123456789abcdef',title:'setup.exe',state:'done',progress:100,at:Date.now()-1000},{id:'1111111111111111',title:'big.iso',state:'active',progress:n,at:Date.now()}]}});
+   await desktopStatus(40);
+   await chrome.storage.local.set({shiyingJobIds:['site1'],'shiyingJob:site1':{id:'site1',title:'site video',status:'complete',format:'mp4',height:720,progress:100,stage:'下载完成',downloadId:${done.id},createdAt:new Date(Date.now()-5000).toISOString()}});
+   return 'ok';})()`,pp);
+  const row=id=>`#recentList li[data-id="${id}"]`,DESK=row('0123456789abcdef')+' .recent-open',ACTIVE=row('1111111111111111')+' .recent-open',SITE=row('site1')+' .recent-open';
+  check(await until(()=>ev(`!!document.querySelector('${DESK}')&&!!document.querySelector('${SITE}')`,pp)),'the recent list shows a finished desktop download and a finished site download');
+  await ev(`RuxgetTabs.show('downloads',true);document.querySelector('${DESK}').scrollIntoView()`,pp);await wait(200);
+  check(await ev(`/双击打开/.test(document.querySelector('${DESK}').textContent)&&/双击打开/.test(document.querySelector('${SITE}').textContent)&&!/双击打开/.test(document.querySelector('${ACTIVE}').textContent)`,pp),'finished rows say they open on double-click; a running one does not');
+  check(await ev(`!!document.querySelector('${row('0123456789abcdef')} .recent-show')&&!!document.querySelector('${row('site1')} .recent-show')&&!document.querySelector('${row('1111111111111111')} .recent-show')`,pp),'finished rows have the small “view” button; a running one does not');
+  await dblclick(DESK);await wait(700);
+  check(JSON.stringify(await ev(`native`,pp))===JSON.stringify(['open:0123456789abcdef']),'double-clicking a finished desktop download opens it and does not bring up the desktop window ('+JSON.stringify(await ev(`native`,pp))+')');
+  await ev(`native.length=0`,pp);await click(DESK);await wait(900);
+  check((await ev(`native.length+tabsMade.length`,pp))===0,'one click on a finished row does nothing');
+  await ev(`native.length=0`,pp);await slowDouble(DESK,450);await wait(700);
+  check(JSON.stringify(await ev(`native`,pp))===JSON.stringify(['open:0123456789abcdef']),'a slow double-click (450 ms) opens the file and never shows the desktop window ('+JSON.stringify(await ev(`native`,pp))+')');
+  await ev(`native.length=0;window.renders=0;new MutationObserver(()=>renders++).observe(document.querySelector('#recentList'),{childList:true})`,pp);
+  await slowDouble(DESK,400,()=>ev(`desktopStatus(55)`,pp));await wait(1200);
+  check(JSON.stringify(await ev(`native`,pp))===JSON.stringify(['open:0123456789abcdef']),'a progress refresh during the double-click doesn’t lose it ('+JSON.stringify(await ev(`native`,pp))+')');
+  check((await ev(`renders>0&&/55%/.test(document.querySelector('${ACTIVE}').textContent)`,pp)),'…and the refresh still happens right after');
+  await ev(`native.length=0`,pp);await click(row('0123456789abcdef')+' .recent-show');await wait(200);
+  check(JSON.stringify(await ev(`native`,pp))===JSON.stringify(['reveal:0123456789abcdef']),'the small folder button shows a desktop download in its folder, without the desktop window');
+  check((await ev(`document.querySelector('${row('0123456789abcdef')} .recent-show').title`,pp))==='在文件夹中显示','…and says so');
+  await ev(`native.length=0;nativeReply={ok:false,error:'不支持的浏览器操作'};chrome.runtime.sendNativeMessage=async(host,m)=>{native.push(m.action+(m.id?':'+m.id:''));return m.action==='show'?{ok:true}:nativeReply;}`,pp);
+  await click(row('0123456789abcdef')+' .recent-show');await wait(300);
+  check(JSON.stringify(await ev(`native`,pp))===JSON.stringify(['reveal:0123456789abcdef'])&&(await ev(`said.includes('请把 Ruxget 桌面版更新到最新版，就能在这里打开文件夹')`,pp)),'an older desktop app gets a quiet update hint, never its window');
+  await ev(`nativeReply={ok:true};chrome.runtime.sendNativeMessage=async(host,m)=>{native.push(m.action+(m.id?':'+m.id:''));return m.action==='open'?nativeReply:{ok:true};}`,pp);
+  await ev(`native.length=0;document.querySelector('${DESK}').focus()`,pp);
+  for(const type of ['keyDown','keyUp'])await send('Input.dispatchKeyEvent',{type,key:'Enter',code:'Enter',windowsVirtualKeyCode:13,...(type==='keyDown'?{text:'\r'}:{})},pp);
+  await wait(300);
+  check(JSON.stringify(await ev(`native`,pp))===JSON.stringify(['open:0123456789abcdef']),'Enter on a finished row opens it too');
+  await ev(`native.length=0;nativeReply={ok:false,error:'不支持的浏览器操作'};said.length=0`,pp);await dblclick(DESK);
+  check(await until(()=>ev(`said.includes('请把 Ruxget 桌面版更新到最新版，就能在这里双击打开')`,pp),3000),'an older desktop app gets a quiet update hint, not its window');
+  await ev(`nativeReply={ok:false,error:'文件已不在原来的位置，可能被移动或删除了'};said.length=0`,pp);await dblclick(DESK);
+  check(await until(()=>ev(`said.includes('文件已不在原来的位置，可能被移动或删除了')`,pp),3000),'the desktop app’s reason is passed on when it can’t open the file');
+  await ev(`said.length=0;chrome.runtime.sendNativeMessage=undefined`,pp);await dblclick(DESK);
+  check(await until(()=>ev(`said.includes('桌面版没有响应')`,pp),3000),'with the desktop connection taken back, a double-click explains itself instead of failing silently');
+  await ev(`chrome.runtime.sendNativeMessage=async(host,m)=>{native.push(m.action+(m.id?':'+m.id:''));return {ok:true};};native.length=0`,pp);await click(ACTIVE);await wait(100);
+  check(JSON.stringify(await ev(`native`,pp))===JSON.stringify(['show']),'a running desktop download still shows the desktop app on one click, without waiting');
+  await ev(`native.length=0;opened.length=0;tabsMade.length=0;document.querySelector('${SITE}').scrollIntoView()`,pp);await dblclick(SITE);await wait(700);
+  const siteOpened=await ev(`opened`,pp);
+  check(siteOpened.length===1&&siteOpened[0].id===done.id&&siteOpened[0].active,'double-clicking a finished site download opens it with Chrome, as a user gesture ('+JSON.stringify(siteOpened)+')');
+  check((await ev(`tabsMade.length+native.length`,pp))===0,'…without opening the progress page or touching the desktop app');
+  await click(row('site1')+' .recent-show[title="在文件夹中显示"]');await wait(300);
+  check((await ev(`shown.length===1&&shown[0]===${done.id}&&tabsMade.length===0`,pp)),'its small folder button shows the saved file in its folder');
+  await click(row('site1')+' .recent-show[title="下载详情"]');await wait(300);
+  check((await ev(`tabsMade.length===1&&tabsMade[0].includes('shiying-task.html?id=site1')`,pp)),'a finished site video keeps its 下载详情 button');
+  const taskHtml=fs.readFileSync(path.join(root,'shiying-task.html'),'utf8'),taskJs=fs.readFileSync(path.join(root,'js','shiying-task.js'),'utf8');
+  check(taskHtml.includes('id="openTaskFile"')&&taskHtml.indexOf('js/ruxget-open.js')<taskHtml.indexOf('js/shiying-task.js')&&taskJs.includes('RuxgetOpen.file(savedDownload'),'the progress page can open the saved file itself');
+  const text=fs.readFileSync(path.join(root,'js','shiying-text.js'),'utf8');
+  check(['桌面版里已经没有这个下载了','这个程序没有“来自网络”的安全标记，已打开它所在的文件夹，请确认后再运行','没有能打开这种文件的程序'].every(s=>text.includes(`'${s}'`))&&text.includes('打不开这个文件：'),'the desktop app’s open messages have English');
 
   fs.writeFileSync(path.join(report,'summary.json'),JSON.stringify({ok:true,checks},null,2));
   console.log('OPEN FILE CHECKS PASSED ('+checks.length+')');

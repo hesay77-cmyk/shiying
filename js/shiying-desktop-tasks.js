@@ -22,7 +22,8 @@ const RuxgetDesktopTasks={
         const list=await RuxgetDesktopTasks.known();
         await chrome.storage.local.set({[RuxgetDesktopTasks.KNOWN]:list.filter(entry=>entry.id!==id)});
     },
-    native(message){return chrome.runtime.sendNativeMessage('org.shiying.desktop',message);},
+    // A desktop app that never answers (stuck starting, blocked by antivirus) must not freeze polling for good.
+    native(message,ms=15000){return Promise.race([chrome.runtime.sendNativeMessage('org.shiying.desktop',message),new Promise((resolve,reject)=>setTimeout(()=>reject(new Error('桌面版没有及时回应')),ms))]);},
     // One status read. Tasks the desktop no longer has (deleted there) leave the list too.
     async refresh(){
         if(!await chrome.permissions.contains({permissions:['nativeMessaging']}))return null;
@@ -36,7 +37,7 @@ const RuxgetDesktopTasks={
         const when=new Map(kept.map(entry=>[entry.id,entry])),now=Date.now();
         const status={at:now,running:!!reply.running,active:Math.max(0,Number(reply.active)||0),jobs:jobs.map(job=>({
             id:job.id,title:String(job.title||when.get(job.id)?.name||''),state:['active','done','failed','paused'].includes(job.state)?job.state:'paused',
-            progress:Math.max(0,Math.min(100,Number(job.progress)||0)),speed:String(job.speed||''),error:String(job.error||''),
+            progress:Math.max(0,Math.min(100,Number(job.progress)||0)),speed:String(job.speed||''),error:String(job.error||''),file:String(job.file||'').slice(0,300),
             at:when.get(job.id)?.at||now,handed:when.has(job.id)}))};
         const {[RuxgetDesktopTasks.STATUS]:before}=await chrome.storage.session.get(RuxgetDesktopTasks.STATUS);
         await chrome.storage.session.set({[RuxgetDesktopTasks.STATUS]:status});

@@ -49,11 +49,15 @@
  document.querySelector('#netdiskSetup').addEventListener('click',()=>chrome.tabs.create({url:chrome.runtime.getURL('shiying-desktop.html')}));
  document.addEventListener('ruxget-netdisk-refresh',()=>{render().catch(error=>note(error.message));});
  document.addEventListener('ruxget-i18n-applied',()=>{applyNetdiskTitle();render().catch(error=>note(error.message));});
- (async()=>{
+ // Follows the page: the side panel stays open while the person switches tabs (0.4.69; it used to keep the first page's card).
+ async function bindPage(current){
   const requested=Number(new URLSearchParams(location.search).get('tabId'));
-  tab=Number.isInteger(requested)&&requested>0?await chrome.tabs.get(requested):(await chrome.tabs.query({active:true,currentWindow:true}))[0];
-  provider=ShiyingNetdisk.site(tab?.url);if(!provider)return;
-  section.hidden=false;document.body.dataset.netdisk='true';
+  tab=current||(Number.isInteger(requested)&&requested>0?await chrome.tabs.get(requested):(await chrome.tabs.query({active:true,currentWindow:true}))[0]);
+  provider=ShiyingNetdisk.site(tab?.url);
+  section.hidden=!provider;if(provider)document.body.dataset.netdisk='true';else delete document.body.dataset.netdisk;
+  if(!provider)return;
   applyNetdiskTitle();await render();
- })().catch(error=>note(error.message));
+ }
+ document.addEventListener('ruxget-page-changed',event=>{bindPage(event.detail).catch(error=>note(error.message));});
+ bindPage().catch(error=>note(error.message));
 })();

@@ -32,9 +32,13 @@ const ShiyingPlatform = {
     },
     bilibiliCatalog(source,data) {
         if(!data||!Array.isArray(data.video)||!Array.isArray(data.audio)||data.video.length>100||data.audio.length>30)throw new Error('没有读到完整视频，请重新读取');
-        const track=item=>({id:item.id,height:Number(item.height),width:Number(item.width),bitrate:Number(item.bandwidth)||0,codec:item.codecs||'',url:this.mediaURL(item.baseUrl||item.base_url,'bilibili'),backups:(item.backupUrl||item.backup_url||[]).slice(0,4).map(value=>this.mediaURL(value,'bilibili'))});
-        const video=data.video.map(track).filter(item=>item.height>0&&item.codec.startsWith('avc')).sort((a,b)=>b.bitrate-a.bitrate);
-        const audio=data.audio.map(track).filter(item=>item.codec.startsWith('mp4a')).sort((a,b)=>b.bitrate-a.bitrate);
+        // 0.4.69: B站 now often puts a PCDN address first (*.edge.mountaintoys.cn:4483, *.mcdn.bilivideo.cn:8082) and its
+        // own upos-*.bilivideo.com mirrors among the backups. Unusable addresses are skipped one by one instead of
+        // failing the whole video; a track is dropped only when none of its addresses is usable.
+        const usable=item=>[...new Set([item.baseUrl||item.base_url,...(Array.isArray(item.backupUrl||item.backup_url)?(item.backupUrl||item.backup_url):[])].slice(0,8).map(value=>{try{return this.mediaURL(String(value),'bilibili');}catch{return null;}}).filter(Boolean))];
+        const track=item=>{const urls=usable(item);return {id:item.id,height:Number(item.height),width:Number(item.width),bitrate:Number(item.bandwidth)||0,codec:item.codecs||'',url:urls[0],backups:urls.slice(1,5)};};
+        const video=data.video.map(track).filter(item=>item.url&&item.height>0&&item.codec.startsWith('avc')).sort((a,b)=>b.bitrate-a.bitrate);
+        const audio=data.audio.map(track).filter(item=>item.url&&item.codec.startsWith('mp4a')).sort((a,b)=>b.bitrate-a.bitrate);
         if(!video.length||!audio.length)throw new Error('没有取得可合并的画面与声音');
         return {...source,title:String(data.title).slice(0,300),artist:String(data.artist||'').slice(0,100),cover:this.coverURL(data.cover),subtitles:(Array.isArray(data.subtitles)?data.subtitles:[]).slice(0,20).map(item=>({lang:String(item.lang||'').slice(0,20),name:String(item.name||item.lang||'').slice(0,40),url:this.subtitleURL(item.url)})).filter(item=>item.url),duration:Number(data.duration),video,audio,choices:[...new Set(video.map(item=>item.height))].sort((a,b)=>b-a).map(height=>({height,label:height+'p'}))};
     },

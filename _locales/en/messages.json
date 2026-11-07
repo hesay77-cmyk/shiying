@@ -203,9 +203,6 @@
   "suffixTip": {
     "message": "Add extensions without a leading dot. Enter 0 for no size filter."
   },
-  "extensionName": {
-    "message": "Extension name"
-  },
   "filterSize": {
     "message": "Min size filter"
   },
@@ -272,9 +269,6 @@
   "blockResourceTip": {
     "message": "Block unwanted resources"
   },
-  "flagTip": {
-    "message": "i: case-insensitive, g: global. Can combine."
-  },
   "regexSuffixTip": {
     "message": "Assign an extension from the matched URL. Optional; auto-detects if omitted (not always from the URL)."
   },
@@ -289,9 +283,6 @@
   },
   "otherFiles": {
     "message": "Other files"
-  },
-  "resetCopySettings": {
-    "message": "Reset copy settings"
   },
   "autoSetRefererCookieParams": {
     "message": "Auto set Referer and cookie parameters"
@@ -349,9 +340,6 @@
   },
   "otherSettings": {
     "message": "Other settings"
-  },
-  "resetOtherSettings": {
-    "message": "Reset other settings"
   },
   "previewMode": {
     "message": "Use local player to preview videos captured by the extension"
@@ -446,9 +434,6 @@
   "mqttDataFormatHelp": {
     "message": "Message body template. Supports tags."
   },
-  "mqttDataFormatVars": {
-    "message": "Available variables"
-  },
   "mqttDataFormatDefault": {
     "message": "Default format if empty"
   },
@@ -518,9 +503,6 @@
   "default": {
     "message": "Default"
   },
-  "goBack": {
-    "message": "Back"
-  },
   "openDir": {
     "message": "Open folder"
   },
@@ -533,9 +515,6 @@
   "autoCloserDownload": {
     "message": "Auto-close after download"
   },
-  "openInBgDownload": {
-    "message": "Open downloader in background"
-  },
   "m3u8Placeholder": {
     "message": "Paste an m3u8 URL"
   },
@@ -547,9 +526,6 @@
   },
   "nextLevelTip": {
     "message": "Open nested playlists"
-  },
-  "multipleAudios": {
-    "message": "Multiple audio tracks"
   },
   "multipleAudiosTip": {
     "message": "This stream has multiple audio tracks"
@@ -575,9 +551,6 @@
   "originalM3u8": {
     "message": "Original m3u8"
   },
-  "localM3u8": {
-    "message": "Local m3u8"
-  },
   "segmentList": {
     "message": "Segments"
   },
@@ -598,9 +571,6 @@
   },
   "invokeM3u8DL": {
     "message": "Invoke m3u8DL"
-  },
-  "copyCommand": {
-    "message": "Copy command"
   },
   "previewCommand": {
     "message": "Preview command"
@@ -634,9 +604,6 @@
   },
   "skipDecryption": {
     "message": "Skip decryption"
-  },
-  "newDownloader": {
-    "message": "New downloader"
   },
   "downloadRange": {
     "message": "Download range"
@@ -686,9 +653,6 @@
   "hevcTip": {
     "message": "HEVC / H.265 may not play in every browser."
   },
-  "hevcPreviewTip": {
-    "message": "HEVC preview may be unavailable. Download to play locally."
-  },
   "m3u8Info": {
     "message": "Stream info",
     "placeholders": {
@@ -720,9 +684,6 @@
   },
   "keyDownloadFailed": {
     "message": "Key download failed"
-  },
-  "savePrompt": {
-    "message": "Saved to Downloads. Check your download manager."
   },
   "close": {
     "message": "Close"
@@ -769,9 +730,6 @@
   "decryptionError": {
     "message": "Decryption error"
   },
-  "downloadFailed": {
-    "message": "Download failed"
-  },
   "retryDownload": {
     "message": "Retry download"
   },
@@ -786,9 +744,6 @@
   },
   "downloadComplete": {
     "message": "Download complete"
-  },
-  "retryingDownload": {
-    "message": "Retrying download"
   },
   "merging": {
     "message": "Merging"
@@ -810,9 +765,6 @@
         "example": "size"
       }
     }
-  },
-  "formatConversionError": {
-    "message": "Format conversion error. Try mp4 conversion, then retry."
   },
   "streamOnbeforeunload": {
     "message": "Pushing now. Do not close or reload..."
@@ -892,9 +844,6 @@
   "exit": {
     "message": "Exit"
   },
-  "unknownSize": {
-    "message": "Unknown size"
-  },
   "saving": {
     "message": "Saving"
   },
@@ -960,9 +909,6 @@
   },
   "addUrl": {
     "message": "Add URL"
-  },
-  "wildcards": {
-    "message": "Wildcards"
   },
   "blockUrlTips": {
     "message": "Supports * and ?"
@@ -1081,12 +1027,6 @@
   "languageHint": {
     "message": "Applies to Ruxget popup, options, and status text. Reload the popup after switching if needed."
   },
-  "languageSaved": {
-    "message": "Language saved"
-  },
-  "uiFloatingToggle": {
-    "message": "Download button"
-  },
   "uiPauseDetection": {
     "message": "Pause detection"
   },
@@ -1096,23 +1036,8 @@
   "uiOrdinaryDownload": {
     "message": "Regular file download…"
   },
-  "uiDesktopHelp": {
-    "message": "Desktop app install & connection"
-  },
-  "uiTakeoverMenu": {
-    "message": "Take over Chrome downloads…"
-  },
   "uiOpenDesktop": {
     "message": "Open Ruxget Desktop"
-  },
-  "uiAdvanced": {
-    "message": "Advanced tools"
-  },
-  "uiSiteSettings": {
-    "message": "Manage site permissions"
-  },
-  "uiHelp": {
-    "message": "Help & open-source info"
   },
   "uiOpenMenu": {
     "message": "Open menu"
@@ -1122,9 +1047,6 @@
   },
   "uiSaveAsTitle": {
     "message": "When a file is ready, Chrome opens the save dialog so you can pick a folder and name"
-  },
-  "uiDefaultLocation": {
-    "message": "Default location…"
   },
   "uiDefaultLocationTitle": {
     "message": "Open Chrome download settings to change the default folder"
@@ -1137,9 +1059,6 @@
   },
   "uiRefreshList": {
     "message": "Refresh video list"
-  },
-  "uiNetdiskTitle": {
-    "message": "Ruxget cloud drive download"
   },
   "uiNetdiskEnable": {
     "message": "Enable Ruxget download"
@@ -1180,9 +1099,6 @@
   "uiChooseAfterRead": {
     "message": "Choose after reading succeeds"
   },
-  "uiDownloadVideo": {
-    "message": "Download video"
-  },
   "uiAudioOnlySection": {
     "message": "Download audio only"
   },
@@ -1191,9 +1107,6 @@
   },
   "uiDownloadMp3": {
     "message": "Download MP3"
-  },
-  "uiSendDesktop": {
-    "message": "Send to desktop app"
   },
   "uiVideoUrl": {
     "message": "Video URL"
@@ -1256,10 +1169,7 @@
     "message": "Download with Ruxget"
   },
   "uiLinkContextNote": {
-    "message": "You can also right-click a link and choose “Download this link with Ruxget”."
-  },
-  "uiCopyLink": {
-    "message": "Copy link"
+    "message": "You can also right-click a link and choose “Download this link with Ruxget Desktop”."
   },
   "uiViewDetails": {
     "message": "View details"
@@ -1275,9 +1185,6 @@
   },
   "uiBiliYtAria": {
     "message": "Bilibili video download"
-  },
-  "uiDownloadProgressAria": {
-    "message": "Download progress"
   },
   "uiMediaListAria": {
     "message": "Media list"
@@ -1297,12 +1204,6 @@
   "uiHelpStartTitle": {
     "message": "Set up once, download anytime"
   },
-  "uiClickToDownload": {
-    "message": "Click to choose download"
-  },
-  "uiDragToMove": {
-    "message": "Drag to move"
-  },
   "uiHideFloating": {
     "message": "Hide button"
   },
@@ -1310,23 +1211,8 @@
     "message": "Show button",
     "description": "Popup toolbar: show floating download button"
   },
-  "uiRestoreFromToolbar": {
-    "message": "Restore from the toolbar"
-  },
-  "uiDownloading": {
-    "message": "Downloading"
-  },
-  "uiDownloadInterrupted": {
-    "message": "Download interrupted"
-  },
-  "uiSaved": {
-    "message": "Saved"
-  },
   "uiOpenFolder": {
     "message": "Open folder"
-  },
-  "uiRetry": {
-    "message": "Please try again"
   },
   "uiNetdiskShowBtn": {
     "message": "Show cloud-drive button"
@@ -1334,29 +1220,8 @@
   "uiNetdiskBtnOn": {
     "message": "Button enabled"
   },
-  "uiNetdiskTurnOn": {
-    "message": "Enable"
-  },
-  "uiBaiduAuthSaved": {
-    "message": "Baidu authorization saved"
-  },
-  "uiBaiduNeedAuth": {
-    "message": "Baidu downloads need authorization first (desktop uses a token, not Baidu cookies — same for public shares)."
-  },
-  "uiUnauthorized": {
-    "message": "Not authorized"
-  },
-  "uiFilesQueued": {
-    "message": "file(s) added to Ruxget download"
-  },
   "uiBrowserDownload": {
     "message": "Browser download"
-  },
-  "uiNetdiskDownload": {
-    "message": "Cloud drive download"
-  },
-  "uiDownloadSelected": {
-    "message": "Download selected files"
   },
   "uiContextDownloadLink": {
     "message": "Download this link with Ruxget Desktop"
@@ -1411,12 +1276,6 @@
   },
   "uiNetdiskSetupHint": {
     "message": "Install and connect the desktop app from \"Install & connect desktop\" below first."
-  },
-  "uiDesktopMissingConfirm": {
-    "message": "Ruxget desktop downloader was not found. Open GitHub to download it?"
-  },
-  "uiDesktopMissingError": {
-    "message": "Install the Ruxget desktop downloader and try again"
   },
   "uiNetdiskNeedDesktop": {
     "message": "Install Ruxget desktop 0.4.28 or newer before enabling cloud-drive download"
@@ -1481,9 +1340,6 @@
   "uiDesktopConnectionPending": {
     "message": "The desktop is not connected. You can continue downloading with Chrome"
   },
-  "flowPlaylist": {
-    "message": "Choose parts…"
-  },
   "flowVideo": {
     "message": "Video MP4"
   },
@@ -1531,12 +1387,6 @@
   },
   "uiDesktopSettings": {
     "message": "Install & set up Ruxget Desktop…"
-  },
-  "uiMenuSites": {
-    "message": "Site access"
-  },
-  "uiMenuHelp": {
-    "message": "Help"
   },
   "uiOfferAria": {
     "message": "Ruxget Desktop"

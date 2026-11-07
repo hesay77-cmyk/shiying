@@ -4,7 +4,8 @@ document.querySelector('#desktopHelp')?.addEventListener('click',()=>chrome.tabs
 // Brings the desktop window forward (starting the app if needed). Not installed or not connected: the shared prompt offers the download page.
 document.querySelector('#openDesktop')?.addEventListener('click',async()=>{
     const menu=document.querySelector('.menu');if(menu)menu.open=false;
-    try{await ShiyingNative.send(()=>({action:'show'}));window.close();}
+    // The toolbar popup (or a tab) closes so the desktop window is in view; the side panel stays open.
+    try{await ShiyingNative.send(()=>({action:'show'}));if(['popup','tab'].some(type=>chrome.extension?.getViews?.({type}).includes(window)))window.close();}
     catch(error){if(!error.cancelled&&typeof notify==='function')notify(error.message||String(error));}
 });
 const pick=(zh,en)=>window.RuxgetI18n?RuxgetI18n.pick(zh,en):zh;

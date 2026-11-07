@@ -35,7 +35,7 @@ const ShiyingPlatformUI = (() => {
     async function sendDesktop(){
         if(!catalog||starting)return;starting=true;updateActions();$('#platformError').hidden=true;$('#platformNote').textContent='';
         try{await ShiyingNative.send(desktopPayload);desktopState='ready';$('#platformNote').textContent=pick('已交给 Ruxget 桌面版，请在桌面窗口确认下载','Sent to Ruxget Desktop. Confirm it in the app window.');}
-        catch(error){if(error.cancelled){desktopState=error.connectionIssue||desktopState;if(error.desktopAction==='chrome')setMethod('chrome');return;}$('#platformError').textContent=RuxgetText.tr(error.message);$('#platformError').hidden=false;}
+        catch(error){if(error.cancelled){desktopState=error.connectionIssue||desktopState;if(error.desktopAction==='chrome'||error.connectionIssue){setMethod('chrome');$('#platformNote').textContent=pick('没有连上桌面版，已改回用浏览器下载；需要时再从 ▾ 里选桌面版','Ruxget Desktop isn’t connected, so downloads go back to the browser; pick the desktop app from ▾ when it’s ready');}return;}$('#platformError').textContent=RuxgetText.tr(error.message);$('#platformError').hidden=false;}
         finally{starting=false;updateActions();}
     }
     function desktopPayload(){if(!catalog)throw new Error('请先读取视频');return send('shiyingPlatformDesktop',{id:catalog.id,format:selectedFormat(),height:Number($('#platformQuality').value)});}
@@ -188,6 +188,8 @@ const ShiyingPlatformUI = (() => {
             $('#platformQuality').replaceChildren(new Option(pick('读取成功后选择','Choose after reading'), ''));
         } finally {if (serial === generation){$('#platformRead').disabled = false;updateActions();}}
     }
+    // A share text from an app or site (title plus link) becomes just the link as soon as it is pasted.
+    $('#platformURL').addEventListener('input', () => {const field=$('#platformURL'),value=field.value.trim(),link=value.match(/https?:\/\/[^\s<>"'，。、；）)】」]+/i);if(link&&link[0]!==value)field.value=link[0];});
     $('#platformForm').addEventListener('submit', event => {event.preventDefault();const url=$('#platformURL').value.trim();if(new URL(url).searchParams.has('list')&&!new URL(url).searchParams.has('v')){window.ShiyingCollectionUI.open(url,true);return;}read();});
     // Some video servers need the page as Referer; that requires an optional permission for them, asked once per site.
     function serverAccess(){const origins=catalog?.mediaOrigins||[];return origins.length?chrome.permissions.request({origins}).catch(()=>false):Promise.resolve(true);}

@@ -203,9 +203,6 @@
   "suffixTip": {
     "message": "填写不含'.'的后缀, 不过滤大小填0"
   },
-  "extensionName": {
-    "message": "扩展名"
-  },
   "filterSize": {
     "message": "过滤大小"
   },
@@ -272,9 +269,6 @@
   "blockResourceTip": {
     "message": "屏蔽不想出现的资源"
   },
-  "flagTip": {
-    "message": "i: 忽略大小写, g: 全局搜索。也可为空。"
-  },
   "regexSuffixTip": {
     "message": "为获取到的URL指定一个后缀名, 可留空，会自动截取后缀名(很多文件并不存在后缀名)"
   },
@@ -289,9 +283,6 @@
   },
   "otherFiles": {
     "message": "其他文件"
-  },
-  "resetCopySettings": {
-    "message": "重置复制设置"
   },
   "autoSetRefererCookieParams": {
     "message": "自动设置Referer cookie参数"
@@ -349,9 +340,6 @@
   },
   "otherSettings": {
     "message": "其他设置"
-  },
-  "resetOtherSettings": {
-    "message": "重置其他设置"
   },
   "previewMode": {
     "message": "使用本地播放器调用协议打开视频预览"
@@ -446,9 +434,6 @@
   "mqttDataFormatHelp": {
     "message": "{\"url\": \"$${url}\", \"title\": \"$${title}\", \"type\": \"$${type}\", \"ext\": \"$${ext}\", \"timestamp\": \"$${timestamp}\"}"
   },
-  "mqttDataFormatVars": {
-    "message": "可用变量"
-  },
   "mqttDataFormatDefault": {
     "message": "留空则使用默认JSON格式"
   },
@@ -518,9 +503,6 @@
   "default": {
     "message": "默认"
   },
-  "goBack": {
-    "message": "返回上一页"
-  },
   "openDir": {
     "message": "打开下载目录"
   },
@@ -533,9 +515,6 @@
   "autoCloserDownload": {
     "message": "下载完自动关闭页面"
   },
-  "openInBgDownload": {
-    "message": "后台打开下载器页面"
-  },
   "m3u8Placeholder": {
     "message": "请输入m3u8连接 / m3u8内容 / 切片清单 / $${range}标签"
   },
@@ -547,9 +526,6 @@
   },
   "nextLevelTip": {
     "message": "该m3u8文件中嵌套多个m3u8文件"
-  },
-  "multipleAudios": {
-    "message": "多个音频"
   },
   "multipleAudiosTip": {
     "message": "该m3u8文件中嵌套多个音频"
@@ -575,9 +551,6 @@
   "originalM3u8": {
     "message": "原始m3u8"
   },
-  "localM3u8": {
-    "message": "本地m3u8"
-  },
   "segmentList": {
     "message": "切片列表"
   },
@@ -598,9 +571,6 @@
   },
   "invokeM3u8DL": {
     "message": "调用m3u8DL"
-  },
-  "copyCommand": {
-    "message": "复制命令"
   },
   "previewCommand": {
     "message": "预览命令"
@@ -634,9 +604,6 @@
   },
   "skipDecryption": {
     "message": "跳过解密"
-  },
-  "newDownloader": {
-    "message": "新下载器"
   },
   "downloadRange": {
     "message": "下载范围"
@@ -686,9 +653,6 @@
   "hevcTip": {
     "message": "HEVC/H.265编码切片文件 只支持在线ffmpeg转码"
   },
-  "hevcPreviewTip": {
-    "message": "HEVC/H.265编码切片文件 不支持预览"
-  },
   "m3u8Info": {
     "message": "共 $num$ 个文件, 总时长 $time$",
     "placeholders": {
@@ -720,9 +684,6 @@
   },
   "keyDownloadFailed": {
     "message": "密钥下载失败"
-  },
-  "savePrompt": {
-    "message": "已保存到硬盘, 请查看浏览器已下载内容"
   },
   "close": {
     "message": "关闭"
@@ -768,9 +729,6 @@
   "decryptionError": {
     "message": "解密错误"
   },
-  "downloadFailed": {
-    "message": "下载失败"
-  },
   "retryDownload": {
     "message": "重新下载"
   },
@@ -785,9 +743,6 @@
   },
   "downloadComplete": {
     "message": "下载完成"
-  },
-  "retryingDownload": {
-    "message": "正在重新下载"
   },
   "merging": {
     "message": "合并中"
@@ -807,9 +762,6 @@
         "content": "$1"
       }
     }
-  },
-  "formatConversionError": {
-    "message": "格式转换错误, 请取消mp4转换, 重新下载."
   },
   "streamOnbeforeunload": {
     "message": "正在推流, 关闭后停止下载..."
@@ -887,9 +839,6 @@
   "exit": {
     "message": "退出"
   },
-  "unknownSize": {
-    "message": "未知大小"
-  },
   "saving": {
     "message": "正在保存"
   },
@@ -955,9 +904,6 @@
   },
   "addUrl": {
     "message": "添加网址"
-  },
-  "wildcards": {
-    "message": "通配符"
   },
   "blockUrlTips": {
     "message": "支持通配符 * 和 ?"
@@ -1076,12 +1022,6 @@
   "languageHint": {
     "message": "作用于 Ruxget 弹窗、设置页和状态提示。切换后如未立即生效，重新打开弹窗即可。"
   },
-  "languageSaved": {
-    "message": "语言已保存"
-  },
-  "uiFloatingToggle": {
-    "message": "下载浮钮"
-  },
   "uiPauseDetection": {
     "message": "暂停识别"
   },
@@ -1091,23 +1031,8 @@
   "uiOrdinaryDownload": {
     "message": "普通文件下载…"
   },
-  "uiDesktopHelp": {
-    "message": "桌面版安装与连接"
-  },
-  "uiTakeoverMenu": {
-    "message": "接管 Chrome 下载…"
-  },
   "uiOpenDesktop": {
     "message": "打开 Ruxget 桌面版"
-  },
-  "uiAdvanced": {
-    "message": "高级工具"
-  },
-  "uiSiteSettings": {
-    "message": "管理网站权限"
-  },
-  "uiHelp": {
-    "message": "使用说明与开源信息"
   },
   "uiOpenMenu": {
     "message": "打开设置"
@@ -1117,9 +1042,6 @@
   },
   "uiSaveAsTitle": {
     "message": "新下载的文件准备好后，由 Chrome 打开保存窗口，可选择文件夹和文件名"
-  },
-  "uiDefaultLocation": {
-    "message": "默认位置…"
   },
   "uiDefaultLocationTitle": {
     "message": "打开 Chrome 下载设置，更改默认保存文件夹"
@@ -1132,9 +1054,6 @@
   },
   "uiRefreshList": {
     "message": "重新读取视频列表"
-  },
-  "uiNetdiskTitle": {
-    "message": "Ruxget 网盘下载"
   },
   "uiNetdiskEnable": {
     "message": "开启 Ruxget 下载"
@@ -1175,9 +1094,6 @@
   "uiChooseAfterRead": {
     "message": "读取成功后选择"
   },
-  "uiDownloadVideo": {
-    "message": "下载视频"
-  },
   "uiAudioOnlySection": {
     "message": "单独下载声音"
   },
@@ -1186,9 +1102,6 @@
   },
   "uiDownloadMp3": {
     "message": "下载 MP3"
-  },
-  "uiSendDesktop": {
-    "message": "交给桌面版下载"
   },
   "uiVideoUrl": {
     "message": "视频网址"
@@ -1251,10 +1164,7 @@
     "message": "用 Ruxget 下载"
   },
   "uiLinkContextNote": {
-    "message": "也可以右键网页中的下载链接，选择“用 Ruxget 下载此链接”。"
-  },
-  "uiCopyLink": {
-    "message": "复制链接"
+    "message": "也可以右键网页中的下载链接，选择“用 Ruxget 桌面版下载此链接”。"
   },
   "uiViewDetails": {
     "message": "查看详情"
@@ -1270,9 +1180,6 @@
   },
   "uiBiliYtAria": {
     "message": "B站视频下载"
-  },
-  "uiDownloadProgressAria": {
-    "message": "下载进度"
   },
   "uiMediaListAria": {
     "message": "媒体列表"
@@ -1292,12 +1199,6 @@
   "uiHelpStartTitle": {
     "message": "第一次装好，之后直接下载"
   },
-  "uiClickToDownload": {
-    "message": "点击选择下载"
-  },
-  "uiDragToMove": {
-    "message": "拖动调整位置"
-  },
   "uiHideFloating": {
     "message": "隐藏浮钮"
   },
@@ -1305,23 +1206,8 @@
     "message": "显示浮钮",
     "description": "弹窗顶栏：显示网页下载浮钮"
   },
-  "uiRestoreFromToolbar": {
-    "message": "可从工具栏恢复"
-  },
-  "uiDownloading": {
-    "message": "下载中"
-  },
-  "uiDownloadInterrupted": {
-    "message": "下载中断"
-  },
-  "uiSaved": {
-    "message": "已保存"
-  },
   "uiOpenFolder": {
     "message": "打开文件夹"
-  },
-  "uiRetry": {
-    "message": "请重试"
   },
   "uiNetdiskShowBtn": {
     "message": "显示网盘按钮"
@@ -1329,29 +1215,8 @@
   "uiNetdiskBtnOn": {
     "message": "按钮已开启"
   },
-  "uiNetdiskTurnOn": {
-    "message": "开启"
-  },
-  "uiBaiduAuthSaved": {
-    "message": "百度授权已保存"
-  },
-  "uiBaiduNeedAuth": {
-    "message": "百度下载需先点下方「百度授权」。桌面版用 token，不传百度 Cookie；公开分享页也一样。"
-  },
-  "uiUnauthorized": {
-    "message": "未授权"
-  },
-  "uiFilesQueued": {
-    "message": "个文件加入 Ruxget 下载"
-  },
   "uiBrowserDownload": {
     "message": "浏览器下载"
-  },
-  "uiNetdiskDownload": {
-    "message": "网盘下载"
-  },
-  "uiDownloadSelected": {
-    "message": "下载当前勾选的文件"
   },
   "uiContextDownloadLink": {
     "message": "用 Ruxget 桌面版下载此链接"
@@ -1406,12 +1271,6 @@
   },
   "uiNetdiskSetupHint": {
     "message": "请先通过下方“安装与连接桌面版”完成安装。"
-  },
-  "uiDesktopMissingConfirm": {
-    "message": "未检测到 Ruxget 桌面下载器。是否前往 GitHub 下载安装？"
-  },
-  "uiDesktopMissingError": {
-    "message": "请先安装 Ruxget 桌面下载器后再试"
   },
   "uiNetdiskNeedDesktop": {
     "message": "请先安装 Ruxget 桌面版 0.4.28 或更新版本，再开启网盘下载"
@@ -1476,9 +1335,6 @@
   "uiDesktopConnectionPending": {
     "message": "桌面连接尚未完成，可以继续使用 Chrome 下载"
   },
-  "flowPlaylist": {
-    "message": "分 P 勾选下载…"
-  },
   "flowVideo": {
     "message": "视频 MP4"
   },
@@ -1526,12 +1382,6 @@
   },
   "uiDesktopSettings": {
     "message": "安装与设置桌面版…"
-  },
-  "uiMenuSites": {
-    "message": "网站权限"
-  },
-  "uiMenuHelp": {
-    "message": "使用说明"
   },
   "uiOfferAria": {
     "message": "Ruxget 桌面版"

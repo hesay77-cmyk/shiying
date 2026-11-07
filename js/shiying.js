@@ -15,7 +15,8 @@ function notify(text) {
     toastTimer = setTimeout(() => $('#toast').hidden = true, 3300);
 }
 function message(Message, extra = {}) { return chrome.runtime.sendMessage({Message, tabId, ...extra}); }
-function failure(error) { if(error.cancelled)return;$('#error').textContent = RuxgetText.tr(error.message || String(error)); $('#error').hidden = false; }
+// An error shows at once, on 本页视频 where it is written (the tabs otherwise wait for the page to be read).
+function failure(error) { if(error.cancelled)return;const text=RuxgetText.tr(error.message || String(error));$('#error').textContent = text; $('#error').hidden = false; document.body.dataset.decided = '1'; if(window.RuxgetTabs?.current()==='downloads'&&typeof notify==='function')notify(text); }
 function onClick(element, action) { element.addEventListener('click', () => Promise.resolve().then(action).catch(failure)); }
 async function copy(url) { await navigator.clipboard.writeText(url); notify('链接已复制'); }
 async function quality(data, card) {
@@ -184,7 +185,8 @@ function render() {
 }
 async function refresh() {
     $('#error').hidden = true;
-    const result = await message('getData');
+    const forTab = tabId, result = await message('getData');
+    if (forTab !== tabId) return;
     if (result === 'error') throw new Error('识别服务正在启动，请稍后点击刷新');
     media = Array.isArray(result) ? result : [];
     // Read the page's players first (briefly), so the list opens already sorted instead of jumping.
@@ -198,7 +200,9 @@ async function initialize() {
     tabId = tab.id;
     currentSite = tab;
     pageElements = []; showMinor = false;
-    $('#pageTitle').textContent = tab.title || '当前网页';
+    $('#pageTitle').textContent = tab.title || (window.RuxgetI18n ? RuxgetI18n.pick('当前网页', 'This page') : '当前网页');
+    // Side panel: the netdisk card follows the page too.
+    document.dispatchEvent(new CustomEvent('ruxget-page-changed', {detail: tab}));
     const thisPage = window.RuxgetI18n ? RuxgetI18n.pick('当前网页', 'This page') : '当前网页';
     try { $('#pageHost').textContent = new URL(tab.url).hostname || thisPage; } catch { $('#pageHost').textContent = thisPage; }
     // Labels below are drawn in the chosen language, so wait for it first.
@@ -212,6 +216,8 @@ async function initialize() {
     ensureFloatingControl().catch(()=>{});
     await refresh();
     await updateSiteAccess();
+    // 0.4.69: open on "本页视频" when there is something to download here, otherwise on "已下载".
+    window.RuxgetTabs?.decide();
 }
 async function updateSiteAccess() {
     await ShiyingAccess.sync();
@@ -272,8 +278,11 @@ chrome.downloads.onChanged.addListener(async event => {
         if (card && card.dataset.download === String(event.id)) { card.dataset.opens = String(event.id); card.title = RuxgetI18n.pick('双击打开文件', 'Double-click to open the file'); }
     }
 });
-chrome.tabs.onActivated.addListener(event => {
-    if (!new URLSearchParams(location.search).has('tabId')) { cards.clear(); downloads.clear(); initialize().catch(failure); }
+chrome.tabs.onActivated.addListener(async event => {
+    if (new URLSearchParams(location.search).has('tabId')) return;
+    const here = await chrome.windows.getCurrent().catch(() => null);
+    if (here && event.windowId !== here.id) return;
+    cards.clear(); downloads.clear(); initialize().catch(failure);
 });
 chrome.tabs.onUpdated?.addListener((changedId, info) => {
     if(changedId!==tabId || !info.url || info.url===currentSite?.url)return;

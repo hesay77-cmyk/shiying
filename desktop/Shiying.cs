@@ -100,12 +100,44 @@ static class WebMark {
         Task.Run(()=>{try{if(!Directory.Exists(folder))return;foreach(var file in Directory.EnumerateFiles(folder,"*",SearchOption.AllDirectories).Take(10000))File(file,null);}catch(Exception){}});
     }
 }
+// Opens a finished download (plays the video, runs the installer) the same way from the desktop window and from the
+// extension's "最近下载" list. Returns null when it opened, "" when the person cancelled Windows' own prompt, otherwise
+// the notice to show. fromWindow: the desktop window has an "打开文件夹" button to point at; the extension has not.
+static class SavedFile {
+    [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool AllowSetForegroundWindow(int processId);
+    // Tests only: a record file inside the app's own folder (see Open).
+    static string Record(){string record=Environment.GetEnvironmentVariable("RUXGET_OPEN_RECORD");try{return !String.IsNullOrEmpty(record)&&Path.GetFullPath(record).StartsWith(Path.GetFullPath(Util.Root).TrimEnd('\\')+"\\",StringComparison.OrdinalIgnoreCase)?record:null;}catch(Exception){return null;}}
+    // Shows a finished download selected in its Explorer folder (a BT folder opens itself). Nothing is run.
+    public static string Reveal(string path){
+        bool file=!String.IsNullOrEmpty(path)&&System.IO.File.Exists(path),folder=!file&&!String.IsNullOrEmpty(path)&&Directory.Exists(path);
+        if(!file&&!folder)return "文件已不在原来的位置，可能被移动或删除了";
+        string record=Record();if(record!=null){System.IO.File.AppendAllText(record,"reveal "+path+"\n",Encoding.UTF8);return null;}
+        AllowSetForegroundWindow(-1);
+        try{System.Diagnostics.Process.Start("explorer.exe",file?"/select,"+Util.Quote(path):Util.Quote(path));return null;}
+        catch(Exception ex){return "打不开这个文件夹："+ex.Message;}
+    }
+    public static string Open(string path,string url,bool fromWindow){
+        bool file=!String.IsNullOrEmpty(path)&&System.IO.File.Exists(path),folder=!file&&!String.IsNullOrEmpty(path)&&Directory.Exists(path);
+        if(!file&&!folder)return "文件已不在原来的位置，可能被移动或删除了";
+        // Older tasks (before 0.4.68) have no "from the internet" mark yet. Add it now, so SmartScreen checks programs;
+        // a program that still can't be marked (e.g. on a FAT32 USB stick) is only shown in its folder, never run.
+        if(file&&!WebMark.Has(path))WebMark.File(path,url);
+        string record=Record();
+        if(record!=null){System.IO.File.AppendAllText(record,path+"\n",Encoding.UTF8);return null;}
+        if(file&&WebMark.IsRunnable(path)&&!WebMark.Has(path)){try{System.Diagnostics.Process.Start("explorer.exe","/select,"+Util.Quote(path));}catch(Exception){}return "这个程序没有“来自网络”的安全标记，已打开它所在的文件夹，请确认后再运行";}
+        // Opened from the extension, this process was started for Chrome, which has the foreground: let the player or
+        // installer come to the front instead of opening behind Chrome.
+        if(!fromWindow)AllowSetForegroundWindow(-1);
+        try{if(folder)System.Diagnostics.Process.Start("explorer.exe",Util.Quote(path));else System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path){UseShellExecute=true,WorkingDirectory=Path.GetDirectoryName(path)});return null;}
+        catch(System.ComponentModel.Win32Exception ex){if(ex.NativeErrorCode==1223)return "";return ex.NativeErrorCode==1155?(fromWindow?"没有能打开这种文件的程序，可以点“打开文件夹”":"没有能打开这种文件的程序"):"打不开这个文件："+ex.Message;}
+    }
+}
 static class Util {
     public const string SystemProxyMode="system";
     // Windows proxy for HTTPS traffic, as http://host:port, or "" when the system proxy is off or uses only a PAC script.
     public static string SystemProxy(){try{using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Internet Settings")){if(key==null||Convert.ToInt32(key.GetValue("ProxyEnable",0))!=1)return "";string server=Convert.ToString(key.GetValue("ProxyServer","")).Trim();if(server.Contains("=")){var parts=server.Split(';').Select(p=>p.Split(new[]{'='},2)).Where(p=>p.Length==2).ToDictionary(p=>p[0].Trim().ToLowerInvariant(),p=>p[1].Trim());server=parts.ContainsKey("https")?parts["https"]:parts.ContainsKey("http")?parts["http"]:"";}if(server.Length==0)return "";if(!server.Contains("://"))server="http://"+server;Uri uri;return Uri.TryCreate(server,UriKind.Absolute,out uri)&&(uri.Scheme=="http"||uri.Scheme=="https"||uri.Scheme.StartsWith("socks"))?server:"";}}catch{return "";}}
     public static void CheckProxy(string value){if(value.Length>0&&value!=SystemProxyMode)Url(value);}
-    public const string Version="0.4.68";
+    public const string Version="0.4.69";
     // Links added without a browser's own name (pasted, batch, magnet-free files) go out with an ordinary browser name.
     // Many CDNs refuse the download engine's default "aria2/x.y": Aliyun's answers "403 denied by UA ACL = blacklist" (0.4.63).
     public const string BrowserAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
@@ -120,7 +152,7 @@ static class Util {
     }
     public static string Name(string value) {
         value = Regex.Replace(value ?? "下载文件", "[<>:\"/\\\\|?*\\x00-\\x1f]", "_").Trim().TrimEnd('.');
-        if (value.Length > 140) {string extension=Path.GetExtension(value);if(extension.Length>16)extension="";value=value.Substring(0,140-extension.Length).TrimEnd(' ','.')+extension;}
+        if (value.Length > 140) {string extension=Path.GetExtension(value);if(extension.Length>16)extension="";int cut=140-extension.Length;if(Char.IsHighSurrogate(value[cut-1]))cut--;value=value.Substring(0,cut).TrimEnd(' ','.')+extension;}
         if (Regex.IsMatch(value, @"^(CON|PRN|AUX|NUL|COM[0-9]|LPT[0-9])(\.|$)", RegexOptions.IgnoreCase)) value = "_" + value;
         return String.IsNullOrEmpty(value) ? "下载文件" : value;
     }
@@ -138,18 +170,42 @@ static class Util {
     }
     public static void Atomic(string path, object value) {
         Directory.CreateDirectory(Path.GetDirectoryName(path));
-        File.WriteAllText(path + ".tmp", Json().Serialize(value), new UTF8Encoding(false));
-        if (System.IO.File.Exists(path)) System.IO.File.Replace(path+".tmp",path,path+".bak"); else System.IO.File.Move(path+".tmp",path);
+        string text = Json().Serialize(value);
+        // 0.4.69: another program reading the file right now (the extension's open/reveal, antivirus, backup) used to fail
+        // the save, and a finished download then showed "失败". Wait for it briefly instead.
+        for (int attempt = 0; ; attempt++) {
+            try {
+                File.WriteAllText(path + ".tmp", text, new UTF8Encoding(false));
+                if (System.IO.File.Exists(path)) System.IO.File.Replace(path+".tmp",path,path+".bak"); else System.IO.File.Move(path+".tmp",path);
+                return;
+            } catch (Exception ex) { if (!(ex is IOException || ex is UnauthorizedAccessException) || attempt >= 40) throw; Thread.Sleep(50); }
+        }
     }
     public static string SafeError(string text) {
         text=Regex.Replace(text ?? "下载失败，请重试", @"https?://[^\s\""<>]+", "[下载地址]");
-        if(Regex.IsMatch(text,"Resource not found|404|HTTP Error 410",RegexOptions.IgnoreCase))return "链接不存在或已过期，请重新获取下载地址";
-        if(Regex.IsMatch(text,"403|Forbidden",RegexOptions.IgnoreCase))return "网站拒绝了下载请求，请在原网页重新读取并发送";
-        if(Regex.IsMatch(text,"429|Too Many Requests",RegexOptions.IgnoreCase))return "网站暂时限制请求，请稍后再试";
+        if(Regex.IsMatch(text,"Resource not found",RegexOptions.IgnoreCase)||HttpStatus(text,"404","Not Found")||HttpStatus(text,"410","Gone"))return "链接不存在或已过期，请重新获取下载地址";
+        if(HttpStatus(text,"403","Forbidden"))return "网站拒绝了下载请求，请在原网页重新读取并发送";
+        if(Regex.IsMatch(text,"Too Many Requests",RegexOptions.IgnoreCase)||HttpStatus(text,"429","Too Many Requests"))return "网站暂时限制请求，请稍后再试";
+        if(Regex.IsMatch(text,"Got EOF from the server",RegexOptions.IgnoreCase))return "服务器中途断开了连接，可以点重试接着下载";
         if(Regex.IsMatch(text,"No URI available",RegexOptions.IgnoreCase))return "服务器不再提供数据，所有连接都失败了。可以稍后重试，或在原网页重新获取下载地址";
         // aria2 asked for one range and the server sent a shorter one: it is holding part of the file back.
         if(Regex.IsMatch(text,"Invalid range header",RegexOptions.IgnoreCase))return "服务器给出的数据比请求的少，可能只肯提供文件的一部分。可以稍后重试，或在原网页重新获取下载地址";
         return text.Substring(0,Math.Min(500,text.Length));
+    }
+    // An HTTP status in an error message ("HTTP Error 404", "status=403", "(429) Too Many Requests", "404 Not Found"),
+    // never just the digits inside a path or file name.
+    static bool HttpStatus(string text,string code,string words){return Regex.IsMatch(text,@"(?:HTTP(?:\s*Error)?|status(?:\s*code)?|response(?:\s*code)?)\D{0,4}"+code+@"(?!\d)|\("+code+@"\)|(?<!\d)"+code+@"\s*:?\s*"+words,RegexOptions.IgnoreCase);}
+    // Children (yt-dlp, ffmpeg) end with Ruxget even when it is killed: they belong to a job object closed with it.
+    static IntPtr childJob=IntPtr.Zero;
+    [System.Runtime.InteropServices.DllImport("kernel32.dll",CharSet=System.Runtime.InteropServices.CharSet.Unicode)] static extern IntPtr CreateJobObject(IntPtr attributes,string name);
+    [System.Runtime.InteropServices.DllImport("kernel32.dll")] static extern bool SetInformationJobObject(IntPtr job,int infoClass,ref JobLimits info,int length);
+    [System.Runtime.InteropServices.DllImport("kernel32.dll")] static extern bool AssignProcessToJobObject(IntPtr job,IntPtr process);
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)] struct JobLimits{public long PerProcessUserTimeLimit,PerJobUserTimeLimit;public uint LimitFlags;public UIntPtr MinimumWorkingSetSize,MaximumWorkingSetSize;public uint ActiveProcessLimit;public UIntPtr Affinity;public uint PriorityClass,SchedulingClass;public ulong ReadOperationCount,WriteOperationCount,OtherOperationCount,ReadTransferCount,WriteTransferCount,OtherTransferCount;public UIntPtr ProcessMemoryLimit,JobMemoryLimit,PeakProcessMemoryUsed,PeakJobMemoryUsed;}
+    public static void EndWithApp(Process p){
+        try{
+            lock(typeof(Util)){if(childJob==IntPtr.Zero){var job=CreateJobObject(IntPtr.Zero,null);var limits=new JobLimits{LimitFlags=0x2000};if(job!=IntPtr.Zero&&SetInformationJobObject(job,9,ref limits,System.Runtime.InteropServices.Marshal.SizeOf(typeof(JobLimits))))childJob=job;}}
+            if(childJob!=IntPtr.Zero)AssignProcessToJobObject(childJob,p.Handle);
+        }catch(Exception){/* Best effort: the child still ends with the task as before. */}
     }
     public static void KillTree(Process p) {
         if (p == null) return;
@@ -169,12 +225,16 @@ static class Util {
         return "其他";
     }
     public static string OutputFolder(Download job,string name=null){if(TorrentInfo.IsBt(job)&&!String.IsNullOrEmpty(job.BtFolder))return job.BtFolder;return job.AutoCategorize?Path.Combine(job.Folder,Category(job.Kind,name??job.Title)):job.Folder;}
-    public static string PlaceFile(string source, string folder, string outputName=null) {
+    // taken: names another task still points at (its file may have been deleted by hand). 0.4.69: they are skipped too,
+    // so two tasks never share one file and deleting one task's file never touches another's.
+    public static string PlaceFile(string source, string folder, string outputName=null, Func<string,bool> taken=null) {
         Directory.CreateDirectory(folder);
         string selected=Name(outputName??Path.GetFileName(source));
         string name = Name(Path.GetFileNameWithoutExtension(selected)), ext = Path.GetExtension(selected);
+        if (Path.GetFileNameWithoutExtension(selected).Length == 0) { name = selected; ext = ""; }
         for (int n=0; n<10000; n++) {
             string target=Path.Combine(folder,name+(n==0?"":" ("+n+")")+ext);
+            if (taken!=null&&taken(target)) continue;
             try { System.IO.File.Move(source,target); return target; }
             catch (IOException) { if (!System.IO.File.Exists(target)) throw; }
         }
@@ -211,18 +271,25 @@ public partial class Manager : IDisposable {
         try{return load(path);}
         catch(Exception primary){
             try{var value=load(path+".bak");System.IO.File.Copy(path,path+".damaged-"+DateTime.UtcNow.Ticks);RecoveryNotice="任务或设置记录损坏，已从上次备份恢复；损坏文件已另存保留。";return value;}
-            catch{throw new Exception("无法读取 "+Path.GetFileName(path)+"，原文件已保留，请检查同目录备份。",primary);}
+            catch{
+                if(System.IO.File.Exists(path+".bak"))throw new Exception("无法读取 "+Path.GetFileName(path)+"，原文件已保留，请检查同目录备份。",primary);
+                string aside=path+".damaged-"+DateTime.UtcNow.Ticks;System.IO.File.Move(path,aside);
+                RecoveryNotice="任务或设置记录损坏，又没有备份，已另存为 "+Path.GetFileName(aside)+"，并从空白开始。";return null;
+            }
         }
     }
     public Manager(string directory) {
         dataRoot=directory; Directory.CreateDirectory(dataRoot);
         string config=Path.Combine(dataRoot,"settings.json"), state=Path.Combine(dataRoot,"tasks.json");
-        Config = System.IO.File.Exists(config) ? ReadSaved<Settings>(config) : new Settings();
+        Config = (System.IO.File.Exists(config) ? ReadSaved<Settings>(config) : null) ?? new Settings();
         // Settings saved before 0.4.52 have no FollowBrowser: a folder the user already chose stays theirs.
         if(System.IO.File.Exists(config)&&!System.IO.File.ReadAllText(config).Contains("\"FollowBrowser\""))Config.FollowBrowser=String.Equals(Path.GetFullPath(Config.Folder??""),Path.GetFullPath(new Settings().Folder),StringComparison.OrdinalIgnoreCase);
         NormalizeSettings();
+        if (!System.IO.File.Exists(state) && System.IO.File.Exists(state + ".bak")) {
+            try { System.IO.File.Copy(state + ".bak", state); RecoveryNotice = "任务记录不见了，已从上次备份恢复。"; } catch (IOException) { }
+        }
         if (System.IO.File.Exists(state)) {
-            jobs=ReadSaved<List<Download>>(state);
+            jobs=ReadSaved<List<Download>>(state)??new List<Download>();
             foreach (var job in jobs){if(TorrentInfo.IsBt(job)){if(job.Status=="已完成"&&job.BtSelected==null)job.BtSelected=(job.BtFiles??new TorrentFileInfo[0]).Select(f=>f.Index).ToArray();SyncBtSelection(job);if(job.HasMetadata&&!HasBtSelection(job)&&job.Status!="已完成"){job.Status="等待选文件";job.Speed="";continue;}}if(job.Status!="已完成"&&job.Status!="失败"){job.Status="已暂停";job.Speed="";}else if(job.Status=="已完成"&&(job.Transfer==null||job.Transfer.Total<0))TransferData.Complete(job);}
         }
         foreach(var job in jobs){job.BtReason="";job.BtAdvice="";}
@@ -326,7 +393,7 @@ public partial class Manager : IDisposable {
         string exe=Path.Combine(Util.Root,"bin","aria2c.exe"); if(!System.IO.File.Exists(exe))throw new Exception("缺少 aria2c.exe，请使用完整桌面版目录");
         var listener=new TcpListener(IPAddress.Loopback,0); listener.Start(); int port=((IPEndPoint)listener.LocalEndpoint).Port; listener.Stop();
         secret=Guid.NewGuid().ToString("N"); rpcUrl="http://127.0.0.1:"+port+"/jsonrpc";
-        aria=Util.Start(exe,new[]{"--no-conf=true","--no-netrc=true","--enable-rpc=true","--rpc-listen-all=false","--rpc-listen-port="+port,"--rpc-secret="+secret,"--max-concurrent-downloads=4","--follow-torrent=false","--follow-metalink=false","--enable-dht=false","--enable-dht6=false","--enable-peer-exchange=false","--save-session-interval=0","--auto-save-interval=1","--check-certificate=true","--console-log-level=error","--download-result=hide","--enable-color=false"});
+        aria=Util.Start(exe,new[]{"--stop-with-process="+Process.GetCurrentProcess().Id,"--no-conf=true","--no-netrc=true","--enable-rpc=true","--rpc-listen-all=false","--rpc-listen-port="+port,"--rpc-secret="+secret,"--max-concurrent-downloads=4","--follow-torrent=false","--follow-metalink=false","--enable-dht=false","--enable-dht6=false","--enable-peer-exchange=false","--save-session-interval=0","--auto-save-interval=1","--check-certificate=true","--console-log-level=error","--download-result=hide","--enable-color=false"});
         aria.OutputDataReceived+=(s,e)=>{}; aria.ErrorDataReceived+=(s,e)=>{};
         try{aria.Start();}catch{aria.Dispose();aria=null;throw;} aria.BeginOutputReadLine(); aria.BeginErrorReadLine();
         for(int n=0;n<30;n++){try{Rpc("getVersion");return;}catch{if(aria.HasExited)break;Thread.Sleep(100);}}
@@ -449,11 +516,11 @@ public partial class Manager : IDisposable {
             else if(e.Data.Length>0)last=Util.SafeError(e.Data);
         }};
         child.OutputDataReceived+=receive; child.ErrorDataReceived+=receive;
-        try{child.Start();}catch{job.Child=null;child.Dispose();throw;}child.BeginOutputReadLine();child.BeginErrorReadLine();
+        try{child.Start();}catch{job.Child=null;child.Dispose();throw;}Util.EndWithApp(child);child.BeginOutputReadLine();child.BeginErrorReadLine();
         Task.Run(()=>{child.WaitForExit();lock(gate){
             job.Child=null; job.Speed="";
             if(job.PauseRequested||closing)job.Status="已暂停";
-            else if(child.ExitCode==0&&Util.InDirectory(final,Work(job))&&System.IO.File.Exists(final)) { try{job.File=Util.PlaceFile(final,Util.OutputFolder(job,Path.GetFileName(final)));PlaceSubtitles(job,final);job.Status="已完成";job.Progress=100;job.Error="";TransferData.Complete(job);}catch(Exception ex){job.Status="失败";job.Error=Util.SafeError(ex.Message);} }
+            else if(child.ExitCode==0&&Util.InDirectory(final,Work(job))&&System.IO.File.Exists(final)) { try{job.File=Util.PlaceFile(final,Util.OutputFolder(job,Path.GetFileName(final)),null,path=>Claimed(path,job));PlaceSubtitles(job,final);job.Status="已完成";job.Progress=100;job.Error="";TransferData.Complete(job);}catch(Exception ex){job.Status="失败";job.Error=Util.SafeError(ex.Message);} }
             else {job.Status="失败";job.Error=String.IsNullOrWhiteSpace(last)?"网站未返回完整文件，请重新读取视频链接":last;}
             child.Dispose();Save();
         }});
@@ -484,7 +551,7 @@ public partial class Manager : IDisposable {
                 if(status=="active"&&!job.PauseRequested)job.Status="下载中";
                 if(status=="waiting"&&!job.PauseRequested)job.Status="等待下载";
                 if(status=="complete") {
-                    string file=Path.Combine(Work(job),String.IsNullOrEmpty(job.WorkName)?Util.Name(job.Title):job.WorkName); job.File=Util.PlaceFile(file,Util.OutputFolder(job),job.Title);job.Status="已完成";job.Progress=100;job.Speed="";job.NetdiskCookie="";lock(relayGate)relayJobs.Remove(job.Id);TransferData.Complete(job);Save();
+                    string file=Path.Combine(Work(job),String.IsNullOrEmpty(job.WorkName)?Util.Name(job.Title):job.WorkName); job.File=Util.PlaceFile(file,Util.OutputFolder(job),job.Title,path=>Claimed(path,job));job.Status="已完成";job.Progress=100;job.Speed="";job.NetdiskCookie="";lock(relayGate)relayJobs.Remove(job.Id);TransferData.Complete(job);Save();
                 }else if(status=="error"||status=="removed") {job.Status="失败";job.Speed="";job.Error=Util.SafeError(Util.Str(state,"errorMessage","下载中断，请重试"));Save();if(status=="error"&&Regex.IsMatch(Util.Str(state,"errorMessage",""),"No URI available|416|Invalid range header",RegexOptions.IgnoreCase))ExplainPartial(job);}
                 else if(status=="paused"){job.Status="已暂停";job.Speed="";Save();}
             }catch(Exception ex){job.Status="失败";job.Speed="";job.Error=Util.SafeError(ex.Message);Save();}
@@ -512,9 +579,11 @@ public partial class Manager : IDisposable {
     static string DeletePath(string path,string root,bool allowRoot=false){
         path=Path.GetFullPath(path);root=Path.GetFullPath(root);
         if(!Util.InDirectory(path,root)&&!(allowRoot&&String.Equals(path.TrimEnd(Path.DirectorySeparatorChar),root.TrimEnd(Path.DirectorySeparatorChar),StringComparison.OrdinalIgnoreCase)))throw new IOException("文件位置超出任务目录，未删除；可取消勾选文件删除后重试");
-        for(string at=path;!String.IsNullOrEmpty(at);at=Path.GetDirectoryName(at))try{if((System.IO.File.GetAttributes(at)&FileAttributes.ReparsePoint)!=0)throw new IOException("任务目录包含链接或联接点，未删除；可保留文件后移除任务");}catch(FileNotFoundException){}catch(DirectoryNotFoundException){}
+        for(string at=path;!String.IsNullOrEmpty(at)&&Util.InDirectory(at,root);at=Path.GetDirectoryName(at))try{if((System.IO.File.GetAttributes(at)&FileAttributes.ReparsePoint)!=0)throw new IOException("任务目录包含链接或联接点，未删除；可保留文件后移除任务");}catch(FileNotFoundException){}catch(DirectoryNotFoundException){}
         return path;
     }
+    // Another task's saved file (called under gate).
+    bool Claimed(string path,Download job){return jobs.Any(other=>other.Id!=job.Id&&!String.IsNullOrEmpty(other.File)&&String.Equals(Path.GetFullPath(other.File),Path.GetFullPath(path),StringComparison.OrdinalIgnoreCase));}
     void DeleteTaskFiles(Download job){
         if(!Regex.IsMatch(job.Id??"",@"^[a-f0-9]{16}$"))throw new IOException("任务编号无效，未删除文件");
         var files=new HashSet<string>(StringComparer.OrdinalIgnoreCase);var directories=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -525,15 +594,20 @@ public partial class Manager : IDisposable {
             var info=TorrentInfo.Read(TorrentInfo.Load(DeletePath(TorrentSource(job),work)));if(info.Hash!=job.BtHash)throw new IOException("种子记录不一致，未删除文件");
             foreach(var file in info.Files){string path=DeletePath(Path.Combine(folder,file.Path.Replace('/',Path.DirectorySeparatorChar)),folder);addFile(path,folder);for(string dir=Path.GetDirectoryName(path);Util.InDirectory(dir,folder);dir=Path.GetDirectoryName(dir))directories.Add(dir);}
             addFile(Path.Combine(folder,info.Name+".aria2"),folder);directories.Add(folder);
-        }else if(!TorrentInfo.IsBt(job)&&!String.IsNullOrEmpty(job.File))addFile(job.File,job.Folder);
+        }else if(!TorrentInfo.IsBt(job)&&!String.IsNullOrEmpty(job.File)){
+            // A plain file of known size that now has another size was replaced after the download (e.g. the person deleted
+            // it and saved something else under that name): it isn't this task's file any more, so it stays.
+            bool replaced=job.Kind=="file"&&job.Transfer!=null&&job.Transfer.Total>0&&System.IO.File.Exists(job.File)&&new FileInfo(job.File).Length!=job.Transfer.Total;
+            if(!replaced)addFile(job.File,job.Folder);
+        }
         // Only this task's private work directory is walked; user download directories are never recursively removed.
         var pending=new Stack<string>();if(Directory.Exists(work))pending.Push(work);
         while(pending.Count>0){string dir=DeletePath(pending.Pop(),work,true);directories.Add(dir);foreach(string item in Directory.GetFileSystemEntries(dir)){string path=DeletePath(item,work);if(Directory.Exists(path))pending.Push(path);else files.Add(path);}}
-        foreach(var other in jobs.Where(item=>item.Id!=job.Id))foreach(string file in files){
-            if(!String.IsNullOrEmpty(other.File)&&String.Equals(Path.GetFullPath(other.File),file,StringComparison.OrdinalIgnoreCase)||!String.IsNullOrEmpty(other.BtFolder)&&Util.InDirectory(file,other.BtFolder)||Util.InDirectory(file,Work(other)))throw new IOException("文件仍属于其他任务，已保留任务和文件");
-        }
+        // 0.4.69: a file another task also points at (two downloads saved under one name before 0.4.69) is kept for that
+        // task; this task is still removed. Before, the whole delete failed and the task could never be removed.
+        files.RemoveWhere(file=>jobs.Any(other=>other.Id!=job.Id&&(!String.IsNullOrEmpty(other.File)&&String.Equals(Path.GetFullPath(other.File),file,StringComparison.OrdinalIgnoreCase)||!String.IsNullOrEmpty(other.BtFolder)&&Util.InDirectory(file,other.BtFolder)||Util.InDirectory(file,Work(other)))));
         // Recheck each path immediately before deletion, including its ancestors; never follow a junction.
-        foreach(string file in files){DeletePath(file,Util.InDirectory(file,work)?work:job.Folder);try{System.IO.File.Delete(file);}catch(DirectoryNotFoundException){}}
+        foreach(string file in files){DeletePath(file,Util.InDirectory(file,work)?work:job.Folder);try{var attributes=System.IO.File.GetAttributes(file);if((attributes&FileAttributes.ReadOnly)!=0)System.IO.File.SetAttributes(file,attributes&~FileAttributes.ReadOnly);System.IO.File.Delete(file);}catch(FileNotFoundException){}catch(DirectoryNotFoundException){}}
         foreach(string dir in directories.OrderByDescending(path=>path.Length)){DeletePath(dir,Util.InDirectory(dir,work)||String.Equals(dir,work,StringComparison.OrdinalIgnoreCase)?work:job.Folder,true);if(Directory.Exists(dir)&&Directory.GetFileSystemEntries(dir).Length==0)Directory.Delete(dir,false);}
     }
     sealed class AriaRpcError:Exception{public AriaRpcError(string message):base(message){}}
@@ -597,6 +671,18 @@ static class BrowserBridge {
                 WriteFrame(Console.OpenStandardOutput(),Encoding.UTF8.GetBytes(Util.Json().Serialize(new{ok=true,value=result})));return 0;
             }
             string action=Util.Str(message,"action");
+            // 0.4.69: double-click on a finished desktop download in the extension's "最近下载" opens the file right here,
+            // from the saved task list (written on every change). The app is not started and its window never shows.
+            // "reveal" (the folder button beside the row) shows the file selected in Explorer, the same way.
+            if(action=="open"||action=="reveal"){
+                string id=Util.Str(message,"id");if(!Regex.IsMatch(id,@"^[a-f0-9]{16}$"))throw new Exception("任务标识无效");
+                var saved=SavedJobs();if(saved==null)throw new Exception("暂时读不到桌面版的任务列表，请稍后再试");
+                var job=saved.FirstOrDefault(item=>item.Id==id);
+                if(job==null)throw new Exception("桌面版里已经没有这个下载了");
+                if(job.Status!="已完成")throw new Exception("文件还没下载完成");
+                string notice=action=="open"?SavedFile.Open(job.File,job.Url,false):SavedFile.Reveal(job.File);
+                WriteFrame(Console.OpenStandardOutput(),Encoding.UTF8.GetBytes(Util.Json().Serialize(new{ok=String.IsNullOrEmpty(notice),error=notice??""})));return 0;
+            }
             // Status never starts the app: when it is not running, the saved task list answers instead.
             Mutex running;if(action=="status"&&!Mutex.TryOpenExisting("Local\\"+Util.PipeName,out running)){WriteFrame(Console.OpenStandardOutput(),Encoding.UTF8.GetBytes(Util.Json().Serialize(StatusFromDisk(message))));return 0;}
             if(!new[]{"add","takeover","netdisk","netdiskFolder","show","status","forget"}.Contains(action))throw new Exception("不支持的浏览器操作");if(action=="add"||action=="takeover")Util.Url(Util.Str(message,"url"));
@@ -621,17 +707,27 @@ static class BrowserBridge {
             id=j.Id,title=j.Title??"",status=j.Status??"",state=State(j,running),progress=Math.Round(Math.Max(0,Math.Min(100,j.Progress)),1),speed=running?j.Speed??"":"",
             total=j.Transfer!=null?j.Transfer.Total:-1,completed=j.Transfer!=null?j.Transfer.Completed:-1,error=j.Error??"",file=String.IsNullOrEmpty(j.File)?"":Path.GetFileName(j.File)}).ToArray()};
     }
-    static object StatusFromDisk(IDictionary<string,object> input){
-        var jobs=new List<Download>();
-        try{string file=Path.Combine(Util.Root,"data","tasks.json");if(System.IO.File.Exists(file))jobs=Util.Json().Deserialize<List<Download>>(System.IO.File.ReadAllText(file,Encoding.UTF8))??jobs;}catch{/* An unreadable list just shows nothing. */}
-        return StatusReply(jobs,input,false);
+    // The saved task list, or null when it can't be read right now (being replaced, damaged): the extension then says
+    // "try again" instead of "this download is gone". A missing file is an empty list.
+    static List<Download> SavedJobs(){
+        string file=Path.Combine(Util.Root,"data","tasks.json");
+        for(int attempt=0;attempt<12;attempt++){
+            string source=attempt<10?file:file+".bak";
+            try{
+                if(!System.IO.File.Exists(source)){if(attempt<10&&(System.IO.File.Exists(file+".tmp")||System.IO.File.Exists(file+".bak"))){System.Threading.Thread.Sleep(50);continue;}if(attempt<10)return new List<Download>();continue;}
+                using(var stream=new FileStream(source,FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete))using(var reader=new StreamReader(stream,Encoding.UTF8)){var jobs=Util.Json().Deserialize<List<Download>>(reader.ReadToEnd());if(jobs!=null)return jobs;}
+            }catch(Exception){/* Being replaced or half-written: wait a moment, then try the backup. */}
+            System.Threading.Thread.Sleep(50);
+        }
+        return null;
     }
+    static object StatusFromDisk(IDictionary<string,object> input){return StatusReply(SavedJobs()??new List<Download>(),input,false);}
     public static void Listen(MainWindow window) {
         Task.Run(()=>{while(!window.IsDisposed){try{
             var security=new PipeSecurity();security.AddAccessRule(new PipeAccessRule(WindowsIdentity.GetCurrent().User,PipeAccessRights.FullControl,AccessControlType.Allow));
             using(var server=new NamedPipeServerStream(Util.PipeName,PipeDirection.InOut,1,PipeTransmissionMode.Byte,PipeOptions.None,65536,65536,security)){
                 server.WaitForConnection();server.ReadMode=PipeTransmissionMode.Byte;
-                var task=Task.Run(()=>ReadFrame(server));if(!task.Wait(5000))continue;
+                var task=Task.Run(()=>ReadFrame(server));if(!task.Wait(5000)){try{WriteFrame(server,Encoding.UTF8.GetBytes("{\"ok\":false,\"error\":\"桌面版正忙，请稍后\"}"));}catch{}continue;}
                 var input=Util.Json().Deserialize<Dictionary<string,object>>(Encoding.UTF8.GetString(task.Result));
                 try{window.FollowBrowserFolder(Util.Str(input,"chromeFolder"));}catch{/* A bad hint never blocks the request itself. */}
                 if(Util.Str(input,"action")=="netdisk"){
@@ -692,7 +788,7 @@ static class Program {
         bool owned;using(var mutex=new Mutex(true,"Local\\"+Util.PipeName,out owned)){
             if(!owned){if(args.Contains("--background"))return 0;try{using(var pipe=new NamedPipeClientStream(".",Util.PipeName,PipeDirection.InOut)){pipe.Connect(500);BrowserBridge.WriteFrame(pipe,Encoding.UTF8.GetBytes("{\"action\":\"show\"}"));BrowserBridge.ReadFrame(pipe);}}catch{}return 0;}
             try{using(var manager=new Manager(Path.Combine(Util.Root,"data"))){var window=new MainWindow(manager);if(args.Contains("--background"))window.PrepareBackgroundStart();Application.Run(window);}}
-            catch(Exception ex){MessageBox.Show("Ruxget 未能启动："+ex.Message+"\n任务文件已保留。","Ruxget");return 1;}
+            catch(Exception ex){if(!args.Contains("--background"))MessageBox.Show("Ruxget 未能启动："+ex.Message+"\n任务文件已保留。","Ruxget");return 1;}
         }return 0;
     }
     static void Check(bool condition,string message){if(!condition)throw new Exception(message);}
@@ -783,12 +879,12 @@ public static class Playlist {
     }
     public static PlaylistCatalog Read(Manager manager,string value,Action<ComponentProgress> progress,CancellationToken cancel) {
         string url=Source(value);
-        manager.Components.Ensure(new[]{"yt-dlp.exe"},manager.Config.Proxy,progress,cancel);
+        manager.Components.Ensure(new[]{"yt-dlp.exe"},manager.ProxyUrl,progress,cancel);
         using(var process=Util.Start(Path.Combine(Util.Root,"bin","yt-dlp.exe"),new[]{"--ignore-config","--skip-download","--flat-playlist","--dump-single-json","--playlist-end","101","--yes-playlist","--no-cache-dir","--socket-timeout","15","--retries","1","--proxy",manager.Config.Proxy,"--",url})) {
             var output=new StringBuilder();var errors=new StringBuilder();bool overflow=false;
             process.OutputDataReceived+=(s,e)=>{if(e.Data!=null){if(output.Length+e.Data.Length>4*1024*1024){overflow=true;Util.KillTree(process);}else output.AppendLine(e.Data);}};
             process.ErrorDataReceived+=(s,e)=>{if(e.Data!=null&&errors.Length<4000)errors.AppendLine(e.Data);};
-            cancel.ThrowIfCancellationRequested();process.Start();process.BeginOutputReadLine();process.BeginErrorReadLine();
+            cancel.ThrowIfCancellationRequested();process.Start();Util.EndWithApp(process);process.BeginOutputReadLine();process.BeginErrorReadLine();
             using(cancel.Register(()=>System.Threading.Tasks.Task.Run(()=>Util.KillTree(process)))){if(!process.WaitForExit(60000)){Util.KillTree(process);throw new Exception("读取列表超时，请检查网络后重试；尚未添加下载");}process.WaitForExit();}
             cancel.ThrowIfCancellationRequested();if(overflow)throw new Exception("列表信息过大，请使用较小的播放列表");
             if(process.ExitCode!=0)throw new Exception("读取列表失败："+Util.SafeError(errors.ToString()));

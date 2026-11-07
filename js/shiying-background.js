@@ -6,7 +6,7 @@ async function ensureFloatingControl(tabId){
  if(!Number.isInteger(tabId))throw new Error('请先切换到视频页');
  const tab=await chrome.tabs.get(tabId);
  ShiyingPlatform.source(tab.url);
- await chrome.scripting.executeScript({target:{tabId},files:['js/shiying-locale.js', 'js/shiying-floating.js']});
+ await chrome.scripting.executeScript({target:{tabId},files:['js/shiying-locale.js', 'js/shiying-text.js', 'js/shiying-floating.js']});
  return {};
 }
 async function restoreOpenFloatingControls(){
@@ -21,7 +21,7 @@ async function sourceTab(source,requestedId){
  const matching=tabs.filter(tab=>{try{return ShiyingPlatform.source(tab.url).url===source.url}catch{return false}});
  let tab=matching.find(tab=>tab.id===requestedId)||matching[0];
  if(!tab){tab=await chrome.tabs.create({url:source.url,active:false});tab.shiyingOwned=true;}
- if(tab.status!=='complete')await new Promise((resolve,reject)=>{const timer=setTimeout(()=>{chrome.tabs.onUpdated.removeListener(changed);reject(new Error('视频网页加载超时，请重新读取'))},45000);function changed(id,info){if(id===tab.id&&info.status==='complete'){clearTimeout(timer);chrome.tabs.onUpdated.removeListener(changed);resolve()}}chrome.tabs.onUpdated.addListener(changed);chrome.tabs.get(tab.id).then(current=>{if(current.status==='complete')changed(tab.id,{status:'complete'})})});
+ if(tab.status!=='complete')try{await new Promise((resolve,reject)=>{const timer=setTimeout(()=>{chrome.tabs.onUpdated.removeListener(changed);reject(new Error('视频网页加载超时，请重新读取'))},45000);function changed(id,info){if(id===tab.id&&info.status==='complete'){clearTimeout(timer);chrome.tabs.onUpdated.removeListener(changed);resolve()}}chrome.tabs.onUpdated.addListener(changed);chrome.tabs.get(tab.id).then(current=>{if(current.status==='complete')changed(tab.id,{status:'complete'})})});}catch(error){if(tab.shiyingOwned)await chrome.tabs.remove(tab.id).catch(()=>{});throw error;}
  return tab;
 }
 async function platformRead(event){
@@ -40,11 +40,11 @@ async function platformRead(event){
  if(previous.length>=20)await chrome.storage.session.remove(NATIVE_CATALOG_PREFIX+previous.shift());
  await chrome.storage.session.set({[NATIVE_CATALOG_PREFIX+catalog.id]:catalog,shiyingCatalogIds:[...previous,catalog.id]});
  return {id:catalog.id,site:catalog.site,url:catalog.url,title:catalog.title,duration:catalog.duration,choices:catalog.choices,audioAvailable:true,native:true,siteName:catalog.siteName,listUrl:catalog.listUrl,muxed:!!catalog.muxed,mediaOrigins:ShiyingPlatform.mediaOrigins?.[catalog.site]||[],subtitles:(catalog.subtitles||[]).map(({lang,name})=>({lang,name}))};
- }finally{if(event.collection&&tab.shiyingOwned)await chrome.tabs.remove(tab.id).catch(()=>{});}
+ }finally{if(tab.shiyingOwned)await chrome.tabs.remove(tab.id).catch(()=>{});}
 }
 async function jobRead(id){const job=(await chrome.storage.local.get(NATIVE_JOB_PREFIX+id))[NATIVE_JOB_PREFIX+id];if(!job)throw new Error('没有找到下载记录，请重新开始');return job}
 async function jobUpdate(id,values){const job=await jobRead(id);if(job.status==='cancelled'&&values.status!=='cancelled')return job;Object.assign(job,values);await chrome.storage.local.set({[NATIVE_JOB_PREFIX+id]:job});return job}
-async function jobSnapshot(id){const job=await jobRead(id);if(['queued','downloading','verifying'].includes(job.status)&&!engineCreation&&!await chrome.offscreen.hasDocument())return jobUpdate(id,{status:'error',stage:'下载已中断',error:'Chrome 曾关闭，请重新读取视频后下载'});return job}
+async function jobSnapshot(id){const job=await jobRead(id);if(['queued','downloading','verifying'].includes(job.status)&&!engineCreation&&!await chrome.offscreen.hasDocument())return jobUpdate(id,{status:'error',stage:'下载已中断',error:'下载被打断了（Chrome 或 Ruxget 重新启动过），请重新读取视频后下载'});return job}
 async function ensureEngine(){if(await chrome.offscreen.hasDocument())return;engineCreation ||= chrome.offscreen.createDocument({url:'shiying-engine.html',reasons:['BLOBS'],justification:'在浏览器内合并视频和声音、生成 MP3 并创建本地下载文件'}).finally(()=>{engineCreation=null});await engineCreation}
 async function engineSend(message){await ensureEngine();for(let attempt=0;attempt<25;attempt++){try{const response=await chrome.runtime.sendMessage(message);if(response?.ok)return response}catch{}await new Promise(resolve=>setTimeout(resolve,100))}throw new Error('下载处理还没准备好，请重试')}
 async function engineSave(event){
@@ -68,10 +68,11 @@ async function platformStart(event){
  if(format==='mp4'&&!catalog.choices.some(choice=>choice.height===height))throw new Error('请选择实际可用的清晰度');
  const ids=(await chrome.storage.local.get('shiyingJobIds')).shiyingJobIds||[];
  const existing=await chrome.storage.local.get(ids.map(id=>NATIVE_JOB_PREFIX+id));
- if(!engineCreation&&!await chrome.offscreen.hasDocument())for(const job of Object.values(existing))if(['queued','downloading','verifying'].includes(job.status))Object.assign(job,await jobUpdate(job.id,{status:'error',stage:'下载已中断',error:'Chrome 曾关闭，请重新读取视频后下载'}));
+ if(!engineCreation&&!await chrome.offscreen.hasDocument())for(const job of Object.values(existing))if(['queued','downloading','verifying'].includes(job.status))Object.assign(job,await jobUpdate(job.id,{status:'error',stage:'下载已中断',error:'下载被打断了（Chrome 或 Ruxget 重新启动过），请重新读取视频后下载'}));
  if(Object.values(existing).filter(job=>['queued','downloading','verifying','saving'].includes(job.status)).length>=3)throw new Error('已有下载正在处理，请稍后再添加');
  const job={ok:true,id:crypto.randomUUID(),url:catalog.url,title:catalog.title,format,height,status:'queued',stage:'正在准备下载',progress:0,createdAt:new Date().toISOString(),native:true,...(event.collectionId?{collectionId:event.collectionId}:{}),...(typeof event.saveAs==='boolean'?{saveAs:event.saveAs}:{})};
  await chrome.storage.local.set({[NATIVE_JOB_PREFIX+job.id]:job,shiyingJobIds:[...ids.slice(-49),job.id]});
+ const dropped=ids.slice(0,Math.max(0,ids.length-49));if(dropped.length)await chrome.storage.local.remove(dropped.map(id=>NATIVE_JOB_PREFIX+id)).catch(()=>{});
  const mediaHosts=ShiyingPlatform.mediaDomains[catalog.site]||[];
  const rule=1610000001+Math.max(0,Object.keys(ShiyingPlatform.mediaDomains).indexOf(catalog.site));
  await chrome.declarativeNetRequest.updateSessionRules({removeRuleIds:[rule],addRules:[{id:rule,priority:1,action:{type:'modifyHeaders',requestHeaders:[{header:'Referer',operation:'set',value:catalog.url},{header:'Origin',operation:'set',value:new URL(catalog.url).origin}]},condition:{initiatorDomains:[chrome.runtime.id],requestDomains:mediaHosts,resourceTypes:['xmlhttprequest']}}]});
@@ -124,14 +125,6 @@ chrome.runtime.onMessage.addListener((event,sender,respond)=>{
   return ensureFloatingControl(event.tabId);
  })();
  else if(event.Message?.startsWith('shiyingFloating'))task=floatingRequest(event,sender);
- else if(event.Message==='shiyingOpenPanel'){
-  try{
-   if(sender.frameId!==0||!Number.isInteger(sender.tab?.id)||ShiyingPlatform.source(sender.url).url!==ShiyingPlatform.source(sender.tab.url).url)throw new Error('请在当前视频页打开 Ruxget');
-   // Use the same compact popup as the toolbar; older Chrome retains its side-panel entry.
-   task=(chrome.action?.openPopup?chrome.action.openPopup({windowId:sender.tab.windowId}):chrome.sidePanel.open({tabId:sender.tab.id})).catch(()=>chrome.tabs.create({url:chrome.runtime.getURL('shiying.html?tabId='+sender.tab.id)}));
-  }catch(error){respond({ok:false,error:error.message});return;}
- }
- else if(event.Message==='shiyingPlatformHealth')task=Promise.resolve({version:chrome.runtime.getManifest().version,native:true});
  else if(event.Message==='shiyingPlatformRead')task=platformRead(event);
  else if(event.Message==='shiyingPlatformDesktop')task=(async()=>{
   if(sender.url?.split('?')[0]!==chrome.runtime.getURL('shiying.html'))throw new Error('请在 Ruxget 面板中发送桌面下载');
@@ -170,7 +163,7 @@ chrome.downloads.onChanged.addListener(async change=>{
  if(!change.state&&!change.error)return;
  const ids=(await chrome.storage.local.get('shiyingJobIds')).shiyingJobIds||[];const data=await chrome.storage.local.get(ids.map(id=>NATIVE_JOB_PREFIX+id));const job=Object.values(data).find(job=>job.downloadId===change.id);
  if(!job)return;
- if(change.error)await jobUpdate(job.id,{status:'error',stage:'保存中断',error:'文件保存中断，请重新下载'});
+ if(change.error)await jobUpdate(job.id,change.error.current==='USER_CANCELED'?{status:'cancelled',stage:'已取消保存',error:null}:{status:'error',stage:'保存中断',error:'文件保存中断，请重新下载'});
  else if(change.state?.current==='complete'){const [download]=await chrome.downloads.search({id:change.id});const {ruxgetDoneCount:done=0}=await chrome.storage.local.get('ruxgetDoneCount');await chrome.storage.local.set({ruxgetDoneCount:done+1});await ShiyingNative.learnChromeFolder(download?.filename);await jobUpdate(job.id,{status:'complete',stage:'下载完成，文件和声音已检查',progress:100,file:download.filename});}
  if(change.error||change.state?.current==='complete')chrome.runtime.sendMessage({Message:'shiyingEngineRelease',id:job.id}).catch(()=>{});
 });

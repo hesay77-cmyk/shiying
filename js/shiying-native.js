@@ -2,7 +2,7 @@
 const ShiyingNative = {
     DESKTOP_RELEASE_URL: 'https://hidaydream.cloud/?from=ext#editions',
     file(url,referer='') {
-        url=String(url||'').trim();let parsed;
+        url=String(url||'').trim().replace(/ /g,'%20');let parsed;
         try{parsed=new URL(url);}catch{throw new Error('请输入完整的 HTTP 或 HTTPS 下载链接');}
         if(url.length>16384||/[\u0000-\u0020\u007f]/.test(url)||!['http:','https:'].includes(parsed.protocol)||parsed.username||parsed.password)throw new Error('请使用 HTTP 或 HTTPS 下载链接；网页生成的临时文件请继续用 Chrome 保存');
         let source='';try{const page=new URL(referer);if(['http:','https:'].includes(page.protocol)&&!page.username&&!page.password)source=referer;}catch{}
@@ -23,7 +23,8 @@ const ShiyingNative = {
     },
     msg(key, fallback) {
         try {
-            const text = (typeof i18n === 'function' ? i18n(key) : '') || chrome.i18n.getMessage(key) || '';
+            // Ruxget's own language setting first (a global i18n from polyfill.js would follow Chrome's language).
+            const text = (window.RuxgetI18n?.t ? RuxgetI18n.t(key) : '') || (typeof i18n === 'function' ? i18n(key) : '') || chrome.i18n.getMessage(key) || '';
             return text && text !== key ? text : fallback;
         } catch {
             return fallback;

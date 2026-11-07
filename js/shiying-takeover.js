@@ -203,7 +203,9 @@ const RuxgetTakeover={
         // The panel's own name for the file; Chrome usually hasn't named a brand-new download yet.
         const name=RuxgetTakeover.name(item)||String(hint.name||'').split(/[\\/]/).pop();
         let reply;
-        try{reply=await chrome.runtime.sendNativeMessage('org.shiying.desktop',{action:'takeover',kind:'file',chromeFolder:typeof ShiyingNative!=='undefined'?await ShiyingNative.chromeFolder():'',url,referer,userAgent:navigator.userAgent,name,size:item.totalBytes>0?item.totalBytes:-1});}
+        // 0.4.69: no answer within 30 s (desktop stuck starting, blocked by antivirus) gives the download back to Chrome;
+        // before, it stayed paused and Chrome's download bubble stayed off for good.
+        try{reply=await Promise.race([new Promise((resolve,reject)=>setTimeout(()=>reject(new Error('桌面版没有及时回应')),30000)),chrome.runtime.sendNativeMessage('org.shiying.desktop',{action:'takeover',kind:'file',chromeFolder:typeof ShiyingNative!=='undefined'?await ShiyingNative.chromeFolder():'',url,referer,userAgent:navigator.userAgent,name,size:item.totalBytes>0?item.totalBytes:-1})]);}
         catch(error){reply={ok:false,error:error?.message||String(error)};}
         if(reply?.ok){
             // Noted before cancelling, so the panel can tell "moved to the desktop" from "interrupted" when Chrome reports the cancel.

@@ -7,6 +7,26 @@
     '桌面版无法直接访问这个链接，交回 Chrome 下载': 'Ruxget Desktop can’t reach this link directly, so Chrome keeps it',
     '服务器没有直接给出文件': 'The server didn’t send the file directly',
     '桌面版正忙，请稍后': 'Ruxget Desktop is busy; try again in a moment',
+    // Opening a finished desktop download from "最近下载" (Shiying.cs SavedFile.Open, 0.4.69)
+    '文件已不在原来的位置，可能被移动或删除了': 'The file is no longer where it was saved',
+    '这个程序没有“来自网络”的安全标记，已打开它所在的文件夹，请确认后再运行': 'This program has no “from the internet” safety mark, so its folder was opened instead. Check it before running it',
+    '没有能打开这种文件的程序': 'No app is set up to open this kind of file',
+    '桌面版里已经没有这个下载了': 'This download is no longer in Ruxget Desktop',
+    '文件还没下载完成': 'The file hasn’t finished downloading',
+    '任务标识无效': 'Invalid download ID',
+    '这个扩展尚未连接桌面版': 'This extension isn’t connected to Ruxget Desktop yet',
+    '桌面版没有及时回应': 'Ruxget Desktop didn’t answer in time',
+    '暂时读不到桌面版的任务列表，请稍后再试': 'Couldn’t read Ruxget Desktop’s download list just now. Try again in a moment',
+    '这个媒体需要认证信息，请使用原有下载入口': 'This media needs sign-in details; use the site’s own download button',
+    '识别服务正在启动，请稍后点击刷新': 'Detection is still starting; click refresh in a moment',
+    '没有找到当前网页': 'Couldn’t find the current page',
+    '网站授权未能更新': 'Couldn’t update site access',
+    '请刷新视频页后重试': 'Refresh the video page and try again',
+    '服务器返回的内容不是视频清单': 'The server didn’t return a video playlist',
+    '请输入完整的 HTTP 或 HTTPS 下载链接': 'Enter a full HTTP or HTTPS download link',
+    '请使用具体的网站网址授权': 'Allow a specific site address',
+    '在 Chrome 的下载记录里找不到这个文件了，可以在下载文件夹里找': 'Chrome no longer lists this download; look for it in your downloads folder',
+    '服务器中途断开了连接，可以点重试接着下载': 'The server dropped the connection; click retry to continue',
     // Popup notices (shiying.js notify)
     '链接已复制': 'Link copied',
     '未授权，已有下载和已允许的网站仍可使用': 'Not allowed. Existing downloads and allowed sites still work',
@@ -36,9 +56,11 @@
     '下载完成，文件和声音已检查': 'Done. File and audio checked',
     '下载已中断': 'Download interrupted',
     '保存中断': 'Saving interrupted',
+    '已取消保存': 'Saving cancelled',
     '下载失败': 'Download failed',
     '已取消': 'Cancelled',
     // Errors from the engine, platform readers and playlists
+    '下载被打断了（Chrome 或 Ruxget 重新启动过），请重新读取视频后下载': 'The download was interrupted (Chrome or Ruxget restarted). Read the video again to download it',
     'Chrome 曾关闭，请重新读取视频后下载': 'Chrome was closed. Read the video again, then download.',
     '文件保存中断，请重新下载': 'Saving was interrupted. Please download again.',
     'B站列表读取失败': 'Couldn’t read the Bilibili list',
@@ -134,6 +156,8 @@
     '没有取得可下载的视频地址，请播放后重新读取': 'No downloadable video found. Play it, then read again'
   };
   const patterns = [
+    [/^打不开这个文件：([\s\S]*)$/, 'Couldn’t open the file: $1'],
+    [/^打不开这个文件夹：([\s\S]*)$/, 'Couldn’t open the folder: $1'],
     [/^B站返回 (\d+)，请刷新视频网页后重试$/, 'Bilibili returned $1. Refresh the video page and try again.'],
     [/^原站返回 (\d+)，请重新读取视频$/, 'The site returned $1. Read the video again.'],
     [/^网站返回 (\d+)，请重新播放视频后再试$/, 'The site returned $1. Play the video again and retry.'],

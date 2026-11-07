@@ -21,14 +21,14 @@ const checks=[];function check(name){checks.push(name);console.log('PASS '+name)
    return chrome.storage.local.set({shiyingJobIds:['keep','gone','running'],'shiyingJob:keep':job('keep','保留文件的视频',{status:'complete',downloadId:a.downloadId,file:a.file}),'shiyingJob:gone':job('gone','要删除的视频',{status:'complete',downloadId:b.downloadId,file:b.file}),'shiyingJob:running':job('running','正在下载的视频',{status:'downloading',progress:40,stage:'正在下载画面'})});},{a,b});
   assert(fs.existsSync(a.file)&&fs.existsSync(b.file));
   const popup=await browser.newPage();await popup.goto(`chrome-extension://${id}/shiying.html`);
-  await popup.locator('#recentDownloads').waitFor({state:'visible'});await popup.locator('#recentDownloads summary').click();
+  await popup.locator('#tabDownloads').click();
   const item=jobId=>popup.locator(`#recentList li[data-id="${jobId}"]`);
   assert.equal(await popup.locator('#recentList .recent-delete').count(),3);
   check('every recent download has a delete button');
 
   // Finished, delete the file: needs the confirm, then the file and the record are gone.
   await item('gone').locator('.recent-delete').click();
-  assert.match(await item('gone').innerText(),/删除这个下载？[\s\S]*删除文件[\s\S]*只移除记录[\s\S]*取消/);
+  assert.match(await item('gone').innerText(),/删除「[^」]+」？[\s\S]*删除文件[\s\S]*只移除记录[\s\S]*取消/);
   await popup.screenshot({path:path.join(report,'confirm.png')});
   await item('gone').getByRole('button',{name:'取消'}).click();
   assert.equal(await item('gone').locator('.recent-open').count(),1);assert(fs.existsSync(b.file));
@@ -48,11 +48,11 @@ const checks=[];function check(name){checks.push(name);console.log('PASS '+name)
 
   // Running: stop and delete.
   await item('running').locator('.recent-delete').click();
-  assert.match(await item('running').innerText(),/停止并删除这个下载？/);
+  assert.match(await item('running').innerText(),/停止并删除「[^」]+」？/);
   await item('running').getByRole('button',{name:'停止并删除'}).click();await item('running').waitFor({state:'detached'});
   assert.deepEqual((await worker.evaluate(()=>chrome.storage.local.get('shiyingJobIds'))).shiyingJobIds,[]);
-  assert.equal(await popup.locator('#recentDownloads').isVisible(),false);
-  check('a running download is stopped and deleted; the empty list hides itself');
+  assert.equal(await popup.locator('#recentEmpty').isVisible(),true);
+  check('a running download is stopped and deleted; the empty list says so');
 
   await popup.close();
 

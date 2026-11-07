@@ -356,7 +356,7 @@ function save(tabId) {
 chrome.runtime.onMessage.addListener(function (Message, sender, sendResponse) {
     if (chrome.runtime.lastError) { return; }
     // Dedicated handlers own these messages, including during legacy initialization.
-    if (typeof Message.Message === 'string' && Message.Message.startsWith('shiying')) return;
+    if (typeof Message.Message === 'string' && (Message.Message.startsWith('shiying') || Message.Message.startsWith('ruxget'))) return;
     if (!G.initLocalComplete || !G.initSyncComplete) {
         sendResponse("error");
         return true;
@@ -364,12 +364,6 @@ chrome.runtime.onMessage.addListener(function (Message, sender, sendResponse) {
     // 以下检查是否有 tabId 不存在使用当前标签
     Message.tabId = Message.tabId ?? G.tabId;
 
-    // 从缓存中保存数据到本地
-    if (Message.Message == "pushData") {
-        (chrome.storage.session ?? chrome.storage.local).set({ MediaData: cacheData });
-        sendResponse("ok");
-        return true;
-    }
     // 获取所有数据
     if (Message.Message == "getAllData") {
         sendResponse(cacheData);
@@ -492,17 +486,6 @@ chrome.runtime.onMessage.addListener(function (Message, sender, sendResponse) {
         sendResponse("ok");
         return true;
     }
-    // 脚本注入 脚本申请多语言文件
-    if (Message.Message == "scriptI18n") {
-        chrome.scripting.executeScript({
-            target: { tabId: Message.tabId, allFrames: true },
-            files: ["catch-script/i18n.js"],
-            injectImmediately: true,
-            world: "MAIN"
-        });
-        sendResponse("ok");
-        return true;
-    }
     // Heart Beat
     if (Message.Message == "HeartBeat") {
         chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
@@ -559,6 +542,10 @@ chrome.runtime.onMessage.addListener(function (Message, sender, sendResponse) {
     }
     // ffmpeg网页通信
     if (Message.Message == "catCatchFFmpeg") {
+        // The online converter opens only for Ruxget's own pages, or a page where the person turned on a capture tool.
+        const fromExtension = (sender.url || '').startsWith(chrome.runtime.getURL(''));
+        const capturing = sender.tab && ['catch.js', 'recorder.js'].some(name => G.scriptList.get(name)?.tabId.has(sender.tab.id));
+        if (!fromExtension && !capturing) { sendResponse("ok"); return true; }
         const data = { ...Message, Message: "ffmpeg", tabId: Message.tabId ?? sender.tab.id, version: G.ffmpegConfig.version };
         chrome.tabs.query({ url: G.ffmpegConfig.url + "*" }, function (tabs) {
             if (chrome.runtime.lastError || !tabs.length) {
@@ -604,23 +591,8 @@ chrome.runtime.onMessage.addListener(function (Message, sender, sendResponse) {
     }
 });
 
-/**
- * 监听 外部扩展 message 事件
- */
-chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => {
-    if (request.action === "getData") {
-        if (request.tabId) {
-            sendResponse(cacheData[request.tabId] ?? null);
-            return true;
-        }
-        sendResponse(cacheData);
-        return true;
-    } else if (request.action === "getCurrentTabData") {
-        const tabId = request.tabId ?? G.tabId;
-        sendResponse(cacheData[tabId] ?? null);
-        return true;
-    }
-});
+// 0.4.69: the old onMessageExternal handler is gone. It let any other installed extension read every captured request
+// header (cookies, tokens) and nothing used it.
 
 // 选定标签 更新G.tabId
 // chrome.tabs.onHighlighted.addListener(function (activeInfo) {
@@ -815,16 +787,16 @@ const runCommands = (command, data) => {
         chrome.downloads.download({
             url: data.srcUrl,
             saveAs: G.saveAs
-        }, () => {
+        }, (id) => {
             chrome.runtime.lastError && console.error(chrome.runtime.lastError);
-            G.downDataImageSave = data;
+            G.downDataImageSave = { ...data, downloadId: id };
         });
     }
 }
 chrome.downloads.onChanged.addListener(function (item) {
     if (G.catDownload) { delete G.downDataImageSave; return; }
     const errorList = ["SERVER_BAD_CONTENT", "SERVER_UNAUTHORIZED", "SERVER_FORBIDDEN", "SERVER_UNREACHABLE", "SERVER_CROSS_ORIGIN_REDIRECT", "SERVER_FAILED", "NETWORK_FAILED"];
-    if (item.error && errorList.includes(item.error.current) && G.downDataImageSave) {
+    if (item.error && errorList.includes(item.error.current) && G.downDataImageSave && G.downDataImageSave.downloadId === item.id) {
         const data = { requestHeaders: { referer: G.downDataImageSave.pageUrl }, requestId: G.tabId, url: G.downDataImageSave.srcUrl };
         chrome.tabs.create({ url: `downloader.html?JSON=${JSON.stringify(data)}&autoClose=true`, active: false });
         delete G.downDataImageSave;

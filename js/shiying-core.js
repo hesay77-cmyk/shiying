@@ -14,13 +14,13 @@ const Shiying = (() => {
         try { return ['https:', 'http:'].includes(new URL(value).protocol); } catch { return false; }
     }
     function size(bytes) {
-        if (!bytes) return '大小待确认';
+        if (!bytes) return window.RuxgetI18n ? RuxgetI18n.pick('大小待确认', 'Size unknown') : '大小待确认';
         const units = ['B','KB','MB','GB'];
         const power = Math.min(3, Math.floor(Math.log(bytes) / Math.log(1024)));
         return `${(bytes / 1024 ** power).toFixed(power ? 1 : 0)} ${units[power]}`;
     }
     function name(data) {
-        let result = data.name || data.title || '网页视频';
+        let result = data.name || data.title || (window.RuxgetI18n ? RuxgetI18n.pick('网页视频', 'Web video') : '网页视频');
         try { result = decodeURIComponent(result); } catch { /* 保留原文件名 */ }
         return result;
     }

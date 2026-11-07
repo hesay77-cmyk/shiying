@@ -108,13 +108,13 @@ const checks=[];function check(name){checks.push(name);console.log('PASS '+name)
   assert.match(await page.locator('#platformSubtitles').innerText(),/下载字幕（中文）/);await page.locator('#platformSubtitles').click();
   await page.waitForFunction(()=>testCalls.some(c=>c.Message==='shiyingPlatformSubtitle'));assert.equal(await page.evaluate(()=>testCalls.find(c=>c.Message==='shiyingPlatformSubtitle').index),0);assert.match(await page.locator('#platformNote').innerText(),/字幕已保存/);
   check('subtitle button names the language and saves it');
-  // Recent downloads: newest first, at most five, click opens the progress page.
+  // Recent downloads: newest first, up to twenty (0.4.69), click opens the progress page.
   await worker.evaluate(async()=>{const ids=[];const records={};for(let i=1;i<=7;i++){const id='job'+i;ids.push(id);records['shiyingJob:'+id]={id,title:'视频 '+i,format:i===7?'mp3':'mp4',height:1080,status:i===7?'complete':i===6?'error':'downloading',stage:'正在合并画面与声音',error:i===6?'下载失败':'',progress:40};}await chrome.storage.local.set({shiyingJobIds:ids,...records});});
-  await ready();await page.locator('#recentDownloads').waitFor({state:'visible'});await page.locator('#recentDownloads summary').click();
-  const recent=await page.locator('#recentList li').allInnerTexts();assert.equal(recent.length,5);assert.match(recent[0],/视频 7[\s\S]*MP3 · 已完成/);assert.match(recent[1],/视频 6[\s\S]*下载失败/);assert.match(recent[2],/视频 5[\s\S]*正在合并画面与声音 · 40%/);
+  await ready();await page.locator('#tabDownloads').click();
+  const recent=await page.locator('#recentList li').allInnerTexts();assert.equal(recent.length,7);assert.match(recent[0],/视频 7[\s\S]*MP3 · 已完成/);assert.match(recent[1],/视频 6[\s\S]*下载失败/);assert.match(recent[2],/视频 5[\s\S]*正在合并画面与声音 · 40%/);
   await page.waitForTimeout(250);await page.screenshot({path:path.join(report,'recent-360.png')});
   const [task]=await Promise.all([browser.waitForEvent('page'),page.locator('#recentList li button').first().click()]);assert.match(task.url(),/shiying-task\.html\?id=job7$/);await task.close();
-  check('recent downloads list shows the latest five and opens their progress');
+  check('the downloads tab shows the latest downloads and opens their progress');
   assert.deepEqual(errors,[]);check('no page errors');
   fs.writeFileSync(path.join(report,'summary.json'),JSON.stringify({ok:true,checks},null,2));console.log('REPORT '+report);
  }finally{await browser.close();}

@@ -27,9 +27,10 @@ if (typeof ShiyingPlatform !== 'undefined') {
         if(data.playabilityStatus?.status!=='OK')throw new Error('原站暂时不提供这个视频，请确认网页能播放后重新读取');
         if(data.videoDetails?.isLiveContent)throw new Error('目前支持已发布的视频，直播请使用高级工具');
         const formats=(data.streamingData?.adaptiveFormats||[]).filter(item=>item.url&&!item.drmFamilies&&!item.isDrc&&!new URLSearchParams(new URL(item.url).searchParams.get('xtags')||'').getAll('sr').includes('1'));
+        // A format whose address isn't usable is skipped, not the whole video (0.4.69, as for B站).
         const convert=item=>({id:item.itag,height:Number(item.height)||0,width:Number(item.width)||0,bitrate:Number(item.bitrate)||0,codec:item.mimeType,url:this.mediaURL(item.url,'youtube'),backups:[],bytes:Number(item.contentLength)||0});
-        const video=formats.filter(item=>/video\/mp4; codecs="avc1/.test(item.mimeType)).map(convert).sort((a,b)=>b.bitrate-a.bitrate);
-        const audio=formats.filter(item=>/audio\/mp4; codecs="mp4a/.test(item.mimeType)&&item.audioTrack?.audioIsDefault!==false).map(convert).sort((a,b)=>b.bitrate-a.bitrate);
+        const video=formats.filter(item=>/video\/mp4; codecs="avc1/.test(item.mimeType)).map(item=>{try{return convert(item);}catch{return null;}}).filter(Boolean).sort((a,b)=>b.bitrate-a.bitrate);
+        const audio=formats.filter(item=>/audio\/mp4; codecs="mp4a/.test(item.mimeType)&&item.audioTrack?.audioIsDefault!==false).map(item=>{try{return convert(item);}catch{return null;}}).filter(Boolean).sort((a,b)=>b.bitrate-a.bitrate);
         if(!video.length||!audio.length)throw new Error('暂时没读到完整音视频轨，请播放视频后重新读取');
         return {...source,title:String(data.videoDetails.title).slice(0,300),duration:Number(data.videoDetails.lengthSeconds),video,audio,choices:[...new Set(video.map(item=>item.height))].sort((a,b)=>b-a).map(height=>({height,label:height+'p'}))};
     };

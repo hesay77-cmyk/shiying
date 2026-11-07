@@ -280,6 +280,8 @@
             });
         }
         if (event.data.action == "catCatchFFmpeg") {
+            // Only right after a click or key press on the page (the capture tools' own buttons), never on a page script's own.
+            if (!navigator.userActivation?.isActive) { return; }
             if (!event.data.use ||
                 !event.data.files ||
                 !event.data.files instanceof Array ||

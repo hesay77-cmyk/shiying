@@ -16,7 +16,7 @@
   <script src="js/shiying-shortvideo.js" defer></script>
   <script src="js/ruxget-open.js" defer></script>
 <script src="js/shiying-platform-ui.js" defer></script>
-  <script src="js/shiying-native.js" defer></script><script src="js/shiying-desktop.js" defer></script><script src="js/shiying-collection-ui.js" defer></script><script src="js/shiying-recent.js" defer></script>
+  <script src="js/shiying-native.js" defer></script><script src="js/shiying-desktop.js" defer></script><script src="js/shiying-collection-ui.js" defer></script><script src="js/shiying-recent.js" defer></script><script src="js/ruxget-tabs.js" defer></script>
   <script src="js/shiying-focus.js" defer></script>
   <script src="js/shiying.js" defer></script>
   <script src="js/ruxget-offer.js" defer></script>
@@ -40,10 +40,11 @@
     <button type="button" id="languageSelect" class="floating-toggle language-switch" aria-label="Language" title="A = Auto · 中 = 中文 · EN = English" data-lang="auto">A</button>
     </div>
   </header>
-  <section class="save-location" aria-label="新下载保存位置" data-i18n-aria="uiSaveLocationAria"><label title="新下载的文件准备好后，由 Chrome 打开保存窗口，可选择文件夹和文件名" data-i18n-title="uiSaveAsTitle"><input id="saveAs" type="checkbox"><span data-i18n="uiSaveAsLabel">保存时选择文件夹</span></label><button id="downloadLocation" class="text-button" type="button" title="打开 Chrome 下载设置，更改默认保存文件夹" data-i18n-title="uiDefaultLocationTitle">下载目录 / Ruxget ›</button></section>
+  <section id="offerCard" class="offer-card" hidden aria-label="Ruxget 桌面版" data-i18n-aria="uiOfferAria"></section>
+  <nav id="viewTabs" class="view-tabs" role="tablist" aria-label="Ruxget"><button id="tabPage" type="button" role="tab" aria-selected="true" aria-controls="pageView" data-tab="page"><span>本页视频</span><b class="tab-count" hidden></b></button><button id="tabDownloads" type="button" role="tab" aria-selected="false" aria-controls="downloadsView" data-tab="downloads" tabindex="-1"><span>已下载</span><b class="tab-count" hidden></b></button></nav>
+  <div id="pageView" class="view-panel" role="tabpanel" aria-labelledby="tabPage" data-view="page"><section class="save-location" aria-label="新下载保存位置" data-i18n-aria="uiSaveLocationAria"><label title="新下载的文件准备好后，由 Chrome 打开保存窗口，可选择文件夹和文件名" data-i18n-title="uiSaveAsTitle"><input id="saveAs" type="checkbox"><span data-i18n="uiSaveAsLabel">保存时选择文件夹</span></label><button id="downloadLocation" class="text-button" type="button" title="打开 Chrome 下载设置，更改默认保存文件夹" data-i18n-title="uiDefaultLocationTitle">下载目录 / Ruxget ›</button></section>
   <section class="source" aria-label="当前网页" data-i18n-aria="uiSourceAria"><span class="source-dot"></span><div><b id="pageTitle" data-i18n="uiReadingPage" data-i18n-live>正在读取当前网页</b><span id="pageHost" data-i18n="uiOnlyThisPage">只显示这个页面的媒体</span></div><button id="refresh" class="icon-button" aria-label="重新读取视频列表" title="重新读取视频列表" data-i18n-aria="uiRefreshList" data-i18n-title="uiRefreshList"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6 7a7 7 0 0 1 12-1l2 3M4 15l2 3a7 7 0 0 0 12-1"/></svg></button></section>
   <main>
-    <section id="offerCard" class="offer-card" hidden aria-label="Ruxget 桌面版" data-i18n-aria="uiOfferAria"></section>
     <section id="netdiskEntry" class="platform-card netdisk-entry" hidden aria-label="网盘下载" data-i18n-aria="uiNetdiskAria"><h2 id="netdiskTitle" data-i18n-live>Ruxget 网盘下载</h2><p id="netdiskNote" class="quality-note" role="status"></p><div class="netdisk-actions"><button id="netdiskEnable" class="download-button" type="button" data-i18n="uiNetdiskEnable" data-i18n-live>开启 Ruxget 下载</button><button id="netdiskDisable" class="text-button" type="button" hidden data-i18n="uiNetdiskDisable">关闭此网盘</button></div><div class="netdisk-actions"><button id="netdiskAuthorize" class="text-button" type="button" hidden data-i18n="uiBaiduAuth">百度授权</button><button id="netdiskSetup" class="text-button" type="button" data-i18n="uiDesktopSetup">安装与连接桌面版</button></div></section>
     <section id="platformEntry" class="platform-entry" hidden aria-label="B站视频下载" data-i18n-aria="uiBiliYtAria">
       <article id="platformCard" class="platform-card" hidden>
@@ -55,7 +56,7 @@
         <div class="single-secondary"><span id="subtitleBox" class="subtitle-box" hidden><select id="platformSubtitleLang" aria-label="字幕语言" data-i18n-aria="uiSubtitleLang"></select><button id="platformSubtitles" class="text-button" type="button">下载字幕</button></span><button id="collectionOpen" class="text-button" type="button" hidden>分 P 勾选下载…</button></div>
         <p id="platformNote" class="quality-note"></p><p id="cardHint" class="card-hint" hidden></p><p id="platformError" class="error" role="alert" hidden></p>
       </article>
-      <form id="platformForm"><label class="visually-hidden" for="platformURL" data-i18n="uiVideoUrl">视频网址</label><div class="link-input"><span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="m9 15 6-6m-5-2 2-2a5 5 0 0 1 7 7l-2 2M14 17l-2 2a5 5 0 0 1-7-7l2-2"/></svg></span><input id="platformURL" type="url" required aria-label="视频网址" data-i18n-aria="uiVideoUrl" placeholder="粘贴视频网址" data-i18n-placeholder="uiPasteUrl"><button id="platformRead" type="submit" data-i18n="uiRead">读取</button></div></form>
+      <form id="platformForm"><label class="visually-hidden" for="platformURL" data-i18n="uiVideoUrl">视频网址</label><div class="link-input"><span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="m9 15 6-6m-5-2 2-2a5 5 0 0 1 7 7l-2 2M14 17l-2 2a5 5 0 0 1-7-7l2-2"/></svg></span><input id="platformURL" type="text" inputmode="url" autocomplete="off" required aria-label="视频网址" data-i18n-aria="uiVideoUrl" placeholder="粘贴视频网址" data-i18n-placeholder="uiPasteUrl"><button id="platformRead" type="submit" data-i18n="uiRead">读取</button></div></form>
     </section>
     <div id="mediaArea">
     <section id="siteAccess" class="site-access" hidden><p id="siteAccessNote" data-i18n="uiSiteAccessNote">首次使用时，只允许此网站及本页检测到的媒体来源。</p><button id="allowSite" class="download-button" data-i18n="uiAllowSite">允许此网站</button></section>
@@ -68,13 +69,13 @@
     <p id="fragmentNote" class="fragment-note" hidden></p>
     </div>
   </main>
+  <footer><span data-i18n="uiFreeOpen">免费开源，无广告</span><button id="copyAll" class="text-button" disabled data-i18n="uiCopyAllLinks">复制全部链接</button></footer></div>
+  <div id="downloadsView" class="view-panel" role="tabpanel" aria-labelledby="tabDownloads" data-view="downloads" hidden><section id="recentDownloads" class="recent-downloads" aria-label="已下载"><ul id="recentList"></ul><p id="recentEmpty" class="recent-empty" hidden>还没有下载记录。下载的文件会出现在这里，双击就能打开。</p><p class="recent-foot"><button id="openDownloadFolder" type="button" class="text-button">打开下载文件夹</button></p></section>
   <section id="desktopRow" class="desktop-row" aria-label="大文件交给桌面版" data-i18n-aria="uiDesktopRowAria">
     <label class="desktop-switch"><span class="desktop-row-title"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3 5 13.5h6L10 21l8-10.5h-6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg><span data-i18n="uiDesktopRowTitle">大文件交给桌面版</span></span><input id="desktopTakeover" type="checkbox" role="switch"><span class="switch-track" aria-hidden="true"></span></label>
     <p id="desktopRowNote" class="desktop-row-note" hidden></p>
     <ul id="chromeBig" class="chrome-big" hidden></ul>
-  </section>
-  <details id="recentDownloads" class="recent-downloads" hidden><summary><span>最近下载</span></summary><ul id="recentList"></ul></details>
-  <footer><span data-i18n="uiFreeOpen">免费开源，无广告</span><button id="copyAll" class="text-button" disabled data-i18n="uiCopyAllLinks">复制全部链接</button></footer>
+  </section></div>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   <dialog id="linkDownload" class="link-download-sheet" aria-labelledby="linkDownloadTitle"><form id="linkDownloadForm"><div class="link-download-heading"><h2 id="linkDownloadTitle" data-i18n="uiLinkHowTitle">这个链接，怎么下？</h2><button id="linkDownloadCancel" type="button" class="text-button" data-i18n="uiCancel">取消</button></div><p class="quality-note" data-i18n="uiLinkHowNote">平时点击下载仍使用 Chrome，只有你选择时才打开 Ruxget 桌面版。</p><label for="linkDownloadURL" class="visually-hidden" data-i18n="uiLinkUrlLabel">文件下载链接</label><input id="linkDownloadURL" type="url" placeholder="粘贴 HTTP / HTTPS 下载链接" data-i18n-placeholder="uiPasteHttp" required maxlength="16384"><p id="linkDownloadError" class="error" role="alert" hidden></p><div class="link-download-actions"><button id="linkUseChrome" class="download-button" type="submit" data-i18n="uiUseChrome">用 Chrome 下载</button><button id="linkUseDesktop" class="text-button" type="button" data-i18n="uiUseRuxget">用 Ruxget 下载</button></div><p class="quality-note" data-i18n="uiLinkContextNote">也可以右键网页中的下载链接，选择“用 Ruxget 下载此链接”。</p></form></dialog>
 

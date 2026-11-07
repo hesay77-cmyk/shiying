@@ -247,11 +247,11 @@ public partial class MainWindow : Form {
         KeyPreview=true;KeyDown+=(s,e)=>{if(e.KeyCode==Keys.Escape&&!String.IsNullOrEmpty(expandedId)&&!miniMode){expandedId="";UpdateDetails();e.Handled=true;}};
         timer.Interval=700;timer.Tick+=async(s,e)=>{if(ticking||closingWindow)return;ticking=true;try{await Task.Run(()=>manager.Tick());if(!IsDisposed&&!closingWindow)RefreshJobs();}catch(Exception ex){if(!IsDisposed)status.Text=ex.Message;}finally{ticking=false;}};
         if(!preview)timer.Start();RefreshJobs();
-        FormClosing+=async(s,e)=>{timer.Stop();if(!closeReady&&!closingWindow)SaveWindowLayout();if(preview||closeReady)return;e.Cancel=true;if(closingWindow)return;closingWindow=true;tray.Visible=false;foreach(Form owned in OwnedForms)owned.Hide();Hide();status.Text="正在保存任务…";try{await Task.Run(()=>manager.Dispose());}catch(Exception ex){Alert(ex.Message);}closeReady=true;Close();};
+        FormClosing+=async(s,e)=>{if(e.CloseReason==CloseReason.WindowsShutDown||e.CloseReason==CloseReason.TaskManagerClosing){timer.Stop();if(!closingWindow){closingWindow=true;try{manager.Dispose();}catch{}}return;}timer.Stop();if(!closeReady&&!closingWindow)SaveWindowLayout();if(preview||closeReady)return;e.Cancel=true;if(closingWindow)return;closingWindow=true;tray.Visible=false;foreach(Form owned in OwnedForms)owned.Hide();Hide();status.Text="正在保存任务…";try{await Task.Run(()=>manager.Dispose());}catch(Exception ex){Alert(ex.Message);}closeReady=true;Close();};
         if(!preview)Shown+=(s,e)=>StartPlugin();
         if(!preview)Shown+=(s,e)=>RestoreWindowMode();
         if(!preview)Shown+=(s,e)=>BrowserBridge.Listen(this);
-        if(!preview&&!String.IsNullOrEmpty(manager.RecoveryNotice))Shown+=(s,e)=>Alert(manager.RecoveryNotice);
+        if(!preview&&!String.IsNullOrEmpty(manager.RecoveryNotice))Shown+=(s,e)=>{if(startingInBackground||hiddenToTray)status.Text=manager.RecoveryNotice;else Alert(manager.RecoveryNotice);};
     }
     void OpenDetails(string id){
         var job=manager.Snapshot().FirstOrDefault(j=>j.Id==id);if(job!=null&&TorrentInfo.IsBt(job)&&job.Status=="等待选文件"){ChooseBt(id);return;}

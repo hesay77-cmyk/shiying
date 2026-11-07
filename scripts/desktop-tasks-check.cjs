@@ -50,11 +50,11 @@ const A='aaaaaaaaaaaaaaaa',B='bbbbbbbbbbbbbbbb',C='cccccccccccccccc',MB=1024*102
   assert.equal(await worker.evaluate(()=>calls.some(call=>call.action==='show')),false);
   check('progress is read with “status” only; the desktop window is never opened by itself');
 
-  // Popup: the list opens by itself and shows both tasks.
+  // Popup (0.4.69): nothing to download on this page, so it opens on 已下载, which counts the running download.
   let popup=await browser.newPage();await popup.goto(`chrome-extension://${id}/shiying.html`);
   const item=job=>popup.locator(`#recentList li[data-id="${job}"]`);
   await item(A).waitFor({state:'visible'});
-  assert.equal(await popup.locator('#recentDownloads').getAttribute('open'),'');
+  assert.equal(await popup.evaluate(()=>document.body.dataset.view),'downloads');assert.equal(await popup.locator('#tabDownloads .tab-count').innerText(),'1');
   assert.match(await item(A).innerText(),/系统镜像\.iso[\s\S]*桌面版 · 45% · 3\.2 MB\/s/);
   assert.equal(await item(A).locator('.recent-bar').count(),1);
   assert.match(await item(B).innerText(),/安装包\.zip[\s\S]*桌面版 · 已完成/);
@@ -72,7 +72,7 @@ const A='aaaaaaaaaaaaaaaa',B='bbbbbbbbbbbbbbbb',C='cccccccccccccccc',MB=1024*102
 
   // Delete the finished one, keep its file.
   await item(B).locator('.recent-delete').click();
-  assert.match(await item(B).innerText(),/删除这个下载？[\s\S]*删除文件[\s\S]*只移除记录[\s\S]*取消/);
+  assert.match(await item(B).innerText(),/删除「[^」]+」？[\s\S]*删除文件[\s\S]*只移除记录[\s\S]*取消/);
   await item(B).getByRole('button',{name:'只移除记录'}).click();await item(B).waitFor({state:'detached'});
   let forget=await worker.evaluate(()=>calls.filter(call=>call.action==='forget'));
   assert.deepEqual(forget.map(call=>[call.id,call.deleteFiles]),[[B,false]]);
@@ -80,7 +80,7 @@ const A='aaaaaaaaaaaaaaaa',B='bbbbbbbbbbbbbbbb',C='cccccccccccccccc',MB=1024*102
   check('a finished desktop task: “只移除记录” keeps the file');
   // Stop and delete the running one.
   await item(A).locator('.recent-delete').click();
-  assert.match(await item(A).innerText(),/停止并删除这个下载？/);
+  assert.match(await item(A).innerText(),/停止并删除「[^」]+」？/);
   await popup.screenshot({path:path.join(report,'confirm-zh.png')});
   await item(A).getByRole('button',{name:'停止并删除'}).click();await item(A).waitFor({state:'detached'});
   forget=await worker.evaluate(()=>calls.filter(call=>call.action==='forget'));
@@ -116,7 +116,7 @@ const A='aaaaaaaaaaaaaaaa',B='bbbbbbbbbbbbbbbb',C='cccccccccccccccc',MB=1024*102
   await worker.evaluate(()=>RuxgetDesktopTasks.poll());
   assert.equal(await badge(tabId),'2');
   popup=await browser.newPage();await popup.goto(`chrome-extension://${id}/shiying.html`);
-  await popup.locator('#recentDownloads').waitFor({state:'visible'});await popup.locator('#recentDownloads summary').click();
+  await popup.locator('#tabDownloads').click();
   await item(C).waitFor({state:'visible'});assert.match(await item(C).innerText(),/桌面版 · 已暂停 · 50%/);
   check('with the desktop app closed, its task shows as paused and the icon shows no count');
   await popup.close();
@@ -126,7 +126,7 @@ const A='aaaaaaaaaaaaaaaa',B='bbbbbbbbbbbbbbbb',C='cccccccccccccccc',MB=1024*102
   popup=await browser.newPage();await popup.goto(`chrome-extension://${id}/shiying.html`);
   await item(A).waitFor({state:'visible'});
   assert.match(await item(A).innerText(),/Desktop · 12% · 5 MB\/s/);
-  await item(A).locator('.recent-delete').click();assert.match(await item(A).innerText(),/Stop and delete this download\?/);
+  await item(A).locator('.recent-delete').click();assert.match(await item(A).innerText(),/Stop and delete “[^”]+”\?/);
   await popup.screenshot({path:path.join(report,'popup-en.png')});
   check('English: desktop tasks and the confirm are in English');
   await popup.close();

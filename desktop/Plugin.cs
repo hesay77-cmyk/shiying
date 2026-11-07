@@ -90,14 +90,7 @@ public partial class MainWindow {
         if(command=="folder"){if(!preview){SelectTask(id);OpenFolder();}return;}
         if(command=="open"){
             var job=manager.Snapshot().FirstOrDefault(item=>item.Id==id);if(job==null||job.Status!="已完成"||preview)return;
-            string path=job.File;bool file=!String.IsNullOrEmpty(path)&&System.IO.File.Exists(path),folder=!file&&!String.IsNullOrEmpty(path)&&Directory.Exists(path);
-            if(!file&&!folder){PluginNotice("文件已不在原来的位置，可能被移动或删除了");return;}
-            // Older tasks (before 0.4.68) have no "from the internet" mark yet. Add it now, so SmartScreen checks programs;
-            // a program that still can't be marked (e.g. on a FAT32 USB stick) is only shown in its folder, never run.
-            if(file&&!WebMark.Has(path))WebMark.File(path,job.Url);
-            if(file&&WebMark.IsRunnable(path)&&!WebMark.Has(path)){try{System.Diagnostics.Process.Start("explorer.exe","/select,"+Util.Quote(path));}catch(Exception){}PluginNotice("这个程序没有“来自网络”的安全标记，已打开它所在的文件夹，请确认后再运行");return;}
-            try{if(folder)System.Diagnostics.Process.Start("explorer.exe",Util.Quote(path));else System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path){UseShellExecute=true,WorkingDirectory=Path.GetDirectoryName(path)});}
-            catch(System.ComponentModel.Win32Exception ex){if(ex.NativeErrorCode!=1223)PluginNotice(ex.NativeErrorCode==1155?"没有能打开这种文件的程序，可以点“打开文件夹”":"打不开这个文件："+ex.Message);}
+            string notice=SavedFile.Open(job.File,job.Url,true);if(!String.IsNullOrEmpty(notice))PluginNotice(notice);
             return;
         }
         if(command=="copy"){var job=manager.Snapshot().FirstOrDefault(item=>item.Id==id);if(job!=null&&!preview){Clipboard.SetText(job.Url);PluginNotice("已复制下载链接");}return;}
