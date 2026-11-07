@@ -19,6 +19,8 @@
   --hover:var(--olive-hover)!important;--audio:var(--sub)!important;--audio-wash:var(--raise)!important;
 }
 html,body{background:var(--bg)!important;background-image:none!important;color:var(--fg)!important}
+/* Keep the scrollbar's place even when nothing scrolls, so switching 本页视频 ↔ 已下载 never changes the width. */
+html{scrollbar-gutter:stable;scrollbar-width:thin;scrollbar-color:#C9C2AC transparent}
 body{font-family:"Geist","Microsoft YaHei UI","PingFang SC",sans-serif!important;-webkit-font-smoothing:antialiased}
 button,input,select,textarea{font-family:inherit}
 ::selection{background:var(--lime);color:var(--lime-ink)}
