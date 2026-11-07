@@ -100,7 +100,7 @@ const MB=1024*1024;
 
   const log=await worker.evaluate(()=>chrome.storage.local.get('ruxgetTakeoverLog'));
   assert.deepEqual(log.ruxgetTakeoverLog.map(entry=>entry.result),['chrome','chrome','desktop']);
-  check('the last results are kept for the settings page (session only)');
+  check('the last results are kept for the settings page (kept in local storage)');
 
   // Settings page: the switch appears once the desktop is connected and saves the choices.
   await configure({enabled:false,minMB:1,skipHosts:[]});

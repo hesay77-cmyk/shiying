@@ -2,6 +2,11 @@
 // Translate only at display time: callers keep comparing the original Chinese strings.
 (function (global) {
   const exact = {
+    // Desktop app replies when it can't take over a download (Shiying.cs)
+    '这个链接需要网页登录或验证，交回 Chrome 下载': 'This link needs the web page’s sign-in or verification, so Chrome keeps it',
+    '桌面版无法直接访问这个链接，交回 Chrome 下载': 'Ruxget Desktop can’t reach this link directly, so Chrome keeps it',
+    '服务器没有直接给出文件': 'The server didn’t send the file directly',
+    '桌面版正忙，请稍后': 'Ruxget Desktop is busy; try again in a moment',
     // Popup notices (shiying.js notify)
     '链接已复制': 'Link copied',
     '未授权，已有下载和已允许的网站仍可使用': 'Not allowed. Existing downloads and allowed sites still work',

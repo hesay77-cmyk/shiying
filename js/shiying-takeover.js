@@ -78,7 +78,7 @@ const RuxgetTakeover={
         wrapped.ruxgetMarked=true;downloads.download=wrapped;
     },
     // Recent hand-overs and why a download stayed in Chrome, with timings, so a miss can be explained (0.4.65).
-    // Kept in local storage: session storage is cleared whenever the worker restarts, which is exactly when misses happen.
+    // Kept in local storage, so it survives an extension reload or browser restart, when misses are often noticed.
     remember(entry){
         return RuxgetTakeover.serial(async()=>{try{
             const {[RuxgetTakeover.LOG]:log=[]}=await chrome.storage.local.get(RuxgetTakeover.LOG);
@@ -99,6 +99,41 @@ const RuxgetTakeover={
         if(!chrome.downloads?.setUiOptions)return;
         RuxgetTakeover.uiHold=Math.max(0,RuxgetTakeover.uiHold+(on?1:-1));
         chrome.downloads.setUiOptions({enabled:RuxgetTakeover.uiHold===0}).catch(()=>{});
+        // Remembered for the session, so a worker that stops mid-hand-over gets the bubble back when it starts again.
+        const store=chrome.storage?.session;if(store)(RuxgetTakeover.uiHold>0?store.set({[RuxgetTakeover.UI_HELD]:true}):store.remove(RuxgetTakeover.UI_HELD)).catch(()=>{});
+    },
+    UI_HELD:'ruxgetUiHeld',PAUSED:'ruxgetPausedForHandOver',
+    // Downloads paused only for a hand-over; resumed by recover() if the worker stops before deciding.
+    async pausedList(){try{const {[RuxgetTakeover.PAUSED]:list=[]}=await chrome.storage.session.get(RuxgetTakeover.PAUSED);return list;}catch{return [];}},
+    pausedForHandOver(id,on){
+        const store=chrome.storage?.session;if(!store)return Promise.resolve();
+        return RuxgetTakeover.serial(async()=>{try{
+            const {[RuxgetTakeover.PAUSED]:list=[]}=await store.get(RuxgetTakeover.PAUSED);
+            const next=list.filter(value=>value!==id);if(on)next.push(id);
+            await store.set({[RuxgetTakeover.PAUSED]:next});
+        }catch{}});
+    },
+    // Worker start: undo what a stopped worker left behind (bubble shut, a download paused for a hand-over).
+    // Touches Chrome's bubble only if this extension shut it, so people without takeover are never affected.
+    async recover(){
+        const store=chrome.storage?.session;if(!store)return;
+        try{
+            const saved=await store.get([RuxgetTakeover.UI_HELD,RuxgetTakeover.PAUSED]);
+            if(saved[RuxgetTakeover.UI_HELD]&&RuxgetTakeover.uiHold===0){
+                await chrome.downloads.setUiOptions({enabled:true}).catch(()=>{});
+                // A hand-over may have started meanwhile and set the note again; keep it then.
+                if(RuxgetTakeover.uiHold===0)await store.remove(RuxgetTakeover.UI_HELD);
+            }
+            const {[RuxgetTakeover.LOG]:log=[]}=await chrome.storage.local.get(RuxgetTakeover.LOG).catch(()=>({}));
+            for(const id of saved[RuxgetTakeover.PAUSED]||[]){
+                if(RuxgetTakeover.running.has(id))continue;
+                const [current]=await chrome.downloads.search({id}).catch(()=>[]);
+                // Already accepted by the desktop (noted before cancelling): finish the cancel instead of resuming a second copy.
+                if(current&&current.state==='in_progress'&&log.some(entry=>entry.id===id&&entry.result==='desktop')){await chrome.downloads.cancel(id).catch(()=>{});await chrome.downloads.erase({id}).catch(()=>{});}
+                else if(current&&current.state==='in_progress'&&current.paused)await chrome.downloads.resume(id).catch(()=>{});
+                await RuxgetTakeover.pausedForHandOver(id,false);
+            }
+        }catch{}
     },
     // What may be moved, decided without waiting, so the bubble can be shut before Chrome shows it.
     mayTake(item,config){
@@ -142,7 +177,7 @@ const RuxgetTakeover={
     running:new Map(),
     handOver(item,hint={}){
         if(RuxgetTakeover.running.has(item.id))return RuxgetTakeover.running.get(item.id);
-        const run=RuxgetTakeover.moveNow(item,hint).finally(()=>RuxgetTakeover.running.delete(item.id));
+        const run=RuxgetTakeover.moveNow(item,hint).finally(()=>{RuxgetTakeover.running.delete(item.id);return RuxgetTakeover.pausedForHandOver(item.id,false);});
         RuxgetTakeover.running.set(item.id,run);return run;
     },
     async moveNow(item,hint){
@@ -150,6 +185,10 @@ const RuxgetTakeover={
         // A brand-new download can refuse a pause while Chrome is still naming it, so keep trying for a few seconds.
         // A file that finishes in the meantime is simply left to Chrome. Every outcome is noted with its timing.
         const seen=hint.seen||await RuxgetTakeover.progress(item),started=Date.now();
+        // Paused by the person (not left paused by a hand-over that a stopped worker never finished): stays paused if refused.
+        const userPaused=seen.paused&&!(await RuxgetTakeover.pausedList()).includes(item.id);
+        // Noted before pausing, so a worker that stops right after the pause still resumes it on restart.
+        if(!userPaused)await RuxgetTakeover.pausedForHandOver(item.id,true);
         const note=(result,error,extra={})=>RuxgetTakeover.remember(Object.assign({url:item.finalUrl||item.url,source:item.url,id:item.id,name:RuxgetTakeover.name(item)||String(hint.name||'').split(/[\\/]/).pop(),result,error,lagMs:seen.lagMs,percent:seen.percent,ms:Date.now()-started},extra));
         for(let attempt=0;;attempt++){
             try{await chrome.downloads.pause(item.id);break;}
@@ -181,10 +220,11 @@ const RuxgetTakeover={
             return {result:'desktop',name:reply.name||name};
         }
         // Back to Chrome: resume the paused copy, or start it again if Chrome can't resume this server.
-        try{await chrome.downloads.resume(item.id);}
-        catch{try{await chrome.downloads.cancel(item.id);}catch{}try{await chrome.downloads.download({url});}catch{}}
+        // A download the person had paused themselves stays paused.
+        if(!userPaused){try{await chrome.downloads.resume(item.id);}
+        catch{try{await chrome.downloads.cancel(item.id);}catch{}try{await chrome.downloads.download({url});}catch{}}}
         await note('chrome',String(reply?.error||'')||'desktop');
-        return {result:'chrome',error:String(reply?.error||'')};
+        return {result:'chrome',error:String(reply?.error||'')||'desktop'};
     }
 };
 if(typeof chrome!=='undefined'&&chrome.downloads){
@@ -193,6 +233,7 @@ if(typeof chrome!=='undefined'&&chrome.downloads){
     if(typeof ServiceWorkerGlobalScope!=='undefined'&&self instanceof ServiceWorkerGlobalScope){
         chrome.downloads.onCreated.addListener(item=>{RuxgetTakeover.handle(item).catch(()=>{});});
         RuxgetTakeover.settings().then(config=>{RuxgetTakeover.known=config;}).catch(()=>{});
+        RuxgetTakeover.recover();
         chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&changes[RuxgetTakeover.KEY])RuxgetTakeover.settings().then(config=>{RuxgetTakeover.known=config;}).catch(()=>{});});
     }
 }

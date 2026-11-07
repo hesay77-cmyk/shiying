@@ -1,6 +1,8 @@
 // GPL-3.0. Concrete optional origins can be added or removed by the user.
 const siteForm=document.querySelector('#sitePermissionForm'),siteStatus=document.querySelector('#sitePermissionStatus');
 async function showGrantedSites(){
+ // Wait for the page language first, or the English page can show a Chinese line.
+ if(window.RuxgetI18n?.ready)await RuxgetI18n.ready().catch(()=>{});
  await ShiyingAccess.sync();
  const data=await chrome.permissions.getAll(),required=chrome.runtime.getManifest().host_permissions||[];
  const list=document.querySelector('#grantedSites');list.replaceChildren();

@@ -14,13 +14,15 @@ for (const locale of fs.readdirSync(path.join(root, '_locales'), {withFileTypes:
   if (!locale.isDirectory()) continue;
   fs.cpSync(path.join(root, '_locales', locale.name), path.join(output, '_locales', locale.name), {recursive:true});
 }
-for (const name of fs.readdirSync(root)) if (name.endsWith('.html') || ['manifest.json','LICENSE','NOTICE.md','PRIVACY.md','使用说明.md'].includes(name)) fs.copyFileSync(path.join(root,name), path.join(output,name));
+for (const name of fs.readdirSync(root)) if (name.endsWith('.html') || ['manifest.json','LICENSE','NOTICE.md','PRIVACY.md'].includes(name)) fs.copyFileSync(path.join(root,name), path.join(output,name));
 fs.rmSync(path.join(output, YOUTUBE_MODULE), {force:true});
 // The store edition always shows its real version (a version_name left over in the source manifest showed 0.4.54 in 0.4.56).
 { const file = path.join(output, 'manifest.json'), store = JSON.parse(fs.readFileSync(file, 'utf8')); store.version_name = store.version; fs.writeFileSync(file, JSON.stringify(store, null, 2) + '\n'); }
 
 // Full edition.
 fs.cpSync(output, full, {recursive:true});
+// The sideloading notes belong to the GitHub (full) edition only, not the store package.
+fs.copyFileSync(path.join(root, '使用说明.md'), path.join(full, '使用说明.md'));
 fs.copyFileSync(path.join(root, YOUTUBE_MODULE), path.join(full, YOUTUBE_MODULE));
 const replaceOnce = (file, before, after) => {
   const target = path.join(full, file), text = fs.readFileSync(target, 'utf8');

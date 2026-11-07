@@ -201,7 +201,7 @@
     "message": "Extensions"
   },
   "suffixTip": {
-    "message": "Add extensions without a leading dot. Do not start with 0."
+    "message": "Add extensions without a leading dot. Enter 0 for no size filter."
   },
   "extensionName": {
     "message": "Extension name"
@@ -231,7 +231,7 @@
     "message": "Add type"
   },
   "typeTip": {
-    "message": "Add a valid content-type. Do not start with 0."
+    "message": "Add a valid content-type. Enter 0 for no size filter."
   },
   "addTypeError": {
     "message": "Invalid type format. Please check."

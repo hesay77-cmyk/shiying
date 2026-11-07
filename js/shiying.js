@@ -154,7 +154,7 @@ function render() {
                     // Chrome keeps its copy in every case below, so nothing is added to the desktop.
                     const issue = moved && ShiyingDesktop.connectionIssue({message: moved.error});
                     if (issue) { await ShiyingDesktop.offerDesktopDownload(issue); return; }
-                    if (moved && moved.error !== 'gone' && moved.error !== 'finished') { failure(new Error(pick('桌面版接不了这个链接，仍由 Chrome 下载：', 'Ruxget Desktop can’t take this link, so Chrome keeps it: ') + RuxgetText.tr(moved.error || ''))); return; }
+                    if (moved && moved.error !== 'gone' && moved.error !== 'finished') { failure(new Error(pick('桌面版接不了这个链接，仍由 Chrome 下载：', 'Ruxget Desktop can’t take this link, so Chrome keeps it: ') + ({pause: pick('Chrome 不让暂停这个下载', 'Chrome would not pause this download'), 'not connected': pick('没有允许连接桌面版', 'The desktop app connection isn’t allowed'), desktop: pick('桌面版没有接', 'The desktop app didn’t take it')}[moved.error] || RuxgetText.tr(moved.error || '')))); return; }
                     const [still] = await chrome.downloads.search({id: running.id}).catch(() => []);
                     if (!moved || still?.state === 'in_progress') { failure(new Error(pick('Chrome 还在准备这个下载，请过几秒再点「桌面下载」', 'Chrome is still setting up this download; try “Desktop” again in a few seconds'))); return; }
                 }
