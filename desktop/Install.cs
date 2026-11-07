@@ -124,6 +124,8 @@ public static class Updater {
     internal static TimeSpan CheckEvery=TimeSpan.FromHours(20);
     const long MaxSize=80L*1024*1024;
     static readonly object gate=new object();
+    // TLS 1.2 for hidaydream.cloud, whoever calls first (the task manager switches it on too).
+    static Updater(){System.Net.ServicePointManager.SecurityProtocol|=(System.Net.SecurityProtocolType)3072;}
     static string Folder(string data){return Path.Combine(data,"update");}
     // Held by the setup for the whole quiet install: Ruxget, the browser bridge and a second setup stay out meanwhile.
     public const string LockName="Local\\Ruxget-Update";
