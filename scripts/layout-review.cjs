@@ -22,7 +22,7 @@ const longName='很长的下载文件名'+ 'UnbrokenFileName'.repeat(18)+'.mp4';
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));let browser;
  const records=[],errors=[];
  try{
-  browser=await chromium.launch({executablePath:process.env.SHIYING_CHROMIUM||'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});
+  browser=await chromium.launch({executablePath:process.env.SHIYING_CHROMIUM||'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true,args:['--mute-audio','--autoplay-policy=user-gesture-required']});
   const context=await browser.newContext();const origin=`http://127.0.0.1:${server.address().port}`;
   await context.route('**/*',route=>route.request().url().startsWith(origin)?route.continue():route.abort());
   context.on('page',page=>page.on('pageerror',error=>errors.push(error.message)));

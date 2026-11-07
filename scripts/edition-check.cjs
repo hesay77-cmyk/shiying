@@ -8,7 +8,7 @@ const VIDEO='https://www.youtube.com/watch?v=abcdefghijk&list=PL1234567890';
  const {chromium}=require(process.env.SHIYING_PLAYWRIGHT||'playwright');
  async function open(edition){
   const extension=path.join(root,edition);
-  const browser=await chromium.launchPersistentContext(path.join(report,edition+'-profile'),{executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true,viewport:{width:1100,height:700},ignoreDefaultArgs:['--disable-extensions'],args:[`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--host-resolver-rules=MAP * ~NOTFOUND']});
+  const browser=await chromium.launchPersistentContext(path.join(report,edition+'-profile'),{executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true,viewport:{width:1100,height:700},ignoreDefaultArgs:['--disable-extensions'],args:['--mute-audio','--autoplay-policy=user-gesture-required',`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--host-resolver-rules=MAP * ~NOTFOUND']});
   await browser.route('**/*',route=>new URL(route.request().url()).protocol==='chrome-extension:'?route.continue():route.fulfill({contentType:'text/html',body:'<!doctype html><meta charset="utf-8"><title>Fixture</title><main style="padding:24px"><video style="display:block;width:640px;height:360px;background:#172942"></video></main>'}));
   const worker=browser.serviceWorkers()[0]||await browser.waitForEvent('serviceworker');
   await worker.evaluate(()=>chrome.storage.local.set({ruxgetUiLanguage:'zh_CN'}));

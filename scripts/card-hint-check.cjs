@@ -8,12 +8,12 @@ const VIDEO='https://www.bilibili.com/video/BV15z4y1U7HS/';
  execFileSync(process.execPath,[path.join(__dirname,'package.cjs')],{stdio:'ignore'});
  const extension=path.join(root,'build');
  const {chromium}=require(process.env.SHIYING_PLAYWRIGHT||'playwright');
- const browser=await chromium.launchPersistentContext(path.join(report,'profile'),{executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true,viewport:{width:380,height:640},ignoreDefaultArgs:['--disable-extensions'],args:[`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--no-proxy-server']});
+ const browser=await chromium.launchPersistentContext(path.join(report,'profile'),{executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true,viewport:{width:380,height:640},ignoreDefaultArgs:['--disable-extensions'],args:['--mute-audio','--autoplay-policy=user-gesture-required',`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--no-proxy-server']});
  const errors=[];browser.on('page',p=>p.on('pageerror',e=>errors.push(e.message+' @ '+p.url())));
  try{
   await browser.route('https://www.bilibili.com/**',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>Fixture</title><video></video>'}));
   // The page read is stubbed; the video's length comes from storage so each case can set it.
-  await browser.addInitScript(url=>{if(location.protocol!=='chrome-extension:'||!location.pathname.endsWith('/shiying.html'))return;const send=chrome.runtime.sendMessage.bind(chrome.runtime);chrome.runtime.sendMessage=async message=>{if(message.Message==='shiyingPlatformRead'){const {testDuration=60}=await chrome.storage.local.get('testDuration');return {ok:true,id:'catalog',url,title:'卡片提示测试',site:'bilibili',duration:testDuration,choices:[{height:720,label:'720p'}],audioAvailable:true,subtitles:[]};}return send(message);};},VIDEO);
+  await browser.addInitScript(url=>{if(location.protocol!=='chrome-extension:'||!location.pathname.endsWith('/shiying.html'))return;window.testCalls=[];window.nativeCalls=[];chrome.permissions.contains=async()=>true;chrome.permissions.request=async()=>true;chrome.runtime.sendNativeMessage=async(host,payload)=>{nativeCalls.push(payload);return payload.action==='add'?{ok:true,stage:'started',id:'desk-1',name:'卡片提示测试.mp4'}:{ok:true,version:'0.4.70'};};const send=chrome.runtime.sendMessage.bind(chrome.runtime);chrome.runtime.sendMessage=async message=>{testCalls.push(message);if(message.Message==='shiyingPlatformDesktop')return {ok:true,payload:{action:'add',kind:'video',format:message.format,height:message.height}};if(message.Message==='shiyingPlatformRead'){const {testDuration=60}=await chrome.storage.local.get('testDuration');return {ok:true,id:'catalog',url,title:'卡片提示测试',site:'bilibili',duration:testDuration,choices:[{height:720,label:'720p'}],audioAvailable:true,subtitles:[]};}return send(message);};},VIDEO);
   const worker=browser.serviceWorkers()[0]||await browser.waitForEvent('serviceworker'),id=new URL(worker.url()).hostname;
   await worker.evaluate(()=>chrome.storage.local.set({ruxgetUiLanguage:'zh_CN'}));
   const site=await browser.newPage();await site.goto(VIDEO);
@@ -28,14 +28,25 @@ const VIDEO='https://www.bilibili.com/video/BV15z4y1U7HS/';
   let p=await open();let h=await hint(p);assert.equal(h.visible,false);await p.close();
   check('a short video with no download shows no hint');
 
-  // Long video: a desktop suggestion; the link only switches the method.
+  // Long video: a desktop suggestion; 0.4.71: the link hands this video to the desktop app at once (no setting changes).
   await state({testDuration:2400});p=await open();h=await hint(p);
   assert.equal(h.visible,true);assert.match(h.text,/视频较长，用桌面版下载更稳/);assert.equal(h.dialogs,0);
   await p.screenshot({path:path.join(report,'hint-long.png')});
-  await p.locator('#cardHint .hint-link').click();await p.waitForFunction(()=>document.querySelector('#cardHint').hidden);
-  assert.equal((await worker.evaluate(()=>chrome.storage.local.get('shiyingVideoPreference'))).shiyingVideoPreference.method,'desktop');
-  assert.equal(await p.locator('#platformDownload').innerText(),'用桌面版下载');await p.close();
-  check('long video: “改用桌面版” switches the download method and the hint goes away; nothing starts');
+  await p.locator('#cardHint .hint-link').click();await p.waitForFunction(()=>nativeCalls.some(c=>c.action==='add'));
+  await p.waitForFunction(()=>document.querySelector('#cardHint').hidden&&/已交给桌面版/.test(document.querySelector('#platformNote').textContent));
+  assert.deepEqual(await p.evaluate(()=>nativeCalls.filter(c=>c.action==='add').map(c=>[c.kind,c.height])),[['video',720]]);
+  assert.equal(await p.evaluate(()=>testCalls.some(c=>c.Message==='shiyingPlatformStart')),false);
+  assert.equal(await p.locator('dialog[open]').count(),0);
+  await p.evaluate(()=>document.dispatchEvent(new CustomEvent('ruxget-i18n-applied')));await p.waitForTimeout(400);
+  assert.equal(await p.locator('#cardHint').isVisible(),false,'the hint stays away for a video already sent');
+  assert.equal(await p.locator('#platformDownload').innerText(),'下载视频');
+  assert.equal((await worker.evaluate(()=>chrome.storage.local.get('ruxgetDesktopMode'))).ruxgetDesktopMode,undefined);await p.close();
+  p=await open();assert.equal((await hint(p)).visible,false,'reopening the panel (it closes at every outside click) keeps the hint away');await p.close();
+  await worker.evaluate(()=>chrome.storage.session.remove('ruxgetDesktopSent'));
+  check('long video: “改用桌面版” sends it to the desktop app at once, the hint goes away and stays away; no setting changes, no Chrome download');
+  await state({ruxgetDesktopMode:'large'});p=await open();assert.equal((await hint(p)).visible,false);assert.equal(await p.locator('#platformDownload').innerText(),'用桌面版下载');await p.close();
+  await worker.evaluate(()=>chrome.storage.local.remove('ruxgetDesktopMode'));
+  check('when the settings already send long videos to the desktop app, there is no hint');
 
   // A failed download in the browser: a desktop suggestion.
   await state({testDuration:60,shiyingVideoPreference:{height:720,format:'mp4',method:'chrome'}});await job({status:'error',stage:'下载失败',error:'下载失败',progress:30});

@@ -39,7 +39,7 @@ async function platformRead(event){
  const previous=(await chrome.storage.session.get('shiyingCatalogIds')).shiyingCatalogIds||[];
  if(previous.length>=20)await chrome.storage.session.remove(NATIVE_CATALOG_PREFIX+previous.shift());
  await chrome.storage.session.set({[NATIVE_CATALOG_PREFIX+catalog.id]:catalog,shiyingCatalogIds:[...previous,catalog.id]});
- return {id:catalog.id,site:catalog.site,url:catalog.url,title:catalog.title,duration:catalog.duration,choices:catalog.choices,audioAvailable:true,native:true,siteName:catalog.siteName,listUrl:catalog.listUrl,muxed:!!catalog.muxed,mediaOrigins:ShiyingPlatform.mediaOrigins?.[catalog.site]||[],subtitles:(catalog.subtitles||[]).map(({lang,name})=>({lang,name}))};
+ return {id:catalog.id,site:catalog.site,parts:catalog.parts||1,url:catalog.url,title:catalog.title,duration:catalog.duration,choices:catalog.choices,audioAvailable:true,native:true,siteName:catalog.siteName,listUrl:catalog.listUrl,muxed:!!catalog.muxed,mediaOrigins:ShiyingPlatform.mediaOrigins?.[catalog.site]||[],subtitles:(catalog.subtitles||[]).map(({lang,name})=>({lang,name}))};
  }finally{if(tab.shiyingOwned)await chrome.tabs.remove(tab.id).catch(()=>{});}
 }
 async function jobRead(id){const job=(await chrome.storage.local.get(NATIVE_JOB_PREFIX+id))[NATIVE_JOB_PREFIX+id];if(!job)throw new Error('没有找到下载记录，请重新开始');return job}

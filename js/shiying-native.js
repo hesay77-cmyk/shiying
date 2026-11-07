@@ -82,6 +82,8 @@ const ShiyingNative = {
         // Every hand-off tells the desktop app where Chrome saves, so it can keep its folder beside the extension's.
         const payload=result.payload||result,folder=await ShiyingNative.chromeFolder();
         if(folder&&payload&&typeof payload==='object'&&!payload.chromeFolder)payload.chromeFolder=folder;
+        // 0.4.71: this extension shows a quietly started task in 已下载, so the desktop app may start it without its window.
+        if(payload&&typeof payload==='object'&&payload.action==='add')payload.quiet=true;
         let response;
         try {
             response=await chrome.runtime.sendNativeMessage('org.shiying.desktop',payload);
@@ -98,6 +100,8 @@ const ShiyingNative = {
         if(!response?.ok)throw new Error(response?.error||'桌面版未接收任务');
         // A task handed over by hand shows on the icon once the desktop starts it.
         // Never lets the hand-off itself fail.
+        // 0.4.70 desktop: the task starts at once and comes back with its id; 已下载 lists it from now on.
+        if(payload?.action==='add'&&response.id){try{if(typeof RuxgetDesktopTasks!=='undefined')await RuxgetDesktopTasks.remember(response.id,response.name);else await chrome.runtime.sendMessage({Message:'ruxgetDesktopRemember',id:response.id,name:response.name});}catch{}}
         if(['add','netdisk'].includes(payload?.action)){try{if(typeof RuxgetDesktopTasks!=='undefined')RuxgetDesktopTasks.watch(60000).catch(()=>{});else chrome.runtime.sendMessage({Message:'ruxgetDesktopWatch'}).catch(()=>{});}catch{}}
         return response;
     }

@@ -41,6 +41,10 @@ public partial class MainWindow : Form {
     internal static void ApplyDarkFrame(Form window){
         try{int dark=1,black=0,white=0xffffff,border=0x6f533b;DwmSetWindowAttribute(window.Handle,20,ref dark,4);DwmSetWindowAttribute(window.Handle,35,ref black,4);DwmSetWindowAttribute(window.Handle,36,ref white,4);DwmSetWindowAttribute(window.Handle,34,ref border,4);}catch(DllNotFoundException){}catch(EntryPointNotFoundException){}
     }
+    // 0.4.71: the main window is light (cream title area, dark ink text, warm edge), like the extension pages.
+    internal static void ApplyLightFrame(Form window){
+        try{int dark=0,caption=0x00E4F0F4,text=0x0020352A,border=0x00C9DCE2;DwmSetWindowAttribute(window.Handle,20,ref dark,4);DwmSetWindowAttribute(window.Handle,35,ref caption,4);DwmSetWindowAttribute(window.Handle,36,ref text,4);DwmSetWindowAttribute(window.Handle,34,ref border,4);}catch(DllNotFoundException){}catch(EntryPointNotFoundException){}
+    }
     [StructLayout(LayoutKind.Sequential)]struct GlassMargins{public int Left,Right,Top,Bottom;}
     [DllImport("dwmapi.dll")]static extern int DwmExtendFrameIntoClientArea(IntPtr handle,ref GlassMargins margins);
     [DllImport("user32.dll")]static extern bool IsZoomed(IntPtr handle);
@@ -51,7 +55,7 @@ public partial class MainWindow : Form {
     void ApplyGlassBackdrop(){
         try{int acrylic=3;if(DwmSetWindowAttribute(Handle,38,ref acrylic,4)==0){var margins=new GlassMargins{Left=-1,Right=-1,Top=-1,Bottom=-1};GlassBackdropEnabled=DwmExtendFrameIntoClientArea(Handle,ref margins)==0;int automatic=-1;DwmSetWindowAttribute(Handle,35,ref automatic,4);}}catch(DllNotFoundException){}catch(EntryPointNotFoundException){}
     }
-    protected override void OnHandleCreated(EventArgs e){base.OnHandleCreated(e);ApplyDarkFrame(this);if(resizeFrameEnabled){int noBorder=-2;NativeOutlineSuppressed=DwmSetWindowAttribute(Handle,34,ref noBorder,4)==0;}ApplyGlassBackdrop();}
+    protected override void OnHandleCreated(EventArgs e){base.OnHandleCreated(e);ApplyLightFrame(this);if(resizeFrameEnabled){int noBorder=-2;NativeOutlineSuppressed=DwmSetWindowAttribute(Handle,34,ref noBorder,4)==0;}ApplyGlassBackdrop();}
     protected override void OnPaintBackground(PaintEventArgs e){
         if(!resizeFrameEnabled){base.OnPaintBackground(e);return;}
         e.Graphics.Clear(Color.Transparent);
@@ -332,6 +336,30 @@ public partial class MainWindow : Form {
         BeginInvoke(new Action(()=>{if(closingWindow||IsDisposed)return;if(!Visible&&!preview){hiddenToTray=true;tray.Visible=true;}RefreshJobs();}));
         return new{ok=true,id=job.Id,name=job.Title};
     }
+    // 0.4.70: a file or video sent from the extension's panel (the person chose it there) starts right away, quietly, like a
+    // taken-over download. Returns null for links that need choices in the window (BT, magnet).
+    internal object AcceptAdd(IDictionary<string,object> input){
+        string kind=Util.Str(input,"kind");if(!new[]{"file","video","audio","tracks"}.Contains(kind))return null;
+        // Only an extension that shows quietly started tasks (0.4.71+, quiet:true) gets one; an older one still says
+        // "confirm it in the desktop window", so its tasks keep the window.
+        object quiet;if(!input.TryGetValue("quiet",out quiet)||!(quiet is bool)||!(bool)quiet)return null;
+        // A magnet link (whatever kind it came with) needs the window to choose its files.
+        if(Util.Str(input,"url").Trim().StartsWith("magnet:",StringComparison.OrdinalIgnoreCase))return null;
+        if(closingWindow||IsDisposed)throw new Exception("Ruxget 正在退出，请稍后重试");
+        int height;if(!Int32.TryParse(Util.Str(input,"height"),out height)||height<=0)height=manager.Config.VideoHeight;
+        // A video page pasted as a plain link (the extension's paste box) is a video, as in the app's own "新建下载".
+        Uri page;Uri.TryCreate(Util.Str(input,"url"),UriKind.Absolute,out page);
+        // A whole playlist needs the window's list choice (新建下载 refuses /playlist pages too).
+        if(page!=null&&page.AbsolutePath.StartsWith("/playlist",StringComparison.OrdinalIgnoreCase))return null;
+        if(kind=="file"&&page!=null&&VideoLink(page)){kind="video";input=new Dictionary<string,object>(input);input["kind"]="video";}
+        // Sent twice (a second click, a retry): the task already running answers instead of a copy.
+        string url=Util.Str(input,"url");bool audioOnly=Util.Str(input,"format")=="mp3";
+        var same=manager.Snapshot().FirstOrDefault(j=>j.Url==url&&j.Kind==kind&&j.ExtractAudio==audioOnly&&new[]{"下载中","等待下载","排队中","准备组件","正在暂停"}.Contains(j.Status));
+        if(same!=null)return new{ok=true,stage="started",id=same.Id,name=same.Title};
+        var job=manager.Add(url,kind,Util.Str(input,"title"),height,null,input,null);
+        try{BeginInvoke(new Action(()=>{if(closingWindow||IsDisposed)return;if(!Visible&&!preview){hiddenToTray=true;tray.Visible=true;}RefreshJobs();}));}catch(InvalidOperationException){/* window closing: the task is saved and shows next time */}
+        return new{ok=true,stage="started",id=job.Id,name=job.Title};
+    }
     // What the extension shows for desktop tasks: every running task, plus the ones it asked about by id.
     internal object BrowserStatus(IDictionary<string,object> input){return BrowserBridge.StatusReply(manager.Snapshot(),input,true);}
     // Delete from the extension: a running task is paused first, and deleting waits (up to 15 s) for the pause to land.
@@ -425,17 +453,15 @@ public partial class MainWindow : Form {
         var start=Button("添加到队列",true);start.SetBounds(476,488,140,36);f.Controls.Add(start);start.Click+=async(s,e)=>{start.Enabled=false;try{string text=urls.Text,type=kind.SelectedIndex==3?"magnet":kind.SelectedIndex==0?"file":kind.SelectedIndex==2?"audio":"video",target=folder.Text;int h=Int32.Parse(height.Text.TrimEnd('p'));bool category=categorize.Checked;await Task.Run(()=>manager.AddMany(text,type,target,h,category));if(!f.IsDisposed)f.DialogResult=DialogResult.OK;}catch(Exception ex){Alert(ex.Message);}finally{if(!start.IsDisposed)start.Enabled=true;}};
         if(inspectDialog!=null){inspectDialog(f);return;}if(f.ShowDialog(this)==DialogResult.OK)RefreshJobs();
     }}
-    void SettingsDialog(){using(var f=Dialog("下载设置",570,560)){
+    void SettingsDialog(){using(var f=Dialog("下载设置",570,480)){
         LabelAt(f,"默认保存文件夹",24,20);var folder=new TextBox{Left=24,Top=50,Width=424,Text=manager.Config.Folder,AccessibleName="新任务默认保存文件夹"};f.Controls.Add(folder);var browse=Button("选文件夹");browse.SetBounds(456,47,90,30);f.Controls.Add(browse);browse.Click+=(s,e)=>{string path=PickFolder(f,folder.Text);if(path!=null)folder.Text=path;};
         LabelAt(f,"网页 / HTTP Tracker 代理（填 system 跟随系统，留空直连）",24,92);var proxy=new TextBox{Left=24,Top=122,Width=522,Text=manager.Config.Proxy};f.Controls.Add(proxy);
         LabelAt(f,"每个文件的最大连接数",24,166);var connections=new NumericUpDown{Left=260,Top=164,Width=110,Minimum=1,Maximum=16,Value=manager.Config.Connections};f.Controls.Add(connections);
-        LabelAt(f,"同时下载的文件 / BT 任务",24,210);var files=new NumericUpDown{Left=260,Top=210,Width=110,Minimum=1,Maximum=10,Value=manager.Config.FileSlots};f.Controls.Add(files);
-        LabelAt(f,"同时下载的视频任务",24,254);var videos=new NumericUpDown{Left=260,Top=254,Width=110,Minimum=1,Maximum=6,Value=manager.Config.VideoSlots};f.Controls.Add(videos);
-        LabelAt(f,"每任务限速 KiB/s（0 为不限）",24,298);var rate=new NumericUpDown{Left=310,Top=296,Width=120,Minimum=0,Maximum=102400,Value=manager.Config.RateKiB};f.Controls.Add(rate);
-        LabelAt(f,"BT 上传上限 KiB/s",24,342);var upload=new NumericUpDown{Left=310,Top=340,Width=120,Minimum=16,Maximum=8192,Value=manager.Config.BtUploadKiB};f.Controls.Add(upload);
-        var categorize=new CheckBox{Left=24,Top=390,Width=522,Height=28,Text="新任务默认按类型放入子文件夹",Checked=manager.Config.AutoCategorize};f.Controls.Add(categorize);
-        f.Controls.Add(new Label{Left=24,Top=430,Width=522,Height=48,ForeColor=Muted,Text="BT 上传上限保存后生效；适当分享数据有助于节点互传。\n其他限速用于新开始或继续的任务，实际速度取决于资源与线路。"});
-        var save=Button("保存",true);save.SetBounds(406,500,140,36);f.Controls.Add(save);save.Click+=async(s,e)=>{save.Enabled=false;try{string proxyValue=proxy.Text.Trim();Util.CheckProxy(proxyValue);string path=Path.GetFullPath(folder.Text);int count=(int)connections.Value,fileCount=(int)files.Value,videoCount=(int)videos.Value,limit=(int)rate.Value,btUpload=(int)upload.Value;bool category=categorize.Checked;await Task.Run(()=>{manager.Config.Folder=path;manager.Config.Proxy=proxyValue;manager.Config.Connections=count;manager.Config.FileSlots=fileCount;manager.Config.VideoSlots=videoCount;manager.Config.RateKiB=limit;manager.Config.BtUploadKiB=btUpload;manager.Config.AutoCategorize=category;manager.SaveSettings();});if(!f.IsDisposed)f.Close();}catch(Exception ex){Alert(ex.Message);}finally{if(!save.IsDisposed)save.Enabled=true;}};
+        LabelAt(f,"每任务限速 KiB/s（0 为不限）",24,210);var rate=new NumericUpDown{Left=310,Top=208,Width=120,Minimum=0,Maximum=102400,Value=manager.Config.RateKiB};f.Controls.Add(rate);
+        LabelAt(f,"BT 上传上限 KiB/s",24,254);var upload=new NumericUpDown{Left=310,Top=252,Width=120,Minimum=16,Maximum=8192,Value=manager.Config.BtUploadKiB};f.Controls.Add(upload);
+        var categorize=new CheckBox{Left=24,Top=302,Width=522,Height=28,Text="新任务默认按类型放入子文件夹",Checked=manager.Config.AutoCategorize};f.Controls.Add(categorize);
+        f.Controls.Add(new Label{Left=24,Top=342,Width=522,Height=62,ForeColor=Muted,Text="BT 上传上限保存后生效；适当分享数据有助于节点互传。\n其他限速用于新开始或继续的任务，实际速度取决于资源与线路。"});
+        var save=Button("保存",true);save.SetBounds(406,420,140,36);f.Controls.Add(save);save.Click+=async(s,e)=>{save.Enabled=false;try{string proxyValue=proxy.Text.Trim();Util.CheckProxy(proxyValue);string path=Path.GetFullPath(folder.Text);int count=(int)connections.Value,limit=(int)rate.Value,btUpload=(int)upload.Value;bool category=categorize.Checked;await Task.Run(()=>{manager.Config.Folder=path;manager.Config.Proxy=proxyValue;manager.Config.Connections=count;manager.Config.RateKiB=limit;manager.Config.BtUploadKiB=btUpload;manager.Config.AutoCategorize=category;manager.SaveSettings();});if(!f.IsDisposed)f.Close();}catch(Exception ex){Alert(ex.Message);}finally{if(!save.IsDisposed)save.Enabled=true;}};
         if(inspectDialog!=null){inspectDialog(f);return;}f.ShowDialog(this);
     }}
     void BrowserDialog(){using(var f=Dialog("连接 Ruxget 浏览器插件",610,270)){

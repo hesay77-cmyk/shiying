@@ -17,7 +17,7 @@ const MB=1024*1024,SIZE=40*MB;
  execFileSync(process.execPath,[path.join(__dirname,'package.cjs')],{stdio:'ignore'});
  const extension=path.join(root,'build');
  const {chromium}=require(process.env.SHIYING_PLAYWRIGHT||'playwright');
- const browser=await chromium.launchPersistentContext(path.join(report,'profile'),{executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true,ignoreDefaultArgs:['--disable-extensions'],args:[`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--no-proxy-server']});
+ const browser=await chromium.launchPersistentContext(path.join(report,'profile'),{executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true,ignoreDefaultArgs:['--disable-extensions'],args:['--mute-audio','--autoplay-policy=user-gesture-required',`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--no-proxy-server']});
  try{
   const worker=browser.serviceWorkers()[0]||await browser.waitForEvent('serviceworker'),id=new URL(worker.url()).hostname;
   const engine=await browser.newPage();await engine.goto(`chrome-extension://${id}/shiying-engine.html`);

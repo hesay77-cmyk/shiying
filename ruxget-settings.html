@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ruxget · 设置</title>
+<link rel="stylesheet" href="css/shiying.css">
+<link rel="stylesheet" href="css/ruxget-settings.css">
+<link rel="stylesheet" href="css/ruxget-light.css">
+<script src="js/shiying-locale.js"></script>
+<script src="js/shiying-text.js"></script>
+<script src="js/shiying-native.js" defer></script>
+<script src="js/ruxget-offer.js" defer></script>
+<script src="js/ruxget-desktop-get.js" defer></script>
+<script src="js/ruxget-settings.js" defer></script>
+</head>
+<body class="settings-page">
+<main class="settings">
+  <header class="settings-head"><img src="img/icon128.png" alt="" width="36" height="36"><div><h1>Ruxget</h1><p id="settingsSubtitle">设置</p></div></header>
+
+  <section class="settings-card" aria-labelledby="desktopTitle">
+    <h2 id="desktopTitle">交给桌面版</h2>
+    <p class="settings-note" id="desktopIntro">插件负责识别视频并完成日常下载；大文件、长视频、网盘和 BT 交给桌面版，支持多线程下载与断点续传，关闭浏览器后任务仍会继续。</p>
+    <div class="settings-choices" role="radiogroup" aria-labelledby="desktopTitle">
+      <label><input type="radio" name="desktopMode" value="never"><span><b data-label="never">从不</b><small data-note="never">所有下载都由插件完成</small></span></label>
+      <label><input type="radio" name="desktopMode" value="large"><span><b data-label="large">大文件和长视频（推荐）</b><small data-note="large">30 分钟以上的视频、Chrome 里 50 MB 以上的文件交给桌面版，其余由插件下载</small></span></label>
+      <label><input type="radio" name="desktopMode" value="all"><span><b data-label="all">全部</b><small data-note="all">视频和 Chrome 里的下载都交给桌面版</small></span></label>
+    </div>
+    <p class="settings-status" id="desktopStatus" role="status"></p>
+    <div class="settings-actions" id="desktopActions"></div>
+    <p class="settings-facts" id="desktopFacts" hidden><span data-fact="free">免费</span><span>3 MB</span><span>Windows 10 / 11</span><span data-fact="ads">无广告</span></p>
+    <p class="desktop-get-row" data-desktop-get></p>
+  </section>
+
+  <section class="settings-card" aria-labelledby="saveTitle">
+    <h2 id="saveTitle">保存位置</h2>
+    <p class="settings-row"><span id="folderLabel">下载到</span><b id="folderPath">Chrome 的下载文件夹</b></p>
+    <label class="settings-check"><input type="checkbox" id="saveAs"><span id="saveAsLabel">每次保存时选择文件夹</span></label>
+    <label class="settings-check"><input type="checkbox" id="subtitles"><span id="subtitlesLabel">下载视频时一起保存字幕（视频有字幕时）</span></label>
+    <div class="settings-actions"><button type="button" class="text-button" id="changeFolder">更改 Chrome 下载文件夹</button><button type="button" class="text-button" id="openFolder">打开下载文件夹</button></div>
+  </section>
+
+  <section class="settings-card" aria-labelledby="pageTitle">
+    <h2 id="pageTitle">网页上</h2>
+    <label class="settings-check"><input type="checkbox" id="floating"><span id="floatingLabel">在视频网页上显示下载浮钮</span></label>
+    <label class="settings-check"><input type="checkbox" id="recognize"><span id="recognizeLabel">识别网页里的视频和音频</span></label>
+    <div class="settings-actions"><a class="text-button" id="sitesLink" href="shiying-help.html#site-access">管理网站权限</a></div>
+  </section>
+
+  <section class="settings-card" aria-labelledby="languageTitle">
+    <h2 id="languageTitle">语言</h2>
+    <div class="settings-inline" role="radiogroup" aria-labelledby="languageTitle">
+      <label><input type="radio" name="language" value="auto"><span id="langAuto">跟随浏览器</span></label>
+      <label><input type="radio" name="language" value="zh_CN"><span>中文</span></label>
+      <label><input type="radio" name="language" value="en"><span>English</span></label>
+    </div>
+  </section>
+
+  <footer class="settings-foot">
+    <a href="https://hidaydream.cloud/?from=ext" target="_blank" rel="noopener" id="siteLink">Ruxget 官网</a>
+    <a href="shiying-help.html" id="helpLink">帮助</a>
+    <a href="https://github.com/hesay77-cmyk/shiying/blob/main/PRIVACY.md" target="_blank" rel="noopener" id="privacyLink">隐私说明</a>
+    <a href="options.html" id="advancedLink" title="文件类型过滤、自定义规则等，一般用不到">高级选项</a>
+    <span id="versionText"></span>
+  </footer>
+</main>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

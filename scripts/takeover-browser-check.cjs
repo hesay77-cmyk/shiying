@@ -22,7 +22,7 @@ const MB=1024*1024;
  execFileSync(process.execPath,[path.join(__dirname,'package.cjs')],{stdio:'ignore'});
  const extension=path.join(root,'build');
  const {chromium}=require(process.env.SHIYING_PLAYWRIGHT||'playwright');
- const browser=await chromium.launchPersistentContext(path.join(report,'profile'),{executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true,acceptDownloads:true,downloadsPath:path.join(report,'downloads'),viewport:{width:900,height:900},ignoreDefaultArgs:['--disable-extensions'],args:[`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--no-proxy-server']});
+ const browser=await chromium.launchPersistentContext(path.join(report,'profile'),{executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true,acceptDownloads:true,downloadsPath:path.join(report,'downloads'),viewport:{width:900,height:900},ignoreDefaultArgs:['--disable-extensions'],args:['--mute-audio','--autoplay-policy=user-gesture-required',`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--no-proxy-server']});
  const errors=[];browser.on('page',p=>p.on('pageerror',e=>errors.push(e.message+' @ '+p.url())));
  try{
   const worker=browser.serviceWorkers()[0]||await browser.waitForEvent('serviceworker'),id=new URL(worker.url()).hostname;
@@ -105,22 +105,16 @@ const MB=1024*1024;
   // Settings page: the switch appears once the desktop is connected and saves the choices.
   await configure({enabled:false,minMB:1,skipHosts:[]});
   await browser.addInitScript(()=>{if(location.protocol!=='chrome-extension:')return;chrome.runtime.sendNativeMessage=async()=>({ok:true,version:'0.4.51'});const contains=chrome.permissions.contains.bind(chrome.permissions);chrome.permissions.contains=async request=>request?.permissions?.includes('nativeMessaging')?true:contains(request);chrome.permissions.request=async()=>true;});
-  // The popup's "大文件交给桌面版" row (0.4.56, was ⋯ → 接管 Chrome 下载…): "设置" opens the page at the switch.
-  await configure({enabled:true,minMB:1,skipHosts:[]});
-  const menuPopup=await browser.newPage();await menuPopup.goto(`chrome-extension://${id}/shiying.html`);
-  assert.equal(await menuPopup.locator('.desktop-row-title').innerText(),'大文件交给桌面版');
-  assert.equal(await menuPopup.locator('#takeoverMenu').count(),0);
-  const rowSettings=menuPopup.locator('#desktopRowNote').getByRole('button',{name:'设置'});await rowSettings.waitFor({state:'visible'});
-  const [opened]=await Promise.all([browser.waitForEvent('page'),rowSettings.click()]);
-  await opened.waitForLoadState();assert.match(opened.url(),/shiying-desktop\.html#takeover$/);
-  await opened.locator('#takeover.is-highlight').waitFor({state:'visible'});
-  await opened.waitForTimeout(600);
-  const box=await opened.locator('#takeover').boundingBox(),viewport=opened.viewportSize();
-  assert(box.y>=0&&box.y+box.height<=viewport.height,'the switch is scrolled into view');
-  await opened.screenshot({path:path.join(report,'menu-opens-switch.png')});await opened.close();
-  if(!menuPopup.isClosed())await menuPopup.close();
-  await configure({enabled:false,minMB:1,skipHosts:[]});
-  check('the popup row “大文件交给桌面版” has “设置”, which opens the page with the switch in view');
+  // 0.4.71: no takeover row in the panel any more; the settings page links to the desktop page.
+  {const popup=await browser.newPage();await popup.goto(`chrome-extension://${id}/shiying.html`);
+   assert.equal(await popup.locator('#desktopRow').isVisible(),false);assert.equal(await popup.locator('#takeoverMenu').count(),0);await popup.close();
+   const page=await browser.newPage();await page.goto(`chrome-extension://${id}/ruxget-settings.html`);
+   const help=page.getByRole('button',{name:'桌面版设置与帮助'});await help.waitFor({state:'visible'});
+   const [opened]=await Promise.all([browser.waitForEvent('page'),help.click()]);
+   await opened.waitForLoadState();assert.match(opened.url(),/shiying-desktop\.html$/);await opened.locator('#takeover').waitFor({state:'visible'});
+   assert.equal(await opened.locator('header a.desktop-get').getAttribute('href'),'https://hidaydream.cloud/?from=ext#editions');
+   await opened.close();await page.close();}
+  check('the panel has no takeover row; settings → 「桌面版设置与帮助」 opens the desktop page (with the desktop download link)');
   const settings=await browser.newPage();await settings.goto(`chrome-extension://${id}/shiying-desktop.html`);
   await settings.locator('#takeover').waitFor({state:'visible'});
   assert.equal(await settings.locator('#takeoverEnabled').isChecked(),false);assert.equal(await settings.locator('#takeoverOptions').isVisible(),false);
@@ -131,29 +125,33 @@ const MB=1024*1024;
   await settings.waitForTimeout(300);
   const saved=(await worker.evaluate(()=>chrome.storage.local.get('ruxgetTakeover'))).ruxgetTakeover;
   assert.deepEqual(saved,{enabled:true,minMB:5,minChosen:true,skipHosts:['pan.example.com','foo.test','bar.test']});
+  assert.equal((await worker.evaluate(()=>chrome.storage.local.get('ruxgetDesktopMode'))).ruxgetDesktopMode,'large','the switch on is settings → 大文件和长视频');
   assert.equal(await settings.locator('#takeoverLog li').count(),3);
   await settings.screenshot({path:path.join(report,'settings-on.png'),fullPage:true});
   await settings.locator('.takeover-switch').click();await settings.waitForTimeout(200);
   assert.equal((await worker.evaluate(()=>chrome.storage.local.get('ruxgetTakeover'))).ruxgetTakeover.enabled,false);
-  check('settings page: switch, size limit and site list are saved; turning it off works');
+  assert.equal((await worker.evaluate(()=>chrome.storage.local.get('ruxgetDesktopMode'))).ruxgetDesktopMode,'never');
+  await worker.evaluate(()=>chrome.storage.local.set({ruxgetDesktopMode:'all'}));await settings.locator('.takeover-switch').click();await settings.waitForTimeout(300);
+  assert.equal((await worker.evaluate(()=>chrome.storage.local.get('ruxgetDesktopMode'))).ruxgetDesktopMode,'all','on keeps 全部');
+  await settings.locator('.takeover-switch').click();await settings.waitForTimeout(300);
+  check('desktop page: switch, size limit and site list are saved; turning it off works; settings → 交给桌面版 follows (on keeps 全部)');
 
-  // ⋯ → “打开 Ruxget 桌面版” asks the desktop app to show its window.
-  const openPopup=async reply=>{
-   const popup=await browser.newPage();await popup.goto(`chrome-extension://${id}/shiying.html`);
-   await popup.evaluate(reply=>{chrome.runtime.sendNativeMessage=async(host,message)=>{await chrome.storage.session.set({openDesktopSent:{host,message}});if(reply==='missing')throw new Error('Specified native messaging host not found.');return {ok:true,stage:'confirm'};};},reply);
-   await popup.locator('details.menu summary').click();
-   assert.equal(await popup.locator('.menu #openDesktop').innerText(),'打开 Ruxget 桌面版');
-   return popup;
+  // Settings → 「打开桌面版」 asks the desktop app to show its window (it was ⋯ → 打开 Ruxget 桌面版).
+  const openSettings=async reply=>{
+   const page=await browser.newPage();
+   await page.addInitScript(reply=>{chrome.runtime.sendNativeMessage=async(host,message)=>{if(message.action==='show')await chrome.storage.session.set({openDesktopSent:{host,message}});if(reply==='missing')throw new Error('Specified native messaging host not found.');return message.action==='ping'?{ok:true,version:'0.4.70'}:{ok:true,stage:'confirm'};};},reply);
+   await page.goto(`chrome-extension://${id}/ruxget-settings.html`);await page.waitForFunction(()=>document.querySelector('#desktopStatus').textContent.length>0);return page;
   };
-  let menuDesktop=await openPopup("ok");
-  await Promise.all([menuDesktop.waitForEvent("close"),menuDesktop.locator("#openDesktop").click()]);
-  assert.deepEqual((await worker.evaluate(()=>chrome.storage.session.get('openDesktopSent'))).openDesktopSent,{host:'org.shiying.desktop',message:{action:'show'}});
-  check('⋯ menu has “打开 Ruxget 桌面版”, which asks the desktop app to show its window');
-  // Not installed: the prompt's “下载安装” opens the website's download section.
+  let menuDesktop=await openSettings('ok');assert.match(await menuDesktop.locator('#desktopStatus').innerText(),/桌面版已连接（0\.4\.70）/);
+  await menuDesktop.getByRole('button',{name:'打开桌面版'}).click();
+  await menuDesktop.waitForFunction(()=>chrome.storage.session.get('openDesktopSent').then(v=>!!v.openDesktopSent));
+  assert.deepEqual((await worker.evaluate(()=>chrome.storage.session.get('openDesktopSent'))).openDesktopSent,{host:'org.shiying.desktop',message:{action:'show'}});await menuDesktop.close();
+  check('settings → 「打开桌面版」 asks the desktop app to show its window');
+  // Not installed: the settings page says so and its download button opens the website's download section.
   await browser.route('https://hidaydream.cloud/**',route=>route.request().resourceType()==='document'?route.fulfill({contentType:'text/html',body:'<!doctype html><title>Ruxget</title>'}):route.fulfill({status:204}));
-  menuDesktop=await openPopup("missing");await menuDesktop.locator("#openDesktop").click();
-  await menuDesktop.locator("#desktopConnectPrompt").waitFor({state:'visible'});
-  const [site]=await Promise.all([browser.waitForEvent("page"),menuDesktop.locator("[data-desktop-action=install]").click()]);
+  menuDesktop=await openSettings('missing');await menuDesktop.waitForFunction(()=>/还没装桌面版/.test(document.querySelector('#desktopStatus').textContent));
+  assert.equal(await menuDesktop.getByRole('button',{name:'打开桌面版'}).count(),0);
+  const [site]=await Promise.all([browser.waitForEvent('page'),menuDesktop.getByRole('button',{name:'下载桌面版',exact:true}).click()]);
   await site.waitForLoadState();assert.equal(site.url(),'https://hidaydream.cloud/?from=ext#editions');await site.close();await menuDesktop.close();
   const wizard=await browser.newPage();await wizard.goto(`chrome-extension://${id}/shiying-desktop.html`);
   assert.equal(await wizard.locator('.installer-name').getAttribute('href'),'https://hidaydream.cloud/?from=wizard#editions');await wizard.close();

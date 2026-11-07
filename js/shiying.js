@@ -46,20 +46,28 @@ function render() {
     const matching = playable.filter(item => (filter === 'all' || (filter === 'audio' ? Shiying.kind(item) === 'audio' : Shiying.kind(item) !== 'audio')) && `${Shiying.name(item)} ${item.ext || ''}`.toLowerCase().includes(search));
     // Main video first, then the rest; ads, previews and tiny clips fold under one line unless searching.
     const focus = typeof RuxgetFocus === 'undefined' ? new Map() : RuxgetFocus.classify(playable, pageElements, Shiying.kind);
+    // 0.4.71: a known size under 100 KB is a page sound (voice-search beeps, button clicks), not a video.
+    const tiny = item => { const size = Number(item.size); return size > 0 && size < 102400 && !/^(m3u8|mpd|json)$/i.test(item.ext || ''); };
+    for (const item of playable) if (tiny(item)) focus.set(item.url, 'minor');
+    const real = playable.filter(item => !tiny(item)).length;
     const rank = item => ({main: 0, normal: 1, minor: 2})[focus.get(item.url) || 'normal'];
     const ordered = matching.map((item, index) => ({item, index})).sort((a, b) => rank(a.item) - rank(b.item) || a.index - b.index).map(entry => entry.item);
     const minor = ordered.filter(item => focus.get(item.url) === 'minor');
-    const folding = !search && minor.length > 0 && minor.length < ordered.length && !showMinor;
+    const folding = !search && minor.length > 0 && !showMinor;
     const visible = folding ? ordered.filter(item => focus.get(item.url) !== 'minor') : ordered;
-    $('#count').textContent = playable.length;
+    $('#count').textContent = real;
     $('#copyAll').disabled = !matching.length;
     $('#empty').hidden = !!visible.length;
-    document.body.classList.toggle('no-media',!playable.length);
-    $('.list-heading').hidden = $('.filters').hidden = $('footer').hidden = !playable.length;
+    document.body.classList.toggle('no-media',!real);
+    // 0.4.71: the filters only when the list is long; the footer (copy all links) stays out of the way.
+    $('.list-heading').hidden = !real; $('.filters').hidden = real <= 8 && !$('#search').value; $('footer').hidden = true;
+    if ($('.filters').hidden && filter !== 'all') { filter = 'all'; for (const item of document.querySelectorAll('[data-filter]')) { const on = item.dataset.filter === 'all'; item.classList.toggle('active', on); item.setAttribute('aria-pressed', String(on)); } return render(); }
     const restricted=!ShiyingAccess.origin(currentSite?.url);
     const pick = RuxgetI18n.pick;
-    $('#empty h3').textContent = playable.length ? pick('没有符合条件的媒体','No matching media') : restricted ? pick('此页面无法读取视频','Videos can’t be read on this page') : pick('暂未发现视频','No videos found yet');
-    $('#empty p').textContent = playable.length ? pick('换一个类型，或清空搜索词再试试。','Try another type, or clear the search.') : restricted ? pick('请切换到视频页，或在上方粘贴视频链接。','Switch to a video page, or paste a video link above.') : pick('播放网页里的视频，或在上方粘贴视频链接。','Play the video on the page, or paste a video link above.');
+    $('#empty h3').textContent = real ? pick('没有符合条件的媒体','No matching media') : restricted ? pick('此页面无法读取视频','Videos can’t be read on this page') : pick('暂未发现视频','No videos found yet');
+    // 0.4.71: nothing found on a web page: its link can be copied (the desktop app's 新建下载 fills it in).
+    { const link = $('#copyPageLink'); if (link) { link.hidden = !!real || !/^https?:/i.test(currentSite?.url || ''); link.textContent = pick('复制这个网页的链接', 'Copy this page’s link'); } }
+    $('#empty p').textContent = real ? pick('换一个类型，或清空搜索词再试试。','Try another type, or clear the search.') : restricted ? pick('请切换到视频页，或在上方粘贴视频链接。','Switch to a video page, or paste a video link above.') : pick('播放网页里的视频，或在上方粘贴视频链接。','Play the video on the page, or paste a video link above.');
     const fragments = media.filter(item => Shiying.kind(item) === 'fragment').length;
     $('#fragmentNote').hidden = !fragments;
     $('#fragmentNote').textContent = pick(`另有 ${fragments} 个音视频切片，已折叠。可在高级工具中查看和处理。`, `${fragments} more media segments are folded. See them in Advanced tools.`);
@@ -68,10 +76,12 @@ function render() {
     const urls = new Set(media.map(item => item.url));
     for (const url of cards.keys()) if (!urls.has(url)) cards.delete(url);
     const focusNote = $('#focusNote');
-    focusNote.hidden = !minor.length || !!search || minor.length >= ordered.length;
+    focusNote.hidden = !minor.length || !!search;
     if (!focusNote.hidden) {
         const text = document.createElement('span'), toggle = document.createElement('button');
-        text.textContent = showMinor ? pick(`其中 ${minor.length} 个可能是广告、预览或很小的片段，已放在最后。`, `${minor.length} of these look like ads, previews or tiny clips; they’re listed last.`) : pick(`另有 ${minor.length} 个可能是广告、预览或很小的片段，已收起。`, `${minor.length} more look like ads, previews or tiny clips, so they’re folded.`);
+        // Only tiny page sounds: say what they most likely are.
+        if (minor.length === ordered.length && minor.every(tiny)) text.textContent = showMinor ? pick(`这 ${minor.length} 个文件很小，可能是网页的提示音或按钮音效。`, `These ${minor.length} files are tiny, most likely page sounds or button clicks.`) : pick(`另有 ${minor.length} 个很小的文件，可能是网页的提示音。`, `${minor.length} tiny files, most likely page sounds.`);
+        else text.textContent = showMinor ? pick(`其中 ${minor.length} 个可能是广告、预览或很小的片段，已放在最后。`, `${minor.length} of these look like ads, previews or tiny clips; they’re listed last.`) : pick(`另有 ${minor.length} 个可能是广告、预览或很小的片段，已收起。`, `${minor.length} more look like ads, previews or tiny clips, so they’re folded.`);
         toggle.type = 'button'; toggle.className = 'hint-link';
         toggle.textContent = showMinor ? pick('收起', 'Fold') : pick('展开', 'Show');
         toggle.addEventListener('click', () => { showMinor = !showMinor; render(); });
@@ -164,7 +174,7 @@ function render() {
                 const headers=Object.fromEntries(Object.entries(data.requestHeaders||{}).map(([key,value])=>[key.toLowerCase(),value]));
                 if(data.cookie||headers.cookie||headers.authorization) throw new Error('这个媒体需要认证信息，请使用原有下载入口');
                 return {action:'add',kind:['hls','dash'].includes(kind)?'video':'file',url:card.querySelector('select').value||data.url,title:Shiying.filename(data).split('/').pop(),referer:headers.referer||data.webUrl||currentSite.url,userAgent:headers['user-agent']||navigator.userAgent};
-            }).then(()=>notify(pick('已交给 Ruxget 桌面版，请在桌面窗口确认下载', 'Sent to Ruxget Desktop; confirm it in the desktop window'))).catch(failure);
+            }).then(reply=>notify(reply?.stage==='started'?pick('已交给桌面版，在「已下载」里看进度', 'Sent to Ruxget Desktop; follow it in Downloads'):pick('已交给 Ruxget 桌面版，请在桌面窗口确认下载', 'Sent to Ruxget Desktop; confirm it in the desktop window'))).catch(failure);
         });
         card.querySelector('.resource-url').textContent = data.url;
         let qualityLoaded = false;
@@ -240,7 +250,7 @@ $('#allowSite').addEventListener('click', () => {
     const requestedSite = currentSite;
     // Invoke the browser permission prompt before any await or message hop.
     ShiyingAccess.request(accessPatterns).then(async granted => {
-        if (!granted) {notify('未授权，已有下载和已允许的网站仍可使用');return;}
+        if (!granted) {notify('没有允许这个网站。已允许的网站和已有的下载不受影响');return;}
         const result = await message('shiyingSyncAccess');
         if (!result?.ok) throw new Error(result?.error || '网站授权未能更新');
         const tab = await chrome.tabs.get(requestedSite.id);
@@ -305,6 +315,9 @@ async function showSaveTarget(){
 }
 document.addEventListener('ruxget-i18n-applied',showSaveTarget);
 onClick($('#help'), () => chrome.tabs.create({url:chrome.runtime.getURL('shiying-help.html')}));
+// 0.4.71: the gear opens Ruxget's settings (everything the panel no longer shows).
+onClick($('#openSettings'), () => chrome.runtime.openOptionsPage());
+onClick($('#copyPageLink'), async () => { await navigator.clipboard.writeText(currentSite.url); notify(RuxgetI18n.pick('已复制网页链接', 'Page link copied')); });
 // 网站权限 lives on the help page (#site-access); 高级工具 moved to the toolbar icon's right-click menu (0.4.60).
 onClick($('#copyAll'), () => copy([...$('#mediaList').querySelectorAll('.resource-url')].map(element => element.textContent).join('\n')));
 $('#saveAs').addEventListener('change', async () => {const checked=$('#saveAs').checked;showSaveTarget();try{await chrome.storage.sync.set({saveAs:checked});}catch(error){$('#saveAs').checked=!checked;notify('保存位置设置未保存，请重试：'+error.message);}});
@@ -367,7 +380,7 @@ $('#linkUseDesktop').addEventListener('click',()=>{
     if(linkDownloadBusy||!$('#linkDownloadForm').reportValidity())return;
     let payload;try{payload=ShiyingNative.file($('#linkDownloadURL').value,currentSite?.url);}catch(error){linkDownloadFailure(error);return;}
     linkDownloadState(true);$('#linkDownloadError').hidden=true;
-    ShiyingDesktop.send(()=>payload).then(()=>{$('#linkDownload').close();notify('已发送链接，请在 Ruxget 桌面版确认下载');}).catch(linkDownloadFailure).finally(()=>linkDownloadState(false));
+    ShiyingDesktop.send(()=>payload).then(reply=>{$('#linkDownload').close();notify(reply?.stage==='started'?pick('已交给桌面版，在「已下载」里看进度', 'Sent to Ruxget Desktop; follow it in Downloads'):'已发送链接，请在 Ruxget 桌面版确认下载');}).catch(linkDownloadFailure).finally(()=>linkDownloadState(false));
 });
 (chrome.storage.session??chrome.storage.local).get('shiyingLinkDownloadError').then(async data=>{const error=data.shiyingLinkDownloadError;if(!error)return;await (chrome.storage.session??chrome.storage.local).remove('shiyingLinkDownloadError');if(Date.now()-error.createdAt<120000)notify(error.text);}).catch(()=>{});
 

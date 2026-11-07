@@ -16,14 +16,16 @@ const checks=[];function check(name){checks.push(name);console.log('PASS '+name)
  execFileSync(process.execPath,[path.join(__dirname,'package.cjs')],{stdio:'ignore'});
  const extension=path.join(root,'build');
  const {chromium}=require(process.env.SHIYING_PLAYWRIGHT||'playwright');
- const browser=await chromium.launchPersistentContext(path.join(report,'profile'),{executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true,acceptDownloads:true,downloadsPath:path.join(report,'downloads'),viewport:{width:380,height:700},ignoreDefaultArgs:['--disable-extensions'],args:[`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--no-proxy-server']});
+ const browser=await chromium.launchPersistentContext(path.join(report,'profile'),{executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true,acceptDownloads:true,downloadsPath:path.join(report,'downloads'),viewport:{width:380,height:700},ignoreDefaultArgs:['--disable-extensions'],args:['--mute-audio','--autoplay-policy=user-gesture-required',`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--no-proxy-server']});
  const errors=[];browser.on('page',p=>p.on('pageerror',e=>errors.push(e.message+' @ '+p.url())));
  try{
   const worker=browser.serviceWorkers()[0]||await browser.waitForEvent('serviceworker'),id=new URL(worker.url()).hostname;
   await worker.evaluate(()=>chrome.storage.local.set({ruxgetUiLanguage:'zh_CN'}));
   const html=fs.readFileSync(path.join(root,'shiying.html'),'utf8');
   assert(html.indexOf('id="viewTabs"')<html.indexOf('id="pageView"')&&html.indexOf('id="pageView"')<html.indexOf('id="downloadsView"'));
-  assert(/id="downloadsView"[\s\S]*id="recentDownloads"[\s\S]*id="desktopRow"/.test(html),'the takeover switch sits under the list in 已下载');
+  // 0.4.71: the takeover switch left 已下载 for the settings page (交给桌面版); the old row stays in the HTML, hidden.
+  assert(/id="downloadsView"[\s\S]*id="recentDownloads"/.test(html)&&/<section id="desktopRow" hidden/.test(html),'已下载 holds only the list; the old takeover row is hidden');
+  assert(/name="desktopMode" value="large"/.test(fs.readFileSync(path.join(root,'ruxget-settings.html'),'utf8')),'the settings page has the 交给桌面版 choice');
   assert(html.indexOf('id="offerCard"')<html.indexOf('id="viewTabs"'),'the desktop offer stays above both tabs');
   check('layout: tabs, then 本页视频 (find and download) and 已下载 (list, then the takeover switch); the offer above both');
 
@@ -73,7 +75,7 @@ const checks=[];function check(name){checks.push(name);console.log('PASS '+name)
   popup=await open();await popup.locator('#tabDownloads').click();await popup.waitForTimeout(500);
   // (Playwright names accepted downloads by a GUID, so rows are found by their Chrome download id.)
   const rowIds=await popup.locator('#recentList li').evaluateAll(items=>items.map(item=>item.dataset.id));
-  assert.match(await popup.locator(`#recentList li[data-id="chrome-${plain}"]`).innerText(),/Chrome · 4 KB · 已完成 · 双击打开/);
+  assert.match(await popup.locator(`#recentList li[data-id="chrome-${plain}"]`).innerText(),/Chrome · 4 KB · 下载完成 · 双击打开/);
   assert(!rowIds.includes('chrome-'+siteFile)&&rowIds.includes('s1'),'the site video is listed once, as its own row: '+JSON.stringify(rowIds));
   assert(!rowIds.includes('chrome-'+moved),'a cancelled (taken-over) download is not listed');
   assert.equal(await popup.locator(`#recentList li[data-id="chrome-${plain}"] .recent-show`).getAttribute('title'),'在文件夹中显示');

@@ -37,7 +37,10 @@ class WindowShellCheck {
    Func<string,string> evaluate=script=>{var task=(Task<string>)type.GetMethod("Evaluate").Invoke(view,new object[]{script});Await(task,"Material evaluation failed");return task.Result;};
    Pump(()=>evaluate("document.readyState==='complete'&&!!document.querySelector('.desktop-app')")=="true","Material document did not become ready");evaluate("document.body.replaceChildren();document.documentElement.style.height='100%';document.body.style.height='100%'");
    string blue=Path.Combine(report,"native-host-blue.png"),amber=Path.Combine(report,"native-host-amber.png");Capture(sample,blue);sample.BackColor=Color.FromArgb(210,146,52);sample.Invalidate(true);sample.Refresh();Application.DoEvents();Capture(sample,amber);
-   using(var first=new Bitmap(blue))using(var second=new Bitmap(amber)){Color a=first.GetPixel(first.Width/2,first.Height/2),b=second.GetPixel(second.Width/2,second.Height/2);int delta=Math.Abs(a.R-b.R)+Math.Abs(a.G-b.G)+Math.Abs(a.B-b.B);Require(delta>40,"Native host color is masked by an opaque surface (delta="+delta+")");Util.Atomic(Path.Combine(report,"native-material.json"),new{ok=true,hostTransparent=true,parentColorChangeDelta=delta,desktopDwmCompositeVisuallyVerified=false});}
+   using(var first=new Bitmap(blue))using(var second=new Bitmap(amber)){Color a=first.GetPixel(first.Width/2,first.Height/2),b=second.GetPixel(second.Width/2,second.Height/2);int delta=Math.Abs(a.R-b.R)+Math.Abs(a.G-b.G)+Math.Abs(a.B-b.B);
+   // 0.4.71: the desktop page is an opaque light cream surface (#F4F0E4), so the host colour must not show through.
+   Func<Color,bool> cream=c=>Math.Abs(c.R-244)<=6&&Math.Abs(c.G-240)<=6&&Math.Abs(c.B-228)<=6;
+   Require(delta<=6&&cream(a)&&cream(b),"Desktop page is not the opaque light surface (delta="+delta+", centre="+a+")");Util.Atomic(Path.Combine(report,"native-material.json"),new{ok=true,hostTransparent=false,opaqueLightSurface=true,parentColorChangeDelta=delta});}
    sample.Close();
   }
  }
@@ -67,6 +70,44 @@ class WindowShellCheck {
    var payload=Util.Json().Deserialize<System.Collections.Generic.Dictionary<string,object>>("{\"action\":\"netdisk\",\"provider\":\"quark\",\"source\":\"https://pan.quark.cn/list\",\"requestId\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"files\":[{\"index\":0,\"url\":\"https://dl.quark.cn/fixture.bin\",\"title\":\"fixture.bin\",\"size\":12345,\"headers\":{}}]}");
    backgroundWindow.AcceptNetdisk(payload);Require(!backgroundWindow.Visible&&backgroundManager.Snapshot().Count==1,"Receiving a netdisk task reopens the hidden window");
    Util.Atomic(Path.Combine(report,"netdisk-background.json"),new{ok=true,backgroundStartupHidden=true,queueDoesNotRestoreWindow=true,privateDesktopOnly=true,noDownloadWorkerStarted=true});backgroundWindow.Close();
+  }
+  // 0.4.70: a file or video handed over from the extension's panel starts at once and quietly (hidden window stays hidden);
+  // BT and magnet links still go to the window for their choices. No download can reach anything: port 9 on 127.0.0.1.
+  using(var addManager=new Manager(Path.Combine(report,"add-background-state")))using(var addWindow=new MainWindow(addManager,true)){
+   addWindow.PrepareBackgroundStart();addWindow.Show();Application.DoEvents();
+   // The 0.4.71 extension marks its hand-offs quiet:true (it shows them in 已下载); without it the window still confirms.
+   Func<string,System.Collections.Generic.Dictionary<string,object>> input=json=>{var d=Util.Json().Deserialize<System.Collections.Generic.Dictionary<string,object>>(json);if(!d.ContainsKey("quiet"))d["quiet"]=true;return d;};
+   Func<object,string,object> prop=(value,name)=>value==null?null:value.GetType().GetProperty(name).GetValue(value,null);
+   object file=addWindow.AcceptAdd(input("{\"action\":\"add\",\"kind\":\"file\",\"url\":\"http://127.0.0.1:9/fixture.bin\",\"title\":\"fixture.bin\"}"));
+   string fileId=(string)prop(file,"id");
+   Require(file!=null&&(bool)prop(file,"ok")&&(string)prop(file,"stage")=="started"&&!String.IsNullOrEmpty(fileId)&&(string)prop(file,"name")=="fixture.bin","A file from the panel did not start at once with its id and name");
+   Require(addManager.Snapshot().Any(job=>job.Id==fileId&&job.Kind=="file"),"The started file is not in the task list");
+   object again=addWindow.AcceptAdd(input("{\"action\":\"add\",\"kind\":\"file\",\"url\":\"http://127.0.0.1:9/fixture.bin\",\"title\":\"fixture.bin\"}"));
+   Require((string)prop(again,"id")==fileId&&addManager.Snapshot().Count(job=>job.Url=="http://127.0.0.1:9/fixture.bin")==1,"Sending the same link twice made a second task");
+   Require(addWindow.AcceptAdd(input("{\"action\":\"add\",\"kind\":\"file\",\"quiet\":false,\"url\":\"http://127.0.0.1:9/old.bin\"}"))==null&&addWindow.AcceptAdd(Util.Json().Deserialize<System.Collections.Generic.Dictionary<string,object>>("{\"action\":\"add\",\"kind\":\"file\",\"url\":\"http://127.0.0.1:9/old.bin\"}"))==null,"An older extension (which says to confirm in the window) got a quiet start");
+   Require(addWindow.AcceptAdd(input("{\"action\":\"add\",\"kind\":\"video\",\"url\":\"https://www.example.test/playlist?list=PL1\"}"))==null,"A whole playlist started without the window's list choice");
+   object stream=addWindow.AcceptAdd(input("{\"action\":\"add\",\"kind\":\"file\",\"url\":\"http://127.0.0.1:9/live/index.m3u8\",\"title\":\"live\"}"));
+   string streamId=(string)prop(stream,"id");
+   Require(stream!=null&&addManager.Snapshot().Any(job=>job.Id==streamId&&job.Kind=="video"),"A pasted stream link was not treated as a video");
+   object video=addWindow.AcceptAdd(input("{\"action\":\"add\",\"kind\":\"video\",\"url\":\"http://127.0.0.1:9/watch/1.mpd\",\"title\":\"clip\",\"height\":\"720\"}"));
+   Require(video!=null&&addManager.Snapshot().Any(job=>job.Id==(string)prop(video,"id")&&job.Kind=="video"),"A video from the panel did not start at once");
+   int before=addManager.Snapshot().Count;
+   Require(addWindow.AcceptAdd(input("{\"action\":\"add\",\"kind\":\"magnet\",\"url\":\"magnet:?xt=urn:btih:"+new string('a',40)+"\"}"))==null&&addManager.Snapshot().Count==before,"A magnet link was started without the window's file choice");
+   Require(addWindow.AcceptAdd(input("{\"action\":\"add\",\"kind\":\"file\",\"url\":\"magnet:?xt=urn:btih:"+new string('c',40)+"\"}"))==null&&addManager.Snapshot().Count==before,"A magnet link sent as a file started without the window");
+   object lookalike=addWindow.AcceptAdd(input("{\"action\":\"add\",\"kind\":\"file\",\"url\":\"http://notyoutube.com.invalid/a.zip\",\"title\":\"a.zip\"}"));
+   object upper=addWindow.AcceptAdd(input("{\"action\":\"add\",\"kind\":\"file\",\"url\":\"http://127.0.0.1:9/LIVE/INDEX.M3U8\",\"title\":\"live\"}"));
+   Require(addManager.Snapshot().First(job=>job.Id==(string)prop(lookalike,"id")).Kind=="file"&&addManager.Snapshot().First(job=>job.Id==(string)prop(upper,"id")).Kind=="video","A look-alike host became a video, or an upper-case playlist did not");
+   Require(addWindow.AcceptAdd(input("{\"action\":\"add\",\"kind\":\"torrent\",\"url\":\"C:\\\\fixture.torrent\"}"))==null,"A torrent was started without the window's file choice");
+   Application.DoEvents();Require(!addWindow.Visible,"A quiet hand-off reopened the hidden window");
+   foreach(var job in addManager.Snapshot())addManager.Pause(job.Id);
+   // 新建下载 fills in a single copied link only (read from the clipboard on that click; the rule is tested without it).
+   Func<string,string> link=MainWindow.LinkFromText;
+   Require(link("  https://example.test/a.zip \r\n")=="https://example.test/a.zip"&&link("http://example.test/")=="http://example.test/"&&link("magnet:?xt=urn:btih:"+new string('b',40))=="magnet:?xt=urn:btih:"+new string('b',40),"A single copied web or magnet link is not filled in");
+   Require(link("")==""&&link(null)==""&&link("看看这个 https://example.test/a.zip")==""&&link("https://a.test/1\nhttps://a.test/2")==""&&link("ftp://example.test/a.zip")==""&&link("file:///C:/Windows/win.ini")==""&&link("javascript:alert(1)")==""&&link("C:\\Users\\a.zip")==""&&link("https://example.test/"+new string('x',16400))=="","Copied text that is not one web or magnet link is filled in");
+   Require(link("https://example.test/a.zip。")=="https://example.test/a.zip"&&link("\u200Bhttps://example.test/a.zip\uFEFF")=="https://example.test/a.zip"&&link("（https://example.test/b.zip）")==""&&link("https://example.test/c.zip，")=="https://example.test/c.zip","Punctuation or invisible spaces around a copied link are kept");
+   Require(link("magnet:?")==""&&link("magnet:")==""&&link("magnet:?dn=x")==""&&link("https://user:pass@example.test/a.zip")=="","A bare magnet or a link with a password is filled in");
+   Util.Atomic(Path.Combine(report,"quiet-add.json"),new{ok=true,startedAtOnce=true,hiddenWindowStaysHidden=true,btNeedsWindow=true,clipboardRuleChecked=true,realClipboardTouched=false,privateDesktopOnly=true});
+   addWindow.Close();
   }
   CheckTransparentHost(report,library);
   using(var backdrop=new Form{FormBorderStyle=FormBorderStyle.None,BackColor=Color.FromArgb(101,112,40),Bounds=Screen.PrimaryScreen.Bounds,ShowInTaskbar=false})

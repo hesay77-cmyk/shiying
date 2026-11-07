@@ -59,7 +59,7 @@ public class Settings {
     // "system" follows the Windows proxy (Internet Settings); "" is a direct connection; anything else is an explicit proxy URL.
     public string Proxy = Util.SystemProxyMode;
     public int Connections = 8;
-    public int FileSlots = 10, VideoSlots = 6, RateKiB, BtUploadKiB=512;
+    public int FileSlots = 10, VideoSlots = 10, RateKiB, BtUploadKiB=512;
     public bool AutoCategorize = true;
     public bool SaveSubtitles;
     public string UiLanguage = "auto";
@@ -142,7 +142,7 @@ static class Util {
     // Windows proxy for HTTPS traffic, as http://host:port, or "" when the system proxy is off or uses only a PAC script.
     public static string SystemProxy(){try{using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Internet Settings")){if(key==null||Convert.ToInt32(key.GetValue("ProxyEnable",0))!=1)return "";string server=Convert.ToString(key.GetValue("ProxyServer","")).Trim();if(server.Contains("=")){var parts=server.Split(';').Select(p=>p.Split(new[]{'='},2)).Where(p=>p.Length==2).ToDictionary(p=>p[0].Trim().ToLowerInvariant(),p=>p[1].Trim());server=parts.ContainsKey("https")?parts["https"]:parts.ContainsKey("http")?parts["http"]:"";}if(server.Length==0)return "";if(!server.Contains("://"))server="http://"+server;Uri uri;return Uri.TryCreate(server,UriKind.Absolute,out uri)&&(uri.Scheme=="http"||uri.Scheme=="https"||uri.Scheme.StartsWith("socks"))?server:"";}}catch{return "";}}
     public static void CheckProxy(string value){if(value.Length>0&&value!=SystemProxyMode)Url(value);}
-    public const string Version="0.4.70";
+    public const string Version="0.4.71";
     // Links added without a browser's own name (pasted, batch, magnet-free files) go out with an ordinary browser name.
     // Many CDNs refuse the download engine's default "aria2/x.y": Aliyun's answers "403 denied by UA ACL = blacklist" (0.4.63).
     public const string BrowserAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
@@ -317,8 +317,8 @@ public partial class Manager : IDisposable {
     public void SaveSettings() {
         lock(gate) { NormalizeSettings();if(btAria!=null&&!btAria.HasExited)BtRpc("changeGlobalOption",new Dictionary<string,string>{{"max-overall-upload-limit",Config.BtUploadKiB+"K"}});Util.Atomic(Path.Combine(dataRoot,"settings.json"),Config); }
     }
-    void NormalizeSettings(){Config.UiLanguage=(Config.UiLanguage=="en"||Config.UiLanguage=="zh_CN"||Config.UiLanguage=="auto")?Config.UiLanguage:"auto";Config.Proxy=Config.Proxy??"";Util.CheckProxy(Config.Proxy);Config.Connections=Math.Max(1,Math.Min(16,Config.Connections));// 0.4.70: no setting any more; the largest values always (6 videos, 10 files at once).
-        Config.FileSlots=10;Config.VideoSlots=6;Config.RateKiB=Math.Max(0,Math.Min(102400,Config.RateKiB));Config.BtUploadKiB=Math.Max(16,Math.Min(8192,Config.BtUploadKiB));Config.Folder=Path.GetFullPath(String.IsNullOrWhiteSpace(Config.Folder)?new Settings().Folder:Config.Folder);}
+    void NormalizeSettings(){Config.UiLanguage=(Config.UiLanguage=="en"||Config.UiLanguage=="zh_CN"||Config.UiLanguage=="auto")?Config.UiLanguage:"auto";Config.Proxy=Config.Proxy??"";Util.CheckProxy(Config.Proxy);Config.Connections=Math.Max(1,Math.Min(16,Config.Connections));// 0.4.70: no setting any more; 10 tasks at once, videos and files together (VideoSlots is kept only for old settings files).
+        Config.FileSlots=10;Config.VideoSlots=10;Config.RateKiB=Math.Max(0,Math.Min(102400,Config.RateKiB));Config.BtUploadKiB=Math.Max(16,Math.Min(8192,Config.BtUploadKiB));Config.Folder=Path.GetFullPath(String.IsNullOrWhiteSpace(Config.Folder)?new Settings().Folder:Config.Folder);}
     void PublishSnapshot(){snapshotJson=Util.Json().Serialize(jobs);}
     void Save() { PublishSnapshot(); Util.Atomic(Path.Combine(dataRoot,"tasks.json"),jobs); }
     public List<Download> Snapshot() { return Util.Json().Deserialize<List<Download>>(snapshotJson); }
@@ -343,6 +343,8 @@ public partial class Manager : IDisposable {
         try{Directory.CreateDirectory(folder);string probe=Path.Combine(folder,".ruxget-write-check");System.IO.File.WriteAllText(probe,"");System.IO.File.Delete(probe);}
         catch(Exception){throw new IOException("下载文件夹不能写入（"+folder+"）。换一个下载文件夹后重试");}
     }
+    // A task that holds one of the 10 places: downloading, waiting for the engine, pausing, preparing, or running a child.
+    static bool Running(Download j){return j.Child!=null||j.Status=="下载中"||j.Status=="等待下载"||j.Status=="正在暂停"||j.Status=="准备组件";}
     // The single finished media file in a video task's folder (no partial or fragment files), or null.
     static string FinishedMedia(string folder){
         try{var media=Directory.GetFiles(folder).Where(f=>new[]{".mp4",".mkv",".webm",".mp3",".m4a",".opus",".mov"}.Contains(Path.GetExtension(f).ToLowerInvariant())&&!Regex.IsMatch(Path.GetFileName(f),@"\.f\d+\.|\.part|\.temp\.",RegexOptions.IgnoreCase)).ToArray();return media.Length==1?media[0]:null;}catch(Exception){return null;}
@@ -608,8 +610,10 @@ public partial class Manager : IDisposable {
             foreach(var job in jobs.Where(j=>j.Status=="等待节点"&&j.BtRetryAt<=DateTime.UtcNow)){job.Status="排队中";job.QueueOrder=++nextQueueOrder;}
             foreach(var job in jobs.Where(j=>j.Status=="排队中").OrderBy(j=>j.QueueOrder).ToArray()) {
                 if(closing)break;
-                if((job.Kind=="file"||TorrentInfo.IsBt(job))&&jobs.Count(j=>(j.Kind=="file"||TorrentInfo.IsBt(j))&&BtMetadataJob(j)==BtMetadataJob(job)&&(j.Status=="下载中"||j.Status=="等待下载"||j.Status=="正在暂停"))>=(BtMetadataJob(job)?2:Config.FileSlots))continue;
-                if(job.Kind!="file"&&!TorrentInfo.IsBt(job)&&jobs.Count(j=>!TorrentInfo.IsBt(j)&&j.Kind!="file"&&(j.Child!=null||j.Status=="准备组件"))>=Config.VideoSlots){job.Stage="等前面的视频下完（同时最多下 6 个视频）";continue;}
+                // 0.4.70: one limit for everything, 10 tasks at once whatever they are (BT still searches peers for 2 at a time).
+                if(TorrentInfo.IsBt(job)&&BtMetadataJob(job)&&jobs.Count(j=>TorrentInfo.IsBt(j)&&BtMetadataJob(j)&&(j.Status=="下载中"||j.Status=="等待下载"||j.Status=="正在暂停"))>=2)continue;
+                if(jobs.Count(Running)>=Config.FileSlots){job.Stage="等前面的任务下完（同时最多下 "+Config.FileSlots+" 个）";continue;}
+                if((job.Stage??"").StartsWith("等前面的",StringComparison.Ordinal))job.Stage="";
                 try{if(TorrentInfo.IsBt(job))StartBt(job);else if(job.Kind=="file")BeginFile(job);else if(!Components.Ready(job)){if(!preparing)PrepareComponents(job);}else StartVideo(job);}catch(Exception ex){job.Status=closing?"已暂停":"失败";job.Error=closing?"":Util.SafeError(ex.Message);} Save();
             }
             if(aria==null){PublishSnapshot();return;}
@@ -762,7 +766,7 @@ static class BrowserBridge {
                 // 0.4.65: when the app is already running, a busy pipe (it answers one browser request at a time) is waited
                 // for instead of starting another copy after 0.3 s, which only delayed taken-over downloads.
                 Mutex alive;bool runningNow=Mutex.TryOpenExisting("Local\\"+Util.PipeName,out alive);if(alive!=null)alive.Dispose();
-                try{pipe.Connect(action=="status"?3000:runningNow?10000:300);}catch(TimeoutException){if(runningNow&&action!="status")throw new Exception("桌面版正忙，请稍后");if(action=="status")throw new Exception("桌面版正忙，请稍后");Process.Start(new ProcessStartInfo(Application.ExecutablePath,action=="netdisk"||action=="takeover"||action=="forget"?"--background":""){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=Util.Root});pipe.Connect(10000);}
+                try{pipe.Connect(action=="status"?3000:runningNow?10000:300);}catch(TimeoutException){if(runningNow&&action!="status")throw new Exception("桌面版正忙，请稍后");if(action=="status")throw new Exception("桌面版正忙，请稍后");Process.Start(new ProcessStartInfo(Application.ExecutablePath,action=="netdisk"||action=="takeover"||action=="forget"||action=="add"&&new[]{"file","video","audio","tracks"}.Contains(Util.Str(message,"kind"))&&Util.Str(message,"quiet").Equals("true",StringComparison.OrdinalIgnoreCase)?"--background":""){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=Util.Root});pipe.Connect(10000);}
                 WriteFrame(pipe,frame);response=Util.Json().DeserializeObject(Encoding.UTF8.GetString(ReadFrame(pipe)));
             }
         }catch(Exception ex){response=new{ok=false,error=Util.SafeError(ex.Message)};}
@@ -812,6 +816,10 @@ static class BrowserBridge {
                 if(Util.Str(input,"action")=="takeover"){
                     object reply;try{reply=window.AcceptTakeover(input);}catch(Exception ex){reply=new{ok=false,error=Util.SafeError(ex.Message)};}
                     WriteFrame(server,Encoding.UTF8.GetBytes(Util.Json().Serialize(reply)));continue;
+                }
+                if(Util.Str(input,"action")=="add"){
+                    object reply=null;try{reply=window.AcceptAdd(input);}catch(Exception ex){reply=new{ok=false,error=Util.SafeError(ex.Message)};}
+                    if(reply!=null){WriteFrame(server,Encoding.UTF8.GetBytes(Util.Json().Serialize(reply)));continue;}
                 }
                 if(Util.Str(input,"action")=="netdiskFolder"){window.BeginInvoke(new Action(window.PickNetdiskFolder));WriteFrame(server,Encoding.UTF8.GetBytes("{\"ok\":true,\"stage\":\"folder\"}"));continue;}
                 // The desktop dialog is the final local confirmation before a task is started.

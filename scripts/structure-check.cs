@@ -97,10 +97,19 @@ class StructureCheck {
                 var yt=manager.Add("https://www.youtube.com/watch?v=0lA-l-RHe1Q","tracks","A video",720,other,input,false);
                 Check(yt.Kind=="video"&&String.IsNullOrEmpty(yt.VideoUrl)&&yt.Height==720,"a YouTube video from the extension is downloaded by yt-dlp itself, at the chosen quality");
                 manager.Pause(yt.Id);manager.Forget(yt.Id,true);
+                // One limit for everything: 11 downloads at once run 10 and queue the eleventh, saying why.
+                slowMs=6000;
+                var many=Enumerable.Range(0,11).Select(n=>manager.Add("http://127.0.0.1:"+port+"/slow-"+n+".bin","file","many-"+n+".bin",1080,other,null,false)).ToList();
+                manager.Tick();manager.Tick();
+                var states=many.Select(j=>Job(manager,j.Id)).ToList();
+                Check(states.Count(j=>j.Status=="等待下载"||j.Status=="下载中")==10&&states.Count(j=>j.Status=="排队中"&&(j.Stage??"").Contains("同时最多下 10 个"))==1,"ten tasks run at once and the eleventh waits, saying why");
+                var waiting=states.First(j=>j.Status=="排队中");manager.Pause(many.First(j=>Job(manager,j.Id).Status!="排队中").Id);manager.Tick();manager.Tick();
+                var moved=Job(manager,waiting.Id);Check(moved.Status!="排队中"&&!(moved.Stage??"").Contains("同时最多下"),"once a place frees up the waiting task starts and stops saying it waits");
+                foreach(var j in many)manager.Pause(j.Id);slowMs=0;
             }
             // 0.4.70: no parallel-count setting; whatever was saved, 6 videos and 10 files run at once.
             {string old=Path.Combine(report,"old-settings");Directory.CreateDirectory(old);File.WriteAllText(Path.Combine(old,"settings.json"),"{\"VideoSlots\":1,\"FileSlots\":2,\"FollowBrowser\":false}");
-             using(var again=new Manager(old))Check(again.Config.VideoSlots==6&&again.Config.FileSlots==10,"saved parallel counts are replaced by the largest ones");}
+             using(var again=new Manager(old))Check(again.Config.VideoSlots==10&&again.Config.FileSlots==10,"saved parallel counts are replaced by the largest ones");}
             // The 260-character limit: long names are shortened to fit; a folder that is itself too long is explained.
             string deep=other;while(deep.Length<200)deep=Path.Combine(deep,"folder-with-a-fairly-long-name");Directory.CreateDirectory(deep);
             string source=Path.Combine(other,"source.bin");File.WriteAllText(source,"x");

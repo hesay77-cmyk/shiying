@@ -6,9 +6,11 @@
 <title>Ruxget Desktop · Setup</title>
 <link rel="stylesheet" href="css/shiying.css">
 <link rel="stylesheet" href="css/shiying-desktop.css">
+<link rel="stylesheet" href="css/ruxget-light.css">
 <script src="js/shiying-locale.js"></script>
 <script src="js/shiying-text.js"></script>
 <script src="js/shiying-native.js" defer></script>
+<script src="js/ruxget-desktop-get.js" defer></script>
 <script src="js/shiying-desktop.js" defer></script>
 </head>
 <body class="desktop-guide setup-wizard" data-step="checking">
@@ -17,6 +19,7 @@
   <img src="img/shiying.svg" width="52" height="52" alt="">
   <h1 data-en="Connect Ruxget Desktop">连接 Ruxget 桌面版</h1>
   <p data-en="The desktop app saves files, pauses and resumes, and handles large downloads. You don’t need it if you only download in Chrome.">桌面版负责保存文件、暂停续传和下载大文件。只用浏览器下载时，可以不装。</p>
+  <p class="desktop-get-row" data-desktop-get></p>
 </header>
 
 <ol class="wizard-steps" aria-label="设置进度" data-en-aria="Setup progress">
@@ -57,7 +60,7 @@
   <div class="wizard-panel" data-panel="done" hidden>
     <div class="panel-icon is-done" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></div>
     <h2><span data-en="Ruxget Desktop is connected">已连接 Ruxget 桌面版</span><span id="desktopVersion"></span></h2>
-    <p data-en-html="On a video page, click the <span class=&quot;key-hint&quot;>▾</span> next to the download button and choose “Download in Ruxget Desktop”. Ruxget remembers your choice.">回到视频页，点下载按钮旁的 <span class="key-hint">▾</span>，选「用桌面版下载」。以后会记住你的选择。</p>
+    <p data-en="In Ruxget’s settings (the gear at the top right of the panel), choose who downloads under “Hand downloads to the desktop app”. With “Large files and long videos”, those go to the desktop app by themselves and start right away.">在 Ruxget 的设置（面板右上角的齿轮）里，「交给桌面版」选「大文件和长视频」：长视频和大文件会自动交给桌面版，直接开始下载。</p>
     <p id="desktopFolder" class="desktop-folder" hidden></p>
     <div class="wizard-actions">
       <button class="wizard-secondary" type="button" data-recheck data-en="Check again">重新检查</button>
@@ -103,8 +106,8 @@
 
   <details>
     <summary data-en="Using the desktop app">桌面版怎么用</summary>
-    <p data-en="Open a Bilibili video, click the Ruxget icon in the Chrome toolbar, pick a quality, choose “Download in Ruxget Desktop” from the ▾ next to the download button, then download. You can also paste any supported link straight into the desktop app. Confirm the folder in the desktop window. Checking the connection on this page never downloads anything.">打开 B站视频，点 Chrome 工具栏里的 Ruxget 图标，选好画质，在下载按钮旁的 ▾ 里选「用桌面版下载」，再点下载。也可以直接把支持的链接粘贴到桌面版里。在桌面窗口确认保存位置并开始。只在本页检查连接不会下载视频。</p>
-    <p data-en="Once the desktop app has the task, you can close the browser; keep the app running. “Mini” keeps only a small progress window; “Hide to tray” in the ··· menu keeps downloading in the background, and double-clicking the tray icon brings it back. Closing the window saves and pauses tasks; resume them next time.">下载由桌面版接收后，可以关闭浏览器；请保持桌面版运行。点「迷你窗」可只保留一个小进度窗；在「···」菜单选择「收起到托盘」可隐藏窗口并继续下载，双击托盘里的 Ruxget 即可恢复。关闭 Ruxget 窗口会保存并暂停任务，下次启动后可手动继续。</p>
+    <p data-en="Open a video page, click the Ruxget icon in the Chrome toolbar, pick a quality and download. Following your settings, long videos go to the desktop app and start in the background, with no window to confirm. You can also copy a video link and click “New download” in the desktop app: the copied link is filled in. Checking the connection on this page never downloads anything.">打开视频页，点 Chrome 工具栏里的 Ruxget 图标，选好画质后下载。按你的设置，长视频会交给桌面版，直接在后台开始，不用在桌面窗口确认。也可以复制视频链接，在桌面版点「新建下载」，链接会自动填好。只在本页检查连接不会下载视频。</p>
+    <p data-en="Once the desktop app has the task, you can close the browser. The window’s × hides it to the tray near the clock and downloads go on; double-click the tray icon to bring it back. To quit, right-click the tray icon and choose “Quit” (tasks are saved and continue next time). “Mini” keeps only a small progress window.">下载由桌面版接收后，可以关闭浏览器。点窗口的 × 会收进右下角托盘，下载照常进行，双击托盘图标就能打开。要真正退出，右键托盘图标选「完全退出」（任务会保存，下次可以继续）。点「迷你窗」可只保留一个小进度窗。</p>
   </details>
 
   <details>

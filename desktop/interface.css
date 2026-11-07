@@ -74,3 +74,73 @@ body.desktop-app{background:rgba(10,19,30,.56);background-image:none;}
 .settings-folder code{grid-column:1;font:12.5px/1.5 Consolas,"Cascadia Mono",monospace;color:var(--ink);overflow-wrap:anywhere}
 .settings-folder small{grid-column:1;font-size:11.5px;color:var(--muted)}
 .settings-folder button{grid-column:2;grid-row:2/4;align-self:center}
+
+/* 0.4.70: a finished task says 下载完成 (green) where it used to say 100%. */
+.job-line b.is-done,.inspector-progress b.is-done,#miniPercent.is-done{color:#7fe0a8;font-weight:500}
+
+/* 0.4.71 浅色：与插件页面、Tapaste 和 Ruxget 网站同一套颜色。米白底、墨绿字、橄榄绿按钮，柠檬绿只用于小标记。
+   放在最后，覆盖上面的深色半透明样式；窗口不再透出系统的亚克力背景。 */
+:root{color-scheme:light;
+  --bg:#F4F0E4;--card:#FBF8EF;--raise:#EDE8D9;--edge:#E2DCC9;--field:#FFFEFA;--fg:#2A3520;--sub:#6A6C55;--faint:#8A8875;
+  --olive:#3E5A2C;--olive-hover:#4C6B37;--olive-ink:#F7F4EA;--lime:#D6EB78;--lime-ink:#131209;--warn:#A4502A;--warn-soft:#F6E6DA;
+  --paper:var(--field);--wash:var(--raise);--ink:var(--fg);--muted:var(--sub);--line:var(--edge);--blue:var(--olive);--soft:var(--raise);
+  --on-accent:var(--olive-ink);--hover:var(--olive-hover);--audio:var(--sub);--audio-wash:var(--raise)}
+html,body,body.desktop-app{background:var(--bg);background-image:none;color:var(--fg)}
+::selection{background:var(--lime);color:var(--lime-ink)}
+.desktop-toolbar{background:var(--bg);border-bottom:1px solid var(--edge);backdrop-filter:none}
+.desktop-toolbar .link-input{background:var(--field);border:1px solid var(--edge);box-shadow:none}
+.desktop-toolbar .link-input:focus-within{border-color:var(--olive)}
+.desktop-toolbar .link-input button{color:var(--olive);font-weight:600}
+.desktop-toolbar .folder-chip,.folder-chip{background:transparent;border-color:var(--edge);color:var(--sub)}.folder-chip:hover{background:var(--raise);color:var(--fg)}
+.desktop-toolbar .floating-toggle,.floating-toggle{background:var(--raise);border-color:transparent;color:var(--sub)}.floating-toggle:hover{background:var(--edge);color:var(--fg)}
+.window-controls button{color:var(--sub)}.window-controls button:hover{background:var(--raise);color:var(--fg)}.window-controls button[data-window=close]:hover{background:#C42B1C;color:#fff}
+.segments{background:var(--raise)}
+.filters .segments{background:transparent}.filters .segments button{color:var(--sub)}
+.filters .segments button.active{color:var(--fg);background:var(--card);box-shadow:0 1px 2px rgba(42,53,32,.08),inset 0 0 0 1px var(--edge)}
+.queue-scroll,#inspectorBody{scrollbar-color:#C9C2AC transparent}
+.media-item:not(.inspected){border-bottom-color:var(--edge)}
+.media-item:hover{background:var(--card)}
+.media-item.inspected{background:var(--card);border-color:rgba(62,90,44,.45);box-shadow:0 1px 2px rgba(42,53,32,.06)}
+.file-icon{color:var(--olive);background:var(--raise)}
+.file-icon.video{color:var(--olive);background:#E6EBD2}
+.file-icon.audio{color:var(--sub);background:var(--raise)}
+.download-button{background:var(--olive);color:var(--olive-ink)}.download-button:hover:not(:disabled){background:var(--olive-hover)}
+.task-actions>.download-button{background:var(--card);border-color:var(--edge);color:var(--olive)}
+.task-actions>.download-button:hover:not(:disabled){background:var(--raise)}
+.task-delete{color:var(--warn)}.task-delete:hover:not(:disabled){color:#7E3A1C}
+.text-button{color:var(--sub)}.text-button:hover{color:var(--olive)}
+progress::-webkit-progress-bar,.job-capsule progress::-webkit-progress-bar{background:var(--edge)}
+progress::-webkit-progress-value,.job-capsule progress::-webkit-progress-value{background:var(--olive)}
+#inspector{background:var(--card);border-left-color:var(--edge);backdrop-filter:none}
+.inspector-actions{background:var(--card);backdrop-filter:none}
+.segment-map i{background:var(--edge)}.segment-map i span{background:var(--olive)}
+.detail-addresses p{background:var(--field);border-color:var(--edge)}
+#fullSurface>footer{background:transparent}
+.error{background:var(--warn-soft);color:var(--warn)}
+.menu-panel{background:var(--field);border-color:var(--edge);box-shadow:0 2px 4px rgba(60,58,30,.07),0 16px 32px -12px rgba(60,58,30,.25)}
+.menu-panel button:hover{background:var(--raise)}
+.toast{background:var(--fg);border-color:transparent;color:var(--olive-ink);backdrop-filter:none;box-shadow:0 8px 24px -8px rgba(42,53,32,.35)}
+.sheet{color:var(--fg);background:var(--card);border-color:var(--edge);backdrop-filter:none;box-shadow:0 2px 4px rgba(60,58,30,.07),0 24px 48px -16px rgba(60,58,30,.3)}
+.sheet::backdrop{background:rgba(42,53,32,.28);backdrop-filter:none}
+.sheet input:not([type=checkbox]),.sheet textarea,.sheet select{background:var(--field);border-color:var(--edge);color:var(--fg)}
+.video-choice,.platform-audio{background:var(--raise);border-color:transparent}
+.video-choice select{background:var(--field);color:var(--fg)}
+.job-capsule{background:var(--raise);border-color:transparent}
+.empty-symbol,.no-tasks .empty-symbol{background:var(--raise);color:var(--olive);border-color:var(--edge)}
+input[type=checkbox],.task-select{accent-color:var(--olive)}
+.mini-mode #miniSurface{background:var(--bg)}
+.mini-heading #miniCount:before{background:var(--lime);color:var(--lime-ink)}
+@media(prefers-contrast:more){html,body,body.desktop-app{background:#fff}.desktop-toolbar,#inspector,.sheet{background:#fff;border-color:var(--fg)}.media-item.inspected{border-color:var(--olive);background:#fff}}
+input::placeholder,textarea::placeholder,.link-input input::placeholder,.sheet input::placeholder,.sheet textarea::placeholder{color:var(--faint);opacity:1}
+/* 窄窗口（小于 720px）：两行。第一行 标题｜迷你窗·菜单·语言｜窗口按钮，标题占剩余空间、放不下时截断；
+   第二行 链接输入框｜保存位置。以前第一行的按钮会压住 Ruxget 标题。 */
+@media(max-width:719px){
+  .desktop-toolbar{display:grid;grid-template-columns:minmax(0,1fr) auto auto;grid-template-areas:"brand actions controls" "add add chip";column-gap:8px;row-gap:9px}
+  .desktop-toolbar .brand{grid-area:brand;min-width:0;overflow:hidden}
+  .desktop-toolbar .brand h1{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+  .desktop-toolbar .topbar-actions{grid-area:actions}
+  .desktop-toolbar .window-controls{grid-area:controls;justify-self:end}
+  #addLink{grid-area:add;width:100%;min-width:0}
+  .desktop-toolbar .folder-chip{grid-area:chip;justify-self:end;max-width:140px}
+}
+@media(max-width:419px){.desktop-toolbar .brand h1{display:none}}

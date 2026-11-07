@@ -53,7 +53,7 @@ async function browserChecks(){
  const extension=path.join(report,'extension');fs.mkdirSync(extension);
  for(const dir of ['js','css','img','lib','catch-script','_locales'])fs.cpSync(path.join(root,dir),path.join(extension,dir),{recursive:true});
  for(const name of fs.readdirSync(root))if(name.endsWith('.html')||name==='manifest.json')fs.copyFileSync(path.join(root,name),path.join(extension,name));
- const browser=await chromium.launchPersistentContext(path.join(report,'profile'),{executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true,viewport:{width:440,height:640},ignoreDefaultArgs:['--disable-extensions'],args:[`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--disable-background-networking','--host-resolver-rules=MAP * ~NOTFOUND']});
+ const browser=await chromium.launchPersistentContext(path.join(report,'profile'),{executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true,viewport:{width:440,height:640},ignoreDefaultArgs:['--disable-extensions'],args:['--mute-audio','--autoplay-policy=user-gesture-required',`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--disable-background-networking','--host-resolver-rules=MAP * ~NOTFOUND']});
  const errors=[];browser.on('page',p=>p.on('pageerror',e=>errors.push(e.message)));
  try{
   await browser.route('**/*',route=>new URL(route.request().url()).protocol==='chrome-extension:'?route.continue():route.fulfill({contentType:'text/html',body:'<!doctype html><title>Fixture</title><p>No media</p>'}));
@@ -68,7 +68,7 @@ async function browserChecks(){
     chrome.runtime.sendNativeMessage=async()=>{throw new Error('Native communication blocked by fixture');};chrome.downloads.download=async()=>{throw new Error('Download blocked by fixture');};
     chrome.runtime.sendMessage=async message=>{
       testCalls.push(message);
-      if(message.Message==='shiyingPlatformRead')return {ok:true,id:'catalog',url:'https://www.bilibili.com/video/BV15z4y1U7HS/',title:'一段可以安心下载的视频',site:'bilibili',duration:252,choices:[{height:1080,label:'1080p'},{height:720,label:'720p'}],audioAvailable:true};
+      if(message.Message==='shiyingPlatformRead')return {ok:true,id:'catalog',url:'https://www.bilibili.com/video/BV15z4y1U7HS/',title:'一段可以安心下载的视频',site:'bilibili',parts:Number(localStorage.getItem('parts')||2),duration:252,choices:[{height:1080,label:'1080p'},{height:720,label:'720p'}],audioAvailable:true};
       if(message.Message==='shiyingPlatformStart'){await new Promise(r=>setTimeout(r,30));return {ok:true,id:'job',url:'https://www.bilibili.com/video/BV15z4y1U7HS/',status:'downloading',stage:'正在下载',progress:12};}
       if(message.Message==='shiyingCollectionRead'){if(delayCollection)await new Promise(resolve=>window.resolveCollection=resolve);return {ok:true,id:'list',title:'公开视频列表测试',entries,hasMore:true};}
       if(message.Message==='shiyingCollectionStart')return {ok:true,id:'queue',items:message.indices.map(i=>({...entries[i],status:'waiting'}))};
@@ -79,7 +79,7 @@ async function browserChecks(){
   },{entries:Collection.youtube(fixture()).entries});
   const page=await browser.newPage();const url=`chrome-extension://${id}/shiying.html?tabId=${tabId}`;await page.goto(url);
   await page.waitForFunction(()=>!document.querySelector('#platformDownload').disabled);
-  assert.equal(await page.locator('#extensionVersion').textContent(),'Ruxget · '+expectedVersion);await page.locator('.menu summary').click();await page.locator('#extensionVersion').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(report,'plugin-version.png')});await page.locator('.menu summary').click();
+  /* 0.4.71: the version shows in the settings page footer (the ⋯ menu is gone) */{const settings=await browser.newPage();await settings.goto(`chrome-extension://${id}/ruxget-settings.html`);await settings.waitForFunction(v=>document.querySelector('#versionText').textContent.endsWith(v),expectedVersion);assert.equal(await settings.locator('#versionText').textContent(),'版本 '+expectedVersion);await settings.screenshot({path:path.join(report,'plugin-version.png')});await settings.close();}
   for(const width of [320,360,440]){await page.setViewportSize({width,height:640});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:path.join(report,'single-'+width+'.png')});}
   await page.locator('label[for=formatAudio]').click();assert.equal(await page.locator('#platformQuality').isVisible(),false);assert.match(await page.locator('#platformDownload').innerText(),/MP3/);
   for(const language of ['en','zh_CN']){
@@ -87,12 +87,12 @@ async function browserChecks(){
    assert.match(await page.locator('label[for=formatAudio]').innerText(),/MP3/);assert.match(await page.locator('#platformDownload').innerText(),/MP3/);
    for(const width of [320,360,440]){await page.setViewportSize({width,height:640});assert(await page.locator('label[for=formatAudio]').isVisible());assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:path.join(report,'mp3-'+language+'-'+width+'.png')});}
   }
-  const contrast=await page.locator('#platformQuality option').first().evaluate(option=>({color:getComputedStyle(option).color,background:getComputedStyle(option).backgroundColor}));assert.equal(contrast.background,'rgb(16, 29, 41)');assert.equal(contrast.color,'rgb(245, 248, 252)');
+  const contrast=await page.locator('#platformQuality option').first().evaluate(option=>({color:getComputedStyle(option).color,background:getComputedStyle(option).backgroundColor}));assert.equal(contrast.background,'rgb(255, 254, 250)');assert.equal(contrast.color,'rgb(42, 53, 32)');
 
   await page.reload();await page.waitForFunction(()=>!document.querySelector('#platformDownload').disabled);assert.equal(await page.locator('#formatAudio').isChecked(),true);
   assert(await page.locator('label[for=formatAudio]').isVisible());assert.match(await page.locator('label[for=formatAudio]').innerText(),/MP3/);await page.locator('#platformDownload').evaluate(b=>{b.click();b.click();});await page.waitForFunction(()=>testCalls.some(c=>c.Message==='shiyingPlatformStart'));
   assert.equal(await page.evaluate(()=>testCalls.filter(c=>c.Message==='shiyingPlatformStart').length),1);assert.equal(await page.evaluate(()=>testCalls.find(c=>c.Message==='shiyingPlatformStart').format),'mp3');
-  // The tab is a watch page opened from a playlist (list=), so the card offers list selection.
+  // A B站 video with two parts offers part selection (0.4.71: a single-part video does not, see below).
   assert.equal(await page.locator('#collectionOpen').isVisible(),true);await page.locator('#collectionOpen').click();await page.locator('#collectionURL').fill('https://www.bilibili.com/video/BV15z4y1U7HS/');await page.locator('#collectionRead').click();await page.locator('#collectionList').waitFor({state:'visible'});
   assert.equal(await page.locator('#collectionItems input:checked').count(),0);assert.equal(await page.locator('#collectionItems input:disabled').count(),1);assert(await page.locator('#collectionStart').isDisabled());
   await page.locator('#collectionAll').check();assert.equal(await page.locator('#collectionItems input:checked').count(),2);await page.locator('#collectionAll').uncheck();
@@ -101,6 +101,9 @@ async function browserChecks(){
   await page.locator('#collectionStart').click();const batch=await page.evaluate(()=>testCalls.find(c=>c.Message==='shiyingCollectionStart'));assert.deepEqual(batch.indices,[1]);assert.equal(batch.format,'mp4');assert(await page.locator('#collectionQueue').isVisible());
   await page.locator('#collectionClose').click();assert.equal(await page.locator('#collectionMenu').count(),0);await page.locator('#collectionOpen').click();assert.equal(await page.locator('#collectionURL').inputValue(),'https://www.bilibili.com/video/BV15z4y1U7HS/');await page.locator('#collectionURL').fill('https://www.bilibili.com/video/BV1234567890/');assert.equal(await page.locator('#collectionList').isVisible(),false);await page.keyboard.press('Escape');assert.equal(await page.locator('#collectionSheet').isVisible(),false);
   check('Actual extension UI: 320/360/440 widths, remembered format, single-click guard, unchecked list, unavailable items, search, exact selection and Escape');
+  {const single=await browser.newPage();await single.addInitScript(()=>localStorage.setItem('parts','1'));await single.goto(url);await single.waitForFunction(()=>!document.querySelector('#platformDownload').disabled);
+   assert.equal(await single.locator('#collectionOpen').isVisible(),false);await single.evaluate(()=>localStorage.removeItem('parts'));await single.close();}
+  check('分 P 勾选下载 shows only when the B站 video has more than one part');
   // Render the actual desktop resources with a local host double; no native app is started.
   const desktop=await browser.newPage();let html=fs.readFileSync(path.join(productRoot,'desktop/interface.html'),'utf8');
   const css=fs.readFileSync(path.join(root,'css/shiying.css'),'utf8')+'\n'+fs.readFileSync(path.join(productRoot,'desktop/interface.css'),'utf8');

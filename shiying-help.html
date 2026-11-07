@@ -1,14 +1,16 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-i18n-title="uiHelpPageTitle">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ruxget · Getting Started</title>
+<title>Ruxget · 使用说明</title>
 <link rel="stylesheet" href="css/shiying.css">
 <link rel="stylesheet" href="css/shiying-help.css">
+<link rel="stylesheet" href="css/ruxget-light.css">
 <script src="js/polyfill.js"></script>
 <script src="js/shiying-locale.js"></script>
 <script src="js/shiying-text.js"></script>
+<script src="js/ruxget-desktop-get.js" defer></script>
 <script src="js/i18n.js" defer></script>
 </head>
 <body>
@@ -16,22 +18,22 @@
 <main>
 <section class="help-intro">
 <h2 data-i18n="uiHelpIntroTitle">视频和声音，留在本地。</h2>
-<p data-i18n="uiHelpIntroBody">点「下载视频」或「下载 MP3」，可以直接在 Chrome 内保存。需要大文件、BT 或让任务在关闭浏览器后继续时，可以安装配套桌面版，再在下载按钮旁的 ▾ 里选「用桌面版下载」。</p>
+<p data-i18n="uiHelpIntroBody">点「下载视频」或「下载 MP3」，可以直接在 Chrome 内保存。需要大文件、BT 或让任务在关闭浏览器后继续时，可以安装配套桌面版，再在设置（面板右上角的齿轮）里选择「交给桌面版」。</p><p class="desktop-get-row" data-desktop-get></p>
 <p><a href="shiying-desktop.html" data-i18n="uiHelpDesktopLink">桌面版完整安装方法与连接检查</a> · <a href="#site-access" data-en="Site access">网站权限</a></p>
 </section>
 <section class="start-steps" aria-labelledby="start">
 <h2 id="start" data-i18n="uiHelpStartTitle">第一次装好，之后直接下载</h2>
 <ol>
-<li><b data-en="Add Ruxget to Chrome">把 Ruxget 放到 Chrome 里</b><small data-en-html="Install or update Ruxget from the Chrome Web Store. A developer package can also be loaded from the extensions page. &lt;a href=&quot;shiying-desktop.html#extension-install&quot;&gt;How to install the extension&lt;/a&gt;.">从 Chrome 网上应用店安装或更新 Ruxget。开发者提供的插件包也可以在扩展管理页手动加载。<a href="shiying-desktop.html#extension-install">查看完整插件安装方法</a>。</small></li>
+<li><b data-en="Pin Ruxget to the toolbar">把 Ruxget 固定到工具栏</b><small data-en="Click the puzzle icon at the top right of Chrome, then the pin next to Ruxget. Ruxget is then one click away; the gear at the top right of its panel opens the settings.">点 Chrome 右上角的拼图图标，再点 Ruxget 旁边的图钉，之后一键即可打开。面板右上角的齿轮用于打开设置。</small></li>
 <li><b data-en="Open a Bilibili, Douyin, Kuaishou or Xiaohongshu video">打开 B站、抖音、快手或小红书视频</b><small data-en="Click Ruxget; the title and qualities load automatically. On Bilibili you can also paste a link and click “Read”. On Douyin and Xiaohongshu, the first download asks once to allow their video servers.">点击 Ruxget，标题与清晰度自动读取。B站也可以粘贴网址后点「读取」。抖音和小红书第一次下载时，Chrome 会问一次是否允许访问它们的视频服务器。</small></li>
-<li><b data-en="Choose how to save">选择保存方式</b><small data-en="Click “Download video” for an MP4 with sound, or “Download MP3” for audio only. With the desktop app installed, choose “Download in Ruxget Desktop” from the ▾ next to the button and confirm the folder in the app.">直接点「下载视频」保存带声音的 MP4，或点「下载 MP3」单独保存声音。已装桌面版的用户，可以在按钮旁的 ▾ 里选「用桌面版下载」，在桌面窗口确认保存位置。</small></li>
+<li><b data-en="Choose how to save">选择保存方式</b><small data-en="Click “Download video” for an MP4 with sound, or “Download MP3” for audio only. With the desktop app installed, settings (the gear at the top right) decide which downloads go to it; they start there right away.">直接点「下载视频」保存带声音的 MP4，或点「下载 MP3」单独保存声音。已装桌面版的用户，可以在设置（右上角的齿轮）里选择哪些下载交给桌面版，交过去会直接开始。</small></li>
 </ol>
 </section>
 <h2 data-en="Where do files go?">文件在哪里？</h2>
-<p data-en="The page button’s menu and the toolbar popup both have “Ask where to save”. When it’s on, Chrome asks for a folder and file name for each new download; otherwise files go to the “Ruxget” folder inside Chrome’s download folder. “Downloads / Ruxget ›” opens Chrome’s download settings to change that folder. In the desktop app, “Choose folder…” at the bottom sets the default for new tasks, and the add dialogs can pick a folder for one task. Existing tasks keep their folder; sorting by type creates subfolders.">插件的网页下载选项和工具栏小弹窗都有「保存时选择文件夹」。勾选后，新下载的文件准备好时会打开 Chrome 原生保存窗口，可选择文件夹和文件名；未勾选时保存在 Chrome 默认下载目录的「Ruxget」子文件夹。点「下载目录 / Ruxget ›」可打开 Chrome 下载设置，更改默认目录。桌面主界面底部点「选择文件夹…」可更改新任务默认目录，也可在新建或批量下载确认框点「选文件夹」指定本次位置。已有任务保留原位置；开启按类型归档时会创建子文件夹。</p>
+<p data-en="In settings (the gear at the top right of the panel), “Where files go” has “Ask where to save each time”. When it’s on, Chrome asks for a folder and file name for each new download; otherwise files go to the “Ruxget” folder inside Chrome’s download folder. “Change Chrome’s download folder” there changes that folder. In the desktop app, “Choose folder…” at the bottom sets the default for new tasks, and the add dialogs can pick a folder for one task. Existing tasks keep their folder; sorting by type creates subfolders.">在设置（面板右上角的齿轮）的「保存位置」中，可以开启「每次保存时选择文件夹」。开启后，新下载的文件准备好时会打开 Chrome 原生保存窗口，可选择文件夹和文件名；未开启时保存在 Chrome 默认下载目录的「Ruxget」子文件夹。点同一处的「更改 Chrome 下载文件夹」可更改默认目录。桌面主界面底部点「选择文件夹…」可更改新任务默认目录，也可在新建或批量下载确认框点「选文件夹」指定本次位置。已有任务保留原位置；开启按类型归档时会创建子文件夹。</p>
 <p data-en="While the extension downloads, you can close its popup and the progress page; keep Chrome running. Tasks sent to the desktop app continue after you close the browser; keep the app running.">插件下载期间可以关掉插件小窗口和进度页，请保持 Chrome 运行。交给桌面版的任务可以在关闭浏览器后继续，请保持桌面版运行。</p>
 <h2 data-en="Moving or hiding the page button">移动或隐藏下载浮钮</h2>
-<p data-en="Click the small “Ruxget” button beside a video to open quality and MP3 options in place; click again, click elsewhere or press Esc to close. After you pick one it shrinks to a small progress badge; details open only when you click. Drag the button to move it; its position is remembered. “Hide” in its menu, or “Hide” at the top of the toolbar popup, hides it; the toolbar switch also closes the popup and side panel. To bring it back, open Ruxget from the toolbar and click “Show”.">点击视频旁的小「Ruxget 下载」按钮，就地展开清晰度和 MP3 选项；再点一下、点击空白处或按 Esc 收起。选择下载后自动缩成小进度入口，下载详情只在主动点击时打开。按住浮钮文字可拖动，刷新后记住位置。在就地菜单点「隐藏浮钮」，或用 Chrome 工具栏 Ruxget 弹窗右上角的「隐藏浮钮」，都能隐藏网页按钮；工具栏里的隐藏开关还会同时收起弹窗和已打开的右侧栏。需要时打开工具栏里的 Ruxget，点「显示浮钮」恢复。显示或隐藏状态会记住，不会自动占用侧栏。</p>
+<p data-en="Click the small “Ruxget” button beside a video to open quality and MP3 options in place; click again, click elsewhere or press Esc to close. After you pick one it shrinks to a small progress badge; details open only when you click. Drag the button to move it; its position is remembered. “Hide” in its menu, or turning off “Show the download button on video pages” in settings (under “On web pages”), hides it. Turn that setting back on to bring it back.">点击视频旁的小「Ruxget 下载」按钮，就地展开清晰度和 MP3 选项；再点一下、点击空白处或按 Esc 收起。选择下载后自动缩成小进度入口，下载详情只在主动点击时打开。按住浮钮文字可拖动，刷新后记住位置。在就地菜单点「隐藏浮钮」，或在设置的「网页上」关闭「在视频网页上显示下载浮钮」，都能隐藏网页按钮。需要时在设置里重新打开即可。显示或隐藏状态会记住，不会自动占用侧栏。</p>
 <h2 data-en="Qualities and other sites">清晰度与其他网站</h2>
 <p data-en="Only the qualities the site actually offers are shown. Higher Bilibili qualities may need you to sign in on the site. On other sites, play the video first, then try the media found in the list; formats and access rules vary by site. Some sites can’t be read by the extension; the Ruxget desktop app works with more sites, large files and BitTorrent.">只显示原站实际提供的清晰度。B站更高清的画面可能需要先在原站登录。其他网页可以播放视频后，尝试下载列表里发现的媒体；各网站的格式和访问权限会影响结果。部分网站插件无法读取；需要更多网站、大文件或 BT 时，可以使用 Ruxget 桌面版。</p>
 <details class="help-details">

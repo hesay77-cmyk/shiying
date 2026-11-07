@@ -39,7 +39,7 @@ check('catalog refuses foreign hosts and missing durations; only 抖音/小红�
 // In-page readers against simulated page structures
 (async()=>{
  const {chromium}=require(process.env.SHIYING_PLAYWRIGHT||'playwright');
- const browser=await chromium.launch({executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true});
+ const browser=await chromium.launch({executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true,args:['--mute-audio','--autoplay-policy=user-gesture-required']});
  try{
   const page=await browser.newPage();await page.setContent('<div id="wrap"><div id="player"><video></video></div></div><div id="other"><video></video></div>');
   const run=(name,id)=>page.evaluate(([code,arg])=>new Function('return ('+code+')')()(arg),[platform.pageReaders[name].toString(),id]);

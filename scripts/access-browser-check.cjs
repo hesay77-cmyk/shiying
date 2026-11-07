@@ -6,7 +6,7 @@ const root=path.resolve(__dirname,'..'),run=path.join(root,'.checks','access-'+D
  const server=http.createServer((request,response)=>{response.setHeader('Content-Type','text/html');response.end('<title>未授权网站样本</title><video src="/video.mp4"></video>')});await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  const extension=path.join(root,'build');let context;
  try{
-  context=await chromium.launchPersistentContext(path.join(run,'profile'),{executablePath:process.env.SHIYING_CHROMIUM,headless:true,args:[`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--disable-background-networking']});
+  context=await chromium.launchPersistentContext(path.join(run,'profile'),{executablePath:process.env.SHIYING_CHROMIUM,headless:true,args:['--mute-audio','--autoplay-policy=user-gesture-required',`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--disable-background-networking']});
   const worker=context.serviceWorkers()[0]||await context.waitForEvent('serviceworker'),id=new URL(worker.url()).hostname;
   const origins=(await worker.evaluate(()=>chrome.permissions.getAll())).origins;
   assert(!origins.some(origin=>/<all_urls>|:\/\/\*\//.test(origin)));assert(!origins.some(origin=>origin.includes('127.0.0.1')));
@@ -16,7 +16,7 @@ const root=path.resolve(__dirname,'..'),run=path.join(root,'.checks','access-'+D
   assert.equal(await popup.locator('.media-item').count(),0);
   // Simulate the user's denial, without interacting with a native prompt.
   await popup.evaluate(()=>{chrome.permissions.request=async request=>{globalThis.testRequest=request;return false}});await popup.locator('#allowSite').click();
-  await popup.getByText('未授权，已有下载和已允许的网站仍可使用',{exact:true}).waitFor();
+  await popup.getByText('没有允许这个网站。已允许的网站和已有的下载不受影响',{exact:true}).waitFor();
   const request=await popup.evaluate(()=>globalThis.testRequest);assert.deepEqual(request.origins,['http://127.0.0.1/*']);
   assert(!(await worker.evaluate(()=>chrome.permissions.getAll())).origins.some(origin=>origin.includes('127.0.0.1')));
   assert.equal(await worker.evaluate(tabId=>(cacheData[tabId]||[]).length,tabId),0);

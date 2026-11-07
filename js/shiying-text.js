@@ -29,7 +29,7 @@
     '服务器中途断开了连接，可以点重试接着下载': 'The server dropped the connection; click retry to continue',
     // Popup notices (shiying.js notify)
     '链接已复制': 'Link copied',
-    '未授权，已有下载和已允许的网站仍可使用': 'Not allowed. Existing downloads and allowed sites still work',
+    '没有允许这个网站。已允许的网站和已有的下载不受影响': 'This site wasn’t allowed. Sites you allowed before and existing downloads are not affected',
     '网页已跳转，请重新打开 Ruxget': 'The page changed. Open Ruxget again',
     '已允许此网站；需要时刷新网页再播放视频': 'Site allowed. Refresh the page and play the video if needed',
     '网站已允许，请再允许本页媒体来源': 'Site allowed. Now allow this page’s media sources',

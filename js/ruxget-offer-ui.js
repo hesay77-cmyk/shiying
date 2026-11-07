@@ -33,7 +33,7 @@
         let granted = false;
         try { granted = await chrome.permissions.request({permissions: ['nativeMessaging']}); } catch { granted = false; }
         await chrome.storage.session.remove(RuxgetOffer.INTENT).catch(() => {});
-        if (!granted) { toast(pick('没有允许连接桌面版，Chrome 下载照常进行', 'Not connected to Ruxget Desktop; Chrome keeps downloading as usual')); return 'denied'; }
+        if (!granted) { toast(pick('你没有允许 Ruxget 连接桌面版，Chrome 下载照常进行', 'You didn’t allow Ruxget to connect to the desktop app; Chrome keeps downloading as usual')); return 'denied'; }
         desk = await RuxgetOffer.desktop();
         if (desk === 'missing') { justMissing = true; toast(pick('还没装桌面版：先下载安装（免费，3 MB）', 'Ruxget Desktop isn’t installed yet: get it first (free, 3 MB)')); }
         if (desk === 'unknown') { toast(pick('桌面版没有响应，打开连接设置看看', 'Ruxget Desktop didn’t answer; opening its connection settings')); chrome.tabs.create({url: chrome.runtime.getURL('shiying-desktop.html#connection')}); }

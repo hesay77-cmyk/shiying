@@ -11,7 +11,7 @@ const checks=[];function check(name){checks.push(name);console.log('PASS '+name)
  execFileSync(process.execPath,[path.join(__dirname,'package.cjs')],{stdio:'ignore'});
  const extension=path.join(root,'build'),downloads=path.join(report,'downloads');
  const {chromium}=require(process.env.SHIYING_PLAYWRIGHT||'playwright');
- const browser=await chromium.launchPersistentContext(path.join(report,'profile'),{executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true,acceptDownloads:true,downloadsPath:downloads,viewport:{width:380,height:640},ignoreDefaultArgs:['--disable-extensions'],args:[`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--no-proxy-server']});
+ const browser=await chromium.launchPersistentContext(path.join(report,'profile'),{executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true,acceptDownloads:true,downloadsPath:downloads,viewport:{width:380,height:640},ignoreDefaultArgs:['--disable-extensions'],args:['--mute-audio','--autoplay-policy=user-gesture-required',`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--no-proxy-server']});
  const errors=[];browser.on('page',p=>p.on('pageerror',e=>errors.push(e.message+' @ '+p.url())));
  try{
   const worker=browser.serviceWorkers()[0]||await browser.waitForEvent('serviceworker'),id=new URL(worker.url()).hostname;
@@ -34,16 +34,16 @@ const checks=[];function check(name){checks.push(name);console.log('PASS '+name)
   assert.equal(saved.folder,folder);
   check('a finished Ruxget save teaches the extension Chrome’s download folder');
   // The popup shows the real path, shortened, with the full path on hover.
-  popup=await browser.newPage();await popup.goto(`chrome-extension://${id}/shiying.html`);
-  await popup.waitForFunction(()=>/Ruxget ›$/.test(document.querySelector('#downloadLocation').textContent)&&!/下载目录/.test(document.querySelector('#downloadLocation').textContent));
-  const label=await popup.locator('#downloadLocation').innerText(),title=await popup.locator('#downloadLocation').getAttribute('title');
-  assert.equal(label,'…\\Chrome 下载\\Ruxget ›');assert(title.includes(saved.folder+'\\Ruxget')&&/插件和桌面版都保存到/.test(title));
-  await popup.screenshot({path:path.join(report,'popup-folder.png')});
-  check("the popup shows where files go (…\\Chrome 下载\\Ruxget), full path on hover");
+  // 0.4.71: the panel no longer shows the folder; the settings page does (保存位置 → 下载到).
+  await browser.addInitScript(()=>{if(!location.pathname.endsWith('/ruxget-settings.html'))return;window.settingsNative=[];chrome.permissions.contains=async()=>true;chrome.permissions.request=async()=>true;chrome.runtime.sendNativeMessage=async(host,message)=>{settingsNative.push(message);return message.action==='status'||message.action==='ping'?{ok:true,version:'0.4.70'}:{ok:true};};});
+  popup=await browser.newPage();await popup.goto(`chrome-extension://${id}/ruxget-settings.html`);
+  await popup.waitForFunction(f=>document.querySelector('#folderPath').textContent===f+'\\Ruxget',saved.folder);
+  await popup.screenshot({path:path.join(report,'settings-folder.png')});
+  check("the settings page shows where files go (…\\Chrome 下载\\Ruxget)");
   // Hand-offs to the desktop app carry the folder.
-  await popup.evaluate(()=>{chrome.runtime.sendNativeMessage=async(host,message)=>{await chrome.storage.session.set({lastNative:message});return {ok:true};};chrome.permissions.request=async()=>true;});
-  await popup.locator('details.menu summary').click();await Promise.all([popup.waitForEvent('close'),popup.locator('#openDesktop').click()]);
-  assert.deepEqual((await worker.evaluate(()=>chrome.storage.session.get('lastNative'))).lastNative,{action:'show',chromeFolder:saved.folder});
+  const open=popup.getByRole('button',{name:'打开桌面版'});await open.waitFor({state:'visible'});await open.click();
+  await popup.waitForFunction(()=>settingsNative.some(m=>m.action==='show'));
+  assert.deepEqual(await popup.evaluate(()=>settingsNative.find(m=>m.action==='show')),{action:'show',chromeFolder:saved.folder});await popup.close();
   check('“打开 Ruxget 桌面版” tells the desktop app where Chrome saves');
   await worker.evaluate(()=>{globalThis.calls=[];chrome.permissions.contains=async()=>true;chrome.runtime.sendNativeMessage=async(host,message)=>{calls.push(message);return {ok:true};};return chrome.storage.local.set({ruxgetTakeover:{enabled:true,minMB:0,skipHosts:[]}});});
   const page=await browser.newPage();await page.setContent(`<a id="f" href="${origin}/big" download>f</a>`);await page.click('#f');

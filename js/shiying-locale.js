@@ -212,6 +212,20 @@
     return { lang: currentLang, pref: pref };
   }
 
+  try {
+    if (typeof document !== "undefined" && typeof location !== "undefined" && location.protocol === "chrome-extension:" && chrome.storage && chrome.storage.onChanged) {
+      chrome.storage.onChanged.addListener(function (changes, area) {
+        if (area !== "local" || !changes[STORAGE_KEY]) return;
+        const pref = changes[STORAGE_KEY].newValue || "auto", lang = resolveLang(pref);
+        if (lang === currentLang) return;
+        loadCatalog(lang).then(function () {
+          applyDom(document);
+          try { document.dispatchEvent(new CustomEvent("ruxget-i18n-applied", { detail: { lang: lang, pref: pref } })); } catch (e) {}
+        }).catch(function () {});
+      });
+    }
+  } catch (e) {}
+
   function t(key, substitutions) {
     return getMessage(key, substitutions);
   }

@@ -4,7 +4,7 @@ const root=path.resolve(__dirname,'..'),report=fs.mkdtempSync(require('node:path
 const checks=[];function check(name){checks.push(name);console.log('PASS '+name);}
 (async()=>{
  const {chromium}=require(process.env.SHIYING_PLAYWRIGHT||'playwright');
- const browser=await chromium.launch({executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true});
+ const browser=await chromium.launch({executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true,args:['--mute-audio','--autoplay-policy=user-gesture-required']});
  const errors=[];
  try{
   const context=await browser.newContext({viewport:{width:900,height:900}});

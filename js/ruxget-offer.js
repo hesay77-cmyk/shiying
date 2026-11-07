@@ -107,13 +107,15 @@ const RuxgetOffer={
     async turnOn(){
         const {ruxgetTakeover:current={}}=await chrome.storage.local.get('ruxgetTakeover');
         const minMB=RuxgetOffer.minFor(current);
-        await chrome.storage.local.set({ruxgetTakeover:Object.assign({skipHosts:[]},current,{enabled:true,minMB})});
+        // 0.4.71: settings → 交给桌面版 follows (on keeps "all", otherwise "large"), so the page never says 从不 while it takes over.
+        const {ruxgetDesktopMode:mode}=await chrome.storage.local.get('ruxgetDesktopMode');
+        await chrome.storage.local.set({ruxgetTakeover:Object.assign({skipHosts:[]},current,{enabled:true,minMB}),ruxgetDesktopMode:mode==='all'?'all':'large'});
         await chrome.storage.local.remove(RuxgetOffer.CARD);
         return minMB;
     },
     async turnOff(){
         const {ruxgetTakeover:current={}}=await chrome.storage.local.get('ruxgetTakeover');
-        await chrome.storage.local.set({ruxgetTakeover:Object.assign({skipHosts:[],minMB:RuxgetOffer.MB},current,{enabled:false})});
+        await chrome.storage.local.set({ruxgetTakeover:Object.assign({skipHosts:[],minMB:RuxgetOffer.MB},current,{enabled:false}),ruxgetDesktopMode:'never'});
     },
     // Turning takeover off is a clear answer: the card never opens by itself again.
     async never(){

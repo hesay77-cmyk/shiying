@@ -11,7 +11,7 @@ const A='aaaaaaaaaaaaaaaa',B='bbbbbbbbbbbbbbbb',C='cccccccccccccccc',MB=1024*102
  execFileSync(process.execPath,[path.join(__dirname,'package.cjs')],{stdio:'ignore'});
  const extension=path.join(root,'build');
  const {chromium}=require(process.env.SHIYING_PLAYWRIGHT||'playwright');
- const browser=await chromium.launchPersistentContext(path.join(report,'profile'),{executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true,viewport:{width:380,height:640},ignoreDefaultArgs:['--disable-extensions'],args:[`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--no-proxy-server']});
+ const browser=await chromium.launchPersistentContext(path.join(report,'profile'),{executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true,viewport:{width:380,height:640},ignoreDefaultArgs:['--disable-extensions'],args:['--mute-audio','--autoplay-policy=user-gesture-required',`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--no-proxy-server']});
  const errors=[];browser.on('page',p=>p.on('pageerror',e=>errors.push(e.message+' @ '+p.url())));
  try{
   const worker=browser.serviceWorkers()[0]||await browser.waitForEvent('serviceworker'),id=new URL(worker.url()).hostname;
@@ -57,7 +57,7 @@ const A='aaaaaaaaaaaaaaaa',B='bbbbbbbbbbbbbbbb',C='cccccccccccccccc',MB=1024*102
   assert.equal(await popup.evaluate(()=>document.body.dataset.view),'downloads');assert.equal(await popup.locator('#tabDownloads .tab-count').innerText(),'1');
   assert.match(await item(A).innerText(),/系统镜像\.iso[\s\S]*桌面版 · 45% · 3\.2 MB\/s/);
   assert.equal(await item(A).locator('.recent-bar').count(),1);
-  assert.match(await item(B).innerText(),/安装包\.zip[\s\S]*桌面版 · 已完成/);
+  assert.match(await item(B).innerText(),/安装包\.zip[\s\S]*桌面版 · 下载完成/);
   assert.equal(await popup.locator('#recentList li').first().getAttribute('data-id'),A);
   await popup.screenshot({path:path.join(report,'popup-zh.png')});
   check('“最近下载” opens by itself and shows the desktop tasks with progress, running first');

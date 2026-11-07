@@ -40,7 +40,7 @@ const ShiyingPlatform = {
         const video=data.video.map(track).filter(item=>item.url&&item.height>0&&item.codec.startsWith('avc')).sort((a,b)=>b.bitrate-a.bitrate);
         const audio=data.audio.map(track).filter(item=>item.url&&item.codec.startsWith('mp4a')).sort((a,b)=>b.bitrate-a.bitrate);
         if(!video.length||!audio.length)throw new Error('没有取得可合并的画面与声音');
-        return {...source,title:String(data.title).slice(0,300),artist:String(data.artist||'').slice(0,100),cover:this.coverURL(data.cover),subtitles:(Array.isArray(data.subtitles)?data.subtitles:[]).slice(0,20).map(item=>({lang:String(item.lang||'').slice(0,20),name:String(item.name||item.lang||'').slice(0,40),url:this.subtitleURL(item.url)})).filter(item=>item.url),duration:Number(data.duration),video,audio,choices:[...new Set(video.map(item=>item.height))].sort((a,b)=>b-a).map(height=>({height,label:height+'p'}))};
+        return {...source,parts:Math.max(1,Math.min(1000,Number(data.parts)||1)),title:String(data.title).slice(0,300),artist:String(data.artist||'').slice(0,100),cover:this.coverURL(data.cover),subtitles:(Array.isArray(data.subtitles)?data.subtitles:[]).slice(0,20).map(item=>({lang:String(item.lang||'').slice(0,20),name:String(item.name||item.lang||'').slice(0,40),url:this.subtitleURL(item.url)})).filter(item=>item.url),duration:Number(data.duration),video,audio,choices:[...new Set(video.map(item=>item.height))].sort((a,b)=>b-a).map(height=>({height,label:height+'p'}))};
     },
     source(value) {
         let url;
@@ -77,7 +77,7 @@ const ShiyingPlatform = {
         if (!play.dash?.video?.length || !play.dash?.audio?.length) throw new Error('没有取得完整音视频轨，请在 B站播放后重试');
         let subtitles = [];
         try {const player = await get('/x/player/v2', {...identity, cid:String(page.cid)});subtitles = (player.subtitle?.subtitles || []).map(item => ({lang:item.lan, name:item.lan_doc, url:item.subtitle_url}));} catch {}
-        return {subtitles, title:view.pages.length > 1 ? `${view.title} - P${part} ${page.part}` : view.title, duration:page.duration || play.dash.duration, userAgent:navigator.userAgent, video:play.dash.video, audio:play.dash.audio, artist:view.owner?.name || '', cover:view.pic || '', pageTitle:view.title};
+        return {subtitles, parts:view.pages.length, title:view.pages.length > 1 ? `${view.title} - P${part} ${page.part}` : view.title, duration:page.duration || play.dash.duration, userAgent:navigator.userAgent, video:play.dash.video, audio:play.dash.audio, artist:view.owner?.name || '', cover:view.pic || '', pageTitle:view.title};
         } catch (error) {return {error:error.message || String(error)};}
     }
 };

@@ -1112,7 +1112,7 @@
     "message": "Video URL"
   },
   "uiPasteUrl": {
-    "message": "Paste video URL"
+    "message": "Paste a video or file link"
   },
   "uiRead": {
     "message": "Read"
@@ -1196,7 +1196,7 @@
     "message": "Video and audio, saved locally."
   },
   "uiHelpIntroBody": {
-    "message": "Tap “Download video” or “Download MP3” to save inside Chrome. For large files, torrents, or downloads that continue after you close the browser, install the desktop app and choose “Download in Ruxget Desktop” from the ▾ next to the download button."
+    "message": "Tap “Download video” or “Download MP3” to save inside Chrome. For large files, torrents, or downloads that continue after you close the browser, install the desktop app and choose “Hand downloads to the desktop app” in settings (the gear at the top right)."
   },
   "uiHelpDesktopLink": {
     "message": "Desktop install guide and connection check"
@@ -1408,5 +1408,8 @@
   },
   "uiActionAdvanced": {
     "message": "Advanced tools (this page)"
+  },
+  "uiHelpPageTitle": {
+    "message": "Ruxget · Getting Started"
   }
 }

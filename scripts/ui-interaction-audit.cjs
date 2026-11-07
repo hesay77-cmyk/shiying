@@ -5,7 +5,7 @@ const root=path.resolve(__dirname,'..'),report=fs.mkdtempSync(require('node:path
 const checks=[],issues=[];
 function check(ok,name){checks.push(name);if(!ok)issues.push(name);}
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
-(async()=>{const browser=await chromium.launch({executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true});try{
+(async()=>{const browser=await chromium.launch({executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true,args:['--mute-audio','--autoplay-policy=user-gesture-required']});try{
  const context=await browser.newContext({viewport:{width:960,height:640}}),errors=[];
  context.on('page',p=>p.on('pageerror',e=>errors.push(e.message)));
  await context.route('**/*',r=>r.abort());

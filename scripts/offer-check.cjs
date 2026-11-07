@@ -52,7 +52,7 @@ const MB=1024*1024,DAY=86400000;
  execFileSync(process.execPath,[path.join(__dirname,'package.cjs')],{stdio:'ignore'});
  const extension=path.join(root,'build');
  const {chromium}=require(process.env.SHIYING_PLAYWRIGHT||'playwright');
- const browser=await chromium.launchPersistentContext(path.join(report,'profile'),{executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true,acceptDownloads:true,downloadsPath:path.join(report,'downloads'),viewport:{width:360,height:600},ignoreDefaultArgs:['--disable-extensions'],args:[`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--no-proxy-server']});
+ const browser=await chromium.launchPersistentContext(path.join(report,'profile'),{executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true,acceptDownloads:true,downloadsPath:path.join(report,'downloads'),viewport:{width:360,height:600},ignoreDefaultArgs:['--disable-extensions'],args:['--mute-audio','--autoplay-policy=user-gesture-required',`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--no-proxy-server']});
  const errors=[];browser.on('page',p=>p.on('pageerror',e=>errors.push(e.message+' @ '+p.url())));
  try{
   const worker=browser.serviceWorkers()[0]||await browser.waitForEvent('serviceworker'),id=new URL(worker.url()).hostname;
@@ -124,8 +124,8 @@ const MB=1024*1024,DAY=86400000;
   assert.equal((await worker.evaluate(id=>chrome.downloads.search({id}),big1)).length,0);
   assert.match(await popup.locator('#toast').innerText(),/已交给桌面版。以后 Chrome 里 50 MB 以上的文件也交给它/);
   assert.equal((await get('ruxgetOffer')).asked,1);
-  assert.equal(await popup.locator('#desktopTakeover').isChecked(),true);
-  assert.match(await popup.locator('#desktopRowNote').innerText(),/Chrome 里 50 MB 以上的文件会交给桌面版 · 设置/);
+  assert.equal(await get('ruxgetDesktopMode'),'large','settings → 交给桌面版 now says 大文件和长视频');
+  assert.equal(await popup.locator('#desktopRow').isVisible(),false);
   await popup.close();
   check('“改用桌面版” turns takeover on at 50 MB and moves the running file to the desktop');
 
@@ -134,32 +134,34 @@ const MB=1024*1024,DAY=86400000;
   assert.equal(await opened(),0);
   check('with takeover on, nothing is offered');
 
-  // Turning takeover off yourself is an answer: the card never opens by itself again. The list offers moving files.
-  popup=await panel();
-  await popup.locator('.desktop-switch').click();
+  const settings=async()=>{const page=await browser.newPage();await page.goto(`chrome-extension://${id}/ruxget-settings.html`);await page.waitForFunction(()=>document.querySelector('#desktopStatus').textContent.length>0);return page;};
+  // Choosing 从不 on the settings page is an answer: the card never opens by itself again.
+  popup=await settings();
+  assert.equal(await popup.locator('input[name=desktopMode][value=large]').isChecked(),true);assert.match(await popup.locator('#desktopStatus').innerText(),/桌面版已连接/);
+  await popup.screenshot({path:path.join(report,'settings-large-zh.png')});
+  await popup.locator('input[name=desktopMode][value=never]').check();
   for(let i=0;i<20&&(await get('ruxgetTakeover')).enabled;i++)await popup.waitForTimeout(100);
-  assert.equal((await get('ruxgetTakeover')).enabled,false);
-  assert.match(await popup.locator('#toast').innerText(),/已关闭/);
-  await popup.waitForTimeout(400);
-  assert.equal(await popup.locator('#desktopTakeover').isChecked(),false);
+  assert.equal((await get('ruxgetTakeover')).enabled,false);assert.equal(await get('ruxgetDesktopMode'),'never');
+  assert.match(await popup.locator('#toast').innerText(),/已设为：从不交给桌面版/);
   for(let i=0;i<20&&!(await get('ruxgetOffer')).never;i++)await popup.waitForTimeout(100);
   assert.equal((await get('ruxgetOffer')).never,true);
-  await popup.locator('#chromeBig li').first().waitFor({state:'visible'});
-  assert.match(await popup.locator('#chromeBig').innerText(),/Chrome 正在下载 \S+（60 MB）[\s\S]*改用桌面版/);
-  assert.match(await popup.locator('#chromeBig button').first().getAttribute('aria-label'),/^改用桌面版下载 \S+/);
-  await popup.screenshot({path:path.join(report,'row-off-zh.png')});
-  await popup.locator('#chromeBig li').first().getByRole('button').click();
-  for(let i=0;i<30&&!(await worker.evaluate(()=>nativeCalls.some(call=>call.action==='takeover'&&call.url.endsWith('/big2.bin'))));i++)await popup.waitForTimeout(100);
-  assert(await worker.evaluate(()=>nativeCalls.some(call=>call.action==='takeover'&&call.url.endsWith('/big2.bin'))));
-  for(let i=0;i<30&&!/已交给桌面版/.test(await popup.locator('#toast').innerText());i++)await popup.waitForTimeout(100);
-  await popup.waitForTimeout(300);
-  await popup.locator('.desktop-switch').click();
+  await popup.locator('input[name=desktopMode][value=large]').check();
   for(let i=0;i<20&&!(await get('ruxgetTakeover')).enabled;i++)await popup.waitForTimeout(100);
-  assert.deepEqual(await get('ruxgetTakeover'),{skipHosts:[],enabled:true,minMB:50});
+  assert.deepEqual(await get('ruxgetTakeover'),{skipHosts:[],enabled:true,minMB:50,minChosen:false});assert.equal(await get('ruxgetDesktopMode'),'large');
+  await popup.locator('input[name=desktopMode][value=all]').check();
+  for(let i=0;i<20&&(await get('ruxgetDesktopMode'))!=='all';i++)await popup.waitForTimeout(100);
+  assert.deepEqual(await get('ruxgetTakeover'),{skipHosts:[],enabled:true,minMB:1,minChosen:true});
+  await popup.reload();await popup.waitForFunction(()=>document.querySelector('input[name=desktopMode][value=all]').checked);
   await popup.close();
-  await worker.evaluate(()=>{globalThis.opened=0;});await takeover({enabled:false,minMB:50,skipHosts:[]});
+  await worker.evaluate(()=>{globalThis.opened=0;});await takeover({enabled:false,minMB:50,skipHosts:[]});await set({ruxgetDesktopMode:'never'});
   await fresh({never:true});assert.equal(await fake(),false);assert.equal(await opened(),0);
-  check('switching takeover off counts as “不再提示”; the switch and “改用桌面版” in the list work');
+  check('settings → 交给桌面版: 从不 turns takeover off and counts as “不再提示”; 大文件和长视频 is 50 MB, 全部 is 1 MB, remembered');
+  // The icon's right-click entry and the desktop page switch keep the settings choice in step.
+  await worker.evaluate(()=>RuxgetOffer.fromMenu(true));assert.equal(await get('ruxgetDesktopMode'),'large');
+  await worker.evaluate(()=>RuxgetOffer.fromMenu(false));assert.equal(await get('ruxgetDesktopMode'),'never');
+  await set({ruxgetDesktopMode:'all'});await worker.evaluate(()=>RuxgetOffer.fromMenu(true));assert.equal(await get('ruxgetDesktopMode'),'all');
+  await worker.evaluate(()=>RuxgetOffer.fromMenu(false));await takeover({enabled:false,minMB:50,skipHosts:[]});
+  check('turning takeover on or off anywhere else keeps settings → 交给桌面版 in step (on keeps 全部)');
 
   // An unanswered card counts: nothing opens 4 days later, even after many large downloads.
   await fresh();assert.equal(await fake(),true);
@@ -238,7 +240,7 @@ const MB=1024*1024,DAY=86400000;
   await popup.locator('#offerCard').waitFor({state:'visible'});
   assert.match(await cardText(),/交给 Ruxget 桌面版[\s\S]*免费，没有广告。/);
   assert.match(await cardText(),/已经装了就直接接过去；还没装的，下一步可以下载（免费，3 MB）/);
-  assert.match(await popup.locator('#desktopRowNote').innerText(),/需要配套的 Ruxget 桌面版 · 还没装？下载（3 MB）/);
+  assert.equal(await popup.locator('#desktopRow').isVisible(),false);
   await popup.screenshot({path:path.join(report,'card-unpermitted-zh.png')});
   await popup.locator('#offerCard .offer-primary').click();
   for(let i=0;i<20&&!(await get('ruxgetTakeover')).enabled;i++)await popup.waitForTimeout(100);
@@ -261,7 +263,11 @@ const MB=1024*1024,DAY=86400000;
   assert.match(await popup.locator('#toast').innerText(),/还没装桌面版：先下载安装（免费，3 MB）/);
   assert.equal(browser.pages().length,pagesBefore);
   assert.equal((await get('ruxgetTakeover')).enabled,false);
-  assert.match(await popup.locator('#desktopRowNote').innerText(),/需要先安装桌面版（免费，3 MB） · 下载/);
+  await set({ruxgetDesktopMode:'never'});{const page=await settings();await page.waitForFunction(()=>/还没装桌面版/.test(document.querySelector('#desktopStatus').textContent));
+   assert.equal(await page.getByRole('button',{name:'下载桌面版',exact:true}).isVisible(),true);assert.match(await page.locator('#desktopFacts').innerText(),/免费[\s\S]*3 MB[\s\S]*无广告/);
+   await page.locator('input[name=desktopMode][value=large]').click();await page.waitForFunction(()=>/先安装桌面版/.test(document.querySelector('#toast').textContent));
+   assert.equal(await page.locator('input[name=desktopMode][value=never]').isChecked(),true);assert.equal((await get('ruxgetTakeover')).enabled,false);
+   await page.screenshot({path:path.join(report,'settings-missing-zh.png')});await page.close();}
   assert.equal(await popup.locator('#chromeBig').isVisible(),false);
   await popup.screenshot({path:path.join(report,'card-missing-zh.png')});
   const [tab]=await Promise.all([browser.waitForEvent('page'),popup.locator('#offerCard').getByRole('button',{name:'下载桌面版（3 MB）'}).click()]);
@@ -309,30 +315,26 @@ const MB=1024*1024,DAY=86400000;
   assert.equal((await get('ruxgetTakeover')).enabled,false);
   check('the icon’s right-click “大文件交给桌面版” turns takeover on and off');
 
-  // The ⋯ menu, also in a short panel (Chrome sizes the panel to its content).
+  // 0.4.71: no ⋯ menu; the gear opens the settings page, whose footer links to help (with 网站权限).
   await fresh({never:true});
   for(const height of [600,326]){
    popup=await panel(height);
-   await popup.locator('details.menu summary').click();await popup.waitForTimeout(300);
-   const menu=await popup.evaluate(()=>{const panel=document.querySelector('.menu-panel'),box=panel.getBoundingClientRect();return {items:[...panel.querySelectorAll(':scope > button')].map(b=>b.textContent.trim()),links:[...panel.querySelectorAll('.menu-links button')].map(b=>b.textContent.trim()),need:Math.ceil(box.top+panel.scrollHeight),page:document.documentElement.scrollHeight,background:getComputedStyle(panel).backgroundColor};});
-   assert.deepEqual(menu.items,['打开下载文件夹','普通文件下载…','暂停识别','打开 Ruxget 桌面版','安装与设置桌面版…']);
-   assert.deepEqual(menu.links,['帮助与设置']);
-   assert(menu.page>=menu.need,`page ${menu.page} < menu ${menu.need}`);
-   assert.match(menu.background,/^rgb\(/);
+   assert.equal(await popup.locator('details.menu').isVisible(),false);assert.equal(await popup.locator('#openSettings').isVisible(),true);
+   assert.equal(await popup.locator('#openSettings').getAttribute('aria-label'),'设置');
+   assert(await popup.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
    if(height===600){
-    await popup.screenshot({path:path.join(report,'menu-zh.png')});
-    // 帮助与设置 opens the help page, which links to 网站权限 near the top.
-    const [help]=await Promise.all([browser.waitForEvent('page'),popup.locator('#help').click()]);
-    await help.waitForLoadState();assert.match(help.url(),/shiying-help\.html$/);
+    await popup.screenshot({path:path.join(report,'gear-zh.png')});
+    const [page]=await Promise.all([browser.waitForEvent('page'),popup.locator('#openSettings').click()]);
+    await page.waitForLoadState();assert.match(page.url(),/ruxget-settings\.html$/);
+    await page.locator('#helpLink').click();await page.waitForURL(/shiying-help\.html$/);const help=page;
     assert.equal(await help.locator('.help-intro a[href="#site-access"]').innerText(),'网站权限');
-    assert.equal(await help.locator('#site-access').count(),1);await help.close();
-    await popup.locator('details.menu summary').click();await popup.waitForTimeout(200);await popup.locator('details.menu summary').click();await popup.waitForTimeout(200);
+    assert.equal(await help.locator('#site-access').count(),1);assert.equal(await help.locator('.help-intro a.desktop-get').count(),1);
+    assert.doesNotMatch(await help.locator('body').innerText(),/▾/);
+    await page.close();
    }
-   await popup.locator('details.menu summary').click();await popup.waitForTimeout(200);
-   assert.equal(await popup.evaluate(()=>document.body.style.minHeight),'');
    await popup.close();
   }
-  check('the ⋯ menu: 5 items and one “帮助与设置” link to the help page with 网站权限; the page grows to fit it even in a short panel');
+  check('the gear opens the settings page; its 帮助 link leads to the help page with 网站权限 and the desktop download link (no ▾ left)');
 
   // English.
   await set({ruxgetUiLanguage:'en'});await fresh({asked:1,lastAnswerAt:0,largeSince:3});
@@ -340,21 +342,20 @@ const MB=1024*1024,DAY=86400000;
   popup=await panel();
   await popup.locator('#offerCard').waitFor({state:'visible'});
   assert.match(await cardText(),/Next time, Ruxget Desktop can take large files[\s\S]*Use Ruxget Desktop from now on[\s\S]*No thanks[\s\S]*Don’t ask again/);
-  assert.match(await popup.locator('.desktop-row').innerText(),/Large files to Ruxget Desktop/);
-  assert.doesNotMatch(await popup.locator('#offerCard').innerText()+await popup.locator('.desktop-row').innerText(),/[\u4e00-\u9fff]/);
+  assert.doesNotMatch(await popup.locator('#offerCard').innerText(),/[\u4e00-\u9fff]/);
+  assert.equal(await popup.locator('#openSettings').getAttribute('aria-label'),'Settings');assert.equal(await popup.locator('#openSettings').getAttribute('title'),'Settings');
   await popup.screenshot({path:path.join(report,'card-en.png')});
-  await popup.locator('details.menu summary').click();await popup.waitForTimeout(300);
-  const english=await popup.evaluate(()=>[...document.querySelectorAll('.menu-panel button')].map(b=>b.textContent.trim()));
-  assert(english.includes('Install & set up Ruxget Desktop…')&&english.includes('Help & settings'),english.join('|'));
-  assert(!english.some(text=>/[\u4e00-\u9fff]/.test(text)),english.join('|'));
-  await popup.screenshot({path:path.join(report,'menu-en.png')});
-  // Notices are in English too.
-  await popup.locator('#pause').click();await popup.waitForTimeout(300);
-  assert.match(await popup.locator('#toast').innerText(),/^Detection (paused|resumed)/);
-  if(!await popup.locator('#pause').isVisible())await popup.locator('details.menu summary').click();
-  await popup.locator('#pause').click();await popup.waitForTimeout(300);
-  assert.match(await popup.locator('#toast').innerText(),/^Detection (paused|resumed)/);
   await popup.close();
+  popup=await settings();await popup.waitForFunction(()=>document.querySelector('#desktopTitle').textContent==='Hand downloads to the desktop app');
+  assert.doesNotMatch((await popup.locator('main').innerText()).replace('中文',''),/[\u4e00-\u9fff]/);
+  await popup.screenshot({path:path.join(report,'settings-en.png'),fullPage:true});
+  // Notices are in English too.
+  await popup.locator('#recognize').click();await popup.waitForTimeout(300);
+  assert.match(await popup.locator('#toast').innerText(),/^Detection (paused|is on)/);
+  await popup.locator('#recognize').click();await popup.waitForTimeout(300);
+  assert.match(await popup.locator('#toast').innerText(),/^Detection (paused|is on)/);
+  await popup.close();
+  check('English: card, gear and settings page are in English');
   check('English: card, row and menu are in English');
 
   assert.deepEqual(errors,[]);

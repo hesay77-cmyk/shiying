@@ -192,10 +192,10 @@
     "message": "Ruxget · Video Download"
   },
   "titleJson": {
-    "message": "猫抓 json格式化"
+    "message": "Ruxget JSON 格式化"
   },
   "titledash": {
-    "message": "猫抓 dash解析器"
+    "message": "Ruxget DASH 解析器"
   },
   "suffix": {
     "message": "后缀"
@@ -324,7 +324,7 @@
     "message": "留空默认为当前浏览器 User Agent"
   },
   "alwaysDisableCatCatcher": {
-    "message": "始终不启用猫抓下载器"
+    "message": "始终不启用 Ruxget 内置下载器"
   },
   "autoClosePageAfterDownload": {
     "message": "下载完自动关闭页面"
@@ -1107,7 +1107,7 @@
     "message": "视频网址"
   },
   "uiPasteUrl": {
-    "message": "粘贴视频网址"
+    "message": "粘贴视频或文件链接"
   },
   "uiRead": {
     "message": "读取"
@@ -1191,7 +1191,7 @@
     "message": "视频和声音，留在本地。"
   },
   "uiHelpIntroBody": {
-    "message": "点「下载视频」或「下载 MP3」，可以直接在 Chrome 内保存。需要大文件、BT 或让任务在关闭浏览器后继续时，可以安装配套桌面版，再在下载按钮旁的 ▾ 里选「用桌面版下载」。"
+    "message": "点「下载视频」或「下载 MP3」，可以直接在 Chrome 内保存。需要大文件、BT 或让任务在关闭浏览器后继续时，可以安装配套桌面版，再在设置（面板右上角的齿轮）里选择「交给桌面版」。"
   },
   "uiHelpDesktopLink": {
     "message": "桌面版完整安装方法与连接检查"
@@ -1403,5 +1403,8 @@
   },
   "uiActionAdvanced": {
     "message": "高级工具（当前网页）"
+  },
+  "uiHelpPageTitle": {
+    "message": "Ruxget · 使用说明"
   }
 }

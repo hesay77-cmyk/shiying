@@ -24,7 +24,7 @@ async function workerChecks(){
  checks.push('Per-task folder choice reaches Chrome saveAs and suggested filename; later preference changes do not change an existing task');
  checks.push('Real worker start validates source, sender and available quality; floating and toolbar starts do not create tabs; details opens only on explicit request');
 }
-(async()=>{await workerChecks();const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{
+(async()=>{await workerChecks();const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true,args:['--mute-audio','--autoplay-policy=user-gesture-required']});try{
  for(const url of ['https://www.bilibili.com/video/BV15z4y1U7HS/?p=2']){
   const context=await browser.newContext();
   await context.route('**/*',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><meta charset="utf-8"><style>body{margin:0;background:#fafbfd;font:16px system-ui}main{padding:24px}video{display:block;width:100%;max-width:800px;aspect-ratio:16/9;background:#28384e}</style><main><video></video><p>Background UI fixture, no media source</p><button id="outside">outside</button></main>'}));

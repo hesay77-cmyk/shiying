@@ -30,7 +30,7 @@ const dyPage=page(`document.getElementById('player').__reactFiber$x={memoizedPro
  const {chromium}=require(process.env.SHIYING_PLAYWRIGHT||'playwright');
  const map=['www.kuaishou.com','v23-3.kwaicdn.com','www.douyin.com','v26-web.douyinvod.com'].map(h=>`MAP ${h} 127.0.0.1`).join(',');
  const downloads=path.join(report,'downloads');fs.mkdirSync(downloads);
- const browser=await chromium.launchPersistentContext(path.join(report,'profile'),{executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true,acceptDownloads:true,downloadsPath:downloads,viewport:{width:360,height:640},ignoreDefaultArgs:['--disable-extensions'],args:[`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,`--host-resolver-rules=${map}`,'--ignore-certificate-errors','--no-proxy-server']});
+ const browser=await chromium.launchPersistentContext(path.join(report,'profile'),{executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true,acceptDownloads:true,downloadsPath:downloads,viewport:{width:360,height:640},ignoreDefaultArgs:['--disable-extensions'],args:['--mute-audio','--autoplay-policy=user-gesture-required',`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,`--host-resolver-rules=${map}`,'--ignore-certificate-errors','--no-proxy-server']});
  const errors=[];browser.on('page',p=>p.on('pageerror',e=>errors.push(e.message)));
  try{
   const worker=browser.serviceWorkers()[0]||await browser.waitForEvent('serviceworker'),id=new URL(worker.url()).hostname;

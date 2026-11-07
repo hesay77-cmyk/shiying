@@ -35,7 +35,7 @@ const kind=item=>/\.m3u8/.test(item.url)?'hls':/\.mp3/.test(item.url)?'audio':'v
  execFileSync(process.execPath,[path.join(__dirname,'package.cjs')],{stdio:'ignore'});
  const extension=path.join(root,'build');
  const {chromium}=require(process.env.SHIYING_PLAYWRIGHT||'playwright');
- const browser=await chromium.launchPersistentContext(path.join(report,'profile'),{executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true,viewport:{width:1100,height:900},ignoreDefaultArgs:['--disable-extensions'],args:[`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--no-proxy-server']});
+ const browser=await chromium.launchPersistentContext(path.join(report,'profile'),{executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true,viewport:{width:1100,height:900},ignoreDefaultArgs:['--disable-extensions'],args:['--mute-audio','--autoplay-policy=user-gesture-required',`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--no-proxy-server']});
  const errors=[];browser.on('page',p=>p.on('pageerror',e=>errors.push(e.message+' @ '+p.url())));
  try{
   const worker=browser.serviceWorkers()[0]||await browser.waitForEvent('serviceworker'),id=new URL(worker.url()).hostname;
@@ -50,7 +50,9 @@ const kind=item=>/\.m3u8/.test(item.url)?'hls':/\.mp3/.test(item.url)?'audio':'v
   await browser.addInitScript(({media,elements})=>{
    if(location.protocol!=='chrome-extension:'||!location.pathname.endsWith('/shiying.html'))return;
    const send=chrome.runtime.sendMessage.bind(chrome.runtime);
-   chrome.runtime.sendMessage=async message=>message?.Message==='getData'?media:send(message);
+   const list=()=>{if(localStorage.getItem('tinyOnly'))return ['ding.mp3','click.mp3','beep.mp3'].map((name,i)=>({url:'https://sounds.example/'+name,name,ext:'mp3',type:'audio/mpeg',size:20*1024+i,requestId:'t'+i,getTime:i}));const extra=Number(localStorage.getItem('extra')||0);return [...media,...Array.from({length:extra},(_,i)=>({url:'https://v.example/extra-'+i+'.mp4',name:'extra-'+i+'.mp4',ext:'mp4',type:'video/mp4',size:9*1024*1024,requestId:'e'+i,getTime:20+i}))];};
+   window.copied=[];try{navigator.clipboard.writeText=async text=>{copied.push(text);};}catch{}
+   chrome.runtime.sendMessage=async message=>message?.Message==='getData'?list():send(message);
    const real=chrome.scripting.executeScript.bind(chrome.scripting);
    chrome.scripting.executeScript=async options=>options?.func&&options.target?.allFrames?[{frameId:0,result:elements}]:real(options);
   },{media,elements});
@@ -72,11 +74,31 @@ const kind=item=>/\.m3u8/.test(item.url)?'hls':/\.mp3/.test(item.url)?'audio':'v
   await popup.screenshot({path:path.join(report,'unfolded-zh.png')});
   await popup.locator('#focusNote').getByRole('button',{name:'收起'}).click();assert.equal((await names()).length,2);
   check('“展开” shows everything (folded ones last, dimmed); “收起” folds them again');
+  // 0.4.71: type filters and search only show for a long list (more than 8).
+  assert.equal(await popup.locator('.filters').isVisible(),false);assert.equal(await popup.locator('footer').isVisible(),false);
+  check('with 7 items there is no filter or search row, and no footer');
+  await popup.evaluate(()=>localStorage.setItem('extra','2'));await popup.reload();await popup.locator('#focusNote',{hasText:'5'}).waitFor({state:'visible'});
+  assert.equal(await popup.locator('#count').innerText(),'9');await popup.locator('#search').waitFor({state:'visible'});
   await popup.fill('#search','preview');await popup.locator('#search').dispatchEvent('input');
   for(let i=0;i<20&&(await names()).length!==3;i++)await popup.waitForTimeout(50);
   assert.deepEqual(await names(),['preview1.mp4','preview2.mp4','preview3.mp4']);assert.equal(await popup.locator('#focusNote').isVisible(),false);
   await popup.fill('#search','');await popup.locator('#search').dispatchEvent('input');
-  check('searching always shows every match');
+  check('with 9 items the search row shows, and searching always shows every match');
+  await popup.evaluate(()=>{localStorage.removeItem('extra');localStorage.setItem('tinyOnly','1');});await popup.reload();
+  await popup.locator('#focusNote').waitFor({state:'visible'});
+  assert.match(await popup.locator('#focusNote').innerText(),/另有 3 个很小的文件，可能是网页的提示音。\s*展开/);
+  assert.equal((await names()).length,0);assert.equal(await popup.locator('.list-heading').isVisible(),false);
+  assert.equal(await popup.locator('#empty').isVisible(),true);assert.match(await popup.locator('#empty h3').innerText(),/暂未发现视频/);
+  await popup.screenshot({path:path.join(report,'tiny-folded-zh.png')});
+  await popup.locator('#focusNote').getByRole('button',{name:'展开'}).click();assert.equal((await names()).length,3);
+  assert.match(await popup.locator('#focusNote').innerText(),/这 3 个文件很小，可能是网页的提示音或按钮音效。/);
+  await popup.locator('#focusNote').getByRole('button',{name:'收起'}).click();
+  check('files under 100 KB (page sounds) are folded even when they are all there is, said plainly, and not counted');
+  const copyLink=popup.locator('#copyPageLink');assert.equal(await copyLink.isVisible(),true);assert.equal(await copyLink.innerText(),'复制这个网页的链接');
+  await copyLink.click();await popup.waitForFunction(()=>copied.length===1);assert.equal(await popup.evaluate(()=>copied[0]),origin+'/');
+  await popup.waitForFunction(()=>/已复制网页链接/.test(document.body.innerText));
+  check('nothing found on a web page: 复制这个网页的链接 copies it and says the desktop app’s 新建下载 fills it in');
+  await popup.evaluate(()=>localStorage.removeItem('tinyOnly'));
   await worker.evaluate(()=>chrome.storage.local.set({ruxgetUiLanguage:'en'}));
   await popup.reload();await popup.locator('#focusNote',{hasText:'5'}).waitFor({state:'visible'});
   assert.match(await popup.locator('#focusNote').innerText(),/5 more look like ads, previews or tiny clips, so they’re folded\.\s*Show/);

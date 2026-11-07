@@ -103,6 +103,7 @@ if(typeof chrome!=='undefined'&&chrome.runtime&&typeof ServiceWorkerGlobalScope!
     chrome.runtime.onMessage.addListener((event,sender,respond)=>{
         if(sender.id!==chrome.runtime.id)return;
         if(event?.Message==='ruxgetDesktopRefresh'){RuxgetDesktopTasks.poll().then(status=>respond({ok:true,status}),()=>respond({ok:false}));return true;}
+        if(event?.Message==='ruxgetDesktopRemember'){RuxgetDesktopTasks.remember(event.id,event.name).then(()=>RuxgetDesktopTasks.watch(60000)).then(()=>respond({ok:true}),()=>respond({ok:false}));return true;}
         if(event?.Message==='ruxgetDesktopWatch'){RuxgetDesktopTasks.watch(60000);respond({ok:true});return;}
         if(event?.Message==='ruxgetDesktopDelete'){RuxgetDesktopTasks.remove(event.id,event.deleteFiles).then(respond,error=>respond({ok:false,error:error?.message||String(error)}));return true;}
     });

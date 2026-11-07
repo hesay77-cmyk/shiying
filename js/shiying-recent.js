@@ -105,7 +105,7 @@
     function desktopMeta(job) {
         const label = pick('桌面版', 'Desktop'), percent = Math.round(Number(job.progress) || 0);
         if (job.state === 'active') return [label, percent + '%', job.speed].filter(Boolean).join(' · ');
-        if (job.state === 'done') return label + ' · ' + pick('已完成', 'Done');
+        if (job.state === 'done') return label + ' · ' + pick('下载完成', 'Downloaded');
         if (job.state === 'failed') return label + ' · ' + (job.error ? tr(job.error) : pick('失败', 'Failed'));
         return label + ' · ' + pick('已暂停', 'Paused') + ' · ' + percent + '%';
     }
@@ -125,7 +125,7 @@
     const MB = 1024 * 1024, size = bytes => bytes >= 1024 * MB ? (bytes / 1024 / MB).toFixed(1) + ' GB' : bytes >= MB ? (bytes / MB).toFixed(bytes >= 100 * MB ? 0 : 1) + ' MB' : Math.max(1, Math.round(bytes / 1024)) + ' KB';
     function chromeMeta(job) {
         const item = job.item, percent = item.totalBytes > 0 ? Math.round(item.bytesReceived / item.totalBytes * 100) : 0;
-        if (job.status === 'complete') return ['Chrome', item.fileSize > 0 ? size(item.fileSize) : '', pick('已完成', 'Done')].filter(Boolean).join(' · ');
+        if (job.status === 'complete') return ['Chrome', item.fileSize > 0 ? size(item.fileSize) : '', pick('下载完成', 'Downloaded')].filter(Boolean).join(' · ');
         if (job.status === 'error') return 'Chrome · ' + pick('下载中断', 'Interrupted');
         // Bytes as well as the percentage: a large file stays at 0% for a while and would look stuck.
         const amount = item.totalBytes > 0 ? percent + '% · ' + size(item.bytesReceived || 0) + ' / ' + size(item.totalBytes) : size(item.bytesReceived || 0);
@@ -178,7 +178,7 @@
                 show = () => chrome.tabs.create({url: chrome.runtime.getURL('shiying-task.html?id=' + encodeURIComponent(job.id))});
                 showLabel = pick('下载详情', 'Download details');
                 if (job.status === 'complete' && Number.isInteger(job.downloadId)) { open = () => RuxgetOpen.file(job.downloadId, say); show = chromeFolder(job.downloadId); showLabel = inFolder; }
-                const state = job.status === 'complete' ? pick('已完成', 'Done') : job.status === 'error' ? tr(job.error || job.stage) : job.status === 'cancelled' ? pick('已取消', 'Cancelled') : tr(job.stage) + ' · ' + percent + '%';
+                const state = job.status === 'complete' ? pick('下载完成', 'Downloaded') : job.status === 'error' ? tr(job.error || job.stage) : job.status === 'cancelled' ? pick('已取消', 'Cancelled') : tr(job.stage) + ' · ' + percent + '%';
                 meta.textContent = 'Ruxget · ' + (job.format === 'mp3' ? 'MP3' : (job.height ? job.height + 'p' : 'MP4')) + ' · ' + state + (open ? hint : '');
             }
             button.append(title, meta);

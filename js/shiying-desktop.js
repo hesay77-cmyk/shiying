@@ -89,7 +89,9 @@ if(takeoverSwitch&&chrome.storage?.local){
         const on=takeoverSwitch.checked;status.textContent='';
         // Chrome only shows the permission prompt inside the click, so ask before anything awaits.
         if(on&&!await chrome.permissions.request({permissions:['nativeMessaging']})){takeoverSwitch.checked=false;status.textContent=pick('没有允许连接桌面版，接管未打开。','The connection wasn’t allowed, so takeover is still off.');return;}
-        await save({enabled:on});status.textContent=on?pick('已打开。网页上的下载会交给桌面版。','On. Downloads from web pages now go to the desktop app.'):pick('已关闭。下载回到 Chrome。','Off. Downloads stay in Chrome.');render();
+        await save({enabled:on});
+        // 0.4.71: the same choice as settings → 交给桌面版 (on keeps "all", otherwise "large"; off is "never").
+        try{const {ruxgetDesktopMode:mode}=await chrome.storage.local.get('ruxgetDesktopMode');await chrome.storage.local.set({ruxgetDesktopMode:on?(mode==='all'?'all':'large'):'never'});}catch{}status.textContent=on?pick('已打开。网页上的下载会交给桌面版。','On. Downloads from web pages now go to the desktop app.'):pick('已关闭。下载回到 Chrome。','Off. Downloads stay in Chrome.');render();
     });
     min.addEventListener('change',()=>{const value=Math.min(1024,Math.max(0,Math.round(Number(min.value)||0)));min.value=value;save({minMB:value,minChosen:true});});
     skip.addEventListener('change',()=>{const list=hosts(skip.value);skip.value=list.join('\n');save({skipHosts:list});});

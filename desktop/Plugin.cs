@@ -36,7 +36,7 @@ public partial class MainWindow {
     void PluginSend(object value){if(pluginReady&&sendPlugin!=null&&!IsDisposed)sendPlugin(Util.Json().Serialize(value));}
     object PluginJob(Download job){
         var t=job.Transfer??new TransferInfo();bool bt=TorrentInfo.IsBt(job),active=job.Status=="下载中";string stage=job.Status;
-        if((active||job.Status=="准备组件"||job.Status=="等待节点")&&!String.IsNullOrEmpty(job.Stage))stage=job.Stage;
+        if((active||job.Status=="准备组件"||job.Status=="等待节点"||job.Status=="排队中"&&(job.Stage??"").StartsWith("等前面的",StringComparison.Ordinal))&&!String.IsNullOrEmpty(job.Stage))stage=job.Stage;
         if(active&&!String.IsNullOrEmpty(job.Speed))stage+=" · "+job.Speed;
         string amount=t.Completed>=0?TransferData.Bytes(t.Completed)+(t.Total>=0?" / "+(t.Estimated?"约 ":"")+TransferData.Bytes(t.Total):""):"大小待确认";
         if(job.Status=="已完成"&&t.Total>=0)amount=TransferData.Bytes(t.Total);
@@ -49,6 +49,17 @@ public partial class MainWindow {
     object PluginSnapshot(){return new{type="state",version=Util.Version,jobs=manager.Snapshot().AsEnumerable().Reverse().Select(PluginJob).ToArray(),settings=manager.Config,mini=miniMode,maximized=WindowState==FormWindowState.Maximized,miniId,busy=pluginBusy||batchBusy||closingWindow};}
     void PushPluginState(){if(pluginReady)PluginSend(PluginSnapshot());}
     void PluginNotice(string text,string close=null){PluginSend(new{type="notice",text,close});}
+    // A single web or magnet link on the clipboard, or "". Anything else (text, several lines) is left alone.
+    static string ClipboardLink(){try{return Clipboard.ContainsText()?LinkFromText(Clipboard.GetText()):"";}catch(Exception){return "";}}
+    // The rule on its own (tested without touching the real clipboard).
+    internal static string LinkFromText(string value){
+        string text=(value??"").Trim().Trim('\u200B','\u200C','\u200D','\uFEFF').Trim().TrimEnd('。','，','、','；','：','！','？','）','」','』','】','》','.',',',';','!','?');Uri link;
+        if(text.Length==0||text.Length>16384||text.Any(c=>Char.IsWhiteSpace(c)||Char.IsControl(c)||c=='\u200B'||c=='\uFEFF')||!Uri.TryCreate(text,UriKind.Absolute,out link))return "";
+        if(link.Scheme=="magnet")return System.Text.RegularExpressions.Regex.IsMatch(text,@"^magnet:\?(.*&)?xt=urn:bt(ih|mh):[0-9a-z]+",System.Text.RegularExpressions.RegexOptions.IgnoreCase)?text:"";
+        return (link.Scheme=="http"||link.Scheme=="https")&&String.IsNullOrEmpty(link.UserInfo)?text:"";
+    }
+    // A video page or stream: YouTube, Bilibili (the host itself or a subdomain), or an HLS/DASH playlist.
+    internal static bool VideoLink(Uri uri){if(uri==null)return false;string host=uri.Host.ToLowerInvariant(),path=uri.AbsolutePath.ToLowerInvariant();Func<string,bool> site=name=>host==name||host.EndsWith("."+name,StringComparison.Ordinal);return host=="youtu.be"||site("youtube.com")||site("bilibili.com")||path.EndsWith(".m3u8")||path.EndsWith(".mpd");}
     void PluginEditor(IDictionary<string,object> input){
         if(playlistCancel!=null)playlistCancel.Cancel();playlistCatalog=null;playlistSource="";
         editorInput=input==null?null:new Dictionary<string,object>(input);editorToken=Guid.NewGuid().ToString("N");editorFolder=manager.Config.Folder;
@@ -79,7 +90,9 @@ public partial class MainWindow {
         if(command=="dropRejected"){PluginNotice("未能读取拖入的种子，请重试或使用“导入 BT 种子”");return;}
         if(command=="new"||command=="dropLink"){
             if(command=="dropLink"){Uri dropped;string link=Util.Str(data,"url").Trim();if(link.Length>16384||!Uri.TryCreate(link,UriKind.Absolute,out dropped)||!new[]{"http","https","magnet"}.Contains(dropped.Scheme))throw new Exception("请拖入网页、文件下载链接或磁力链接");if(!PrepareDrop())return;}
-            string url=Util.Str(data,"url").Trim(),kind=url.StartsWith("magnet:",StringComparison.OrdinalIgnoreCase)?"magnet":"file";Uri uri;if(Uri.TryCreate(url,UriKind.Absolute,out uri)&&(uri.Host=="youtu.be"||uri.Host.EndsWith("youtube.com",StringComparison.OrdinalIgnoreCase)||uri.Host.EndsWith("bilibili.com",StringComparison.OrdinalIgnoreCase)||uri.AbsolutePath.EndsWith(".m3u8")||uri.AbsolutePath.EndsWith(".mpd")))kind="video";
+            // 0.4.70: "新建下载" with a link just copied in the browser fills it in (read once, only on this click).
+            string url=Util.Str(data,"url").Trim();if(command=="new"&&url.Length==0)url=ClipboardLink();
+            string kind=url.StartsWith("magnet:",StringComparison.OrdinalIgnoreCase)?"magnet":"file";Uri uri;if(Uri.TryCreate(url,UriKind.Absolute,out uri)&&kind!="magnet"&&VideoLink(uri))kind="video";
             PluginEditor(new Dictionary<string,object>{{"url",url},{"kind",kind}});return;
         }
         if(command=="torrent"){if(preview)return;using(var picker=TorrentPicker())if(picker.ShowDialog(this)==DialogResult.OK)PluginEditor(new Dictionary<string,object>{{"url",picker.FileName},{"kind","torrent"}});return;}
@@ -137,7 +150,7 @@ public partial class MainWindow {
             }else if(command=="settingsSave"){
                 var values=data["config"] as Dictionary<string,object>;if(values==null)throw new Exception("设置内容无效");string proxy=Util.Str(values,"Proxy").Trim();Util.CheckProxy(proxy);
                 var next=Util.Json().Deserialize<Settings>(Util.Json().Serialize(values));next.Proxy=proxy;next.Folder=manager.Config.Folder;next.FollowBrowser=manager.Config.FollowBrowser;var previous=Util.Json().Deserialize<Settings>(Util.Json().Serialize(manager.Config));
-                Action<Settings> apply=value=>{manager.Config.Proxy=value.Proxy;manager.Config.Connections=value.Connections;manager.Config.FileSlots=value.FileSlots;manager.Config.VideoSlots=value.VideoSlots;manager.Config.RateKiB=value.RateKiB;manager.Config.BtUploadKiB=value.BtUploadKiB;manager.Config.AutoCategorize=value.AutoCategorize;manager.Config.SaveSubtitles=value.SaveSubtitles;manager.Config.UiLanguage=(value.UiLanguage=="en"||value.UiLanguage=="zh_CN"||value.UiLanguage=="auto")?value.UiLanguage:"auto";};
+                Action<Settings> apply=value=>{manager.Config.Proxy=value.Proxy;manager.Config.Connections=value.Connections;manager.Config.RateKiB=value.RateKiB;manager.Config.BtUploadKiB=value.BtUploadKiB;manager.Config.AutoCategorize=value.AutoCategorize;manager.Config.SaveSubtitles=value.SaveSubtitles;manager.Config.UiLanguage=(value.UiLanguage=="en"||value.UiLanguage=="zh_CN"||value.UiLanguage=="auto")?value.UiLanguage:"auto";};
                 try{apply(next);await Task.Run(()=>manager.SaveSettings());}catch{apply(previous);throw;}PluginNotice("设置已保存","settings");
             }
         }finally{pluginBusy=false;RefreshJobs();}
