@@ -81,7 +81,7 @@ function showGone() {
     say('#taskNote', () => pick('文件已不在原来的位置，可以移除这条记录。', 'The file is no longer where it was saved. You can remove this record.'));
 }
 window.RuxgetOpen?.onGone(gone => { if (gone === savedDownload) showGone(); });
-chrome.downloads.onChanged.addListener(change => { if (change.exists?.current === false && change.id === savedDownload) showGone(); });
+chrome.downloads?.onChanged?.addListener(change => { if (change.exists?.current === false && change.id === savedDownload) showGone(); });
 // Two clicks, like the popup: the first arms, the second deletes the saved file and its record.
 let deleteTimer = 0;
 function disarmDelete() { clearTimeout(deleteTimer); const button = $('#deleteTask'); delete button.dataset.armed; button.classList.remove('is-armed'); const file = !!button.dataset.file; say('#deleteTask', () => file ? pick('删除文件', 'Delete file') : pick('移除记录', 'Remove')); }

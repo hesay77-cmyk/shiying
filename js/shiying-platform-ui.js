@@ -97,7 +97,7 @@ const ShiyingPlatformUI = (() => {
         if(missing)goneDownloads.add(id);else goneDownloads.delete(id);
         if(currentJob?.downloadId===id){disarmDelete();renderJob(currentJob);}
     }
-    chrome.downloads.onChanged.addListener(change=>{if(change.exists)markGone(change.id,change.exists.current===false);});
+    chrome.downloads?.onChanged?.addListener(change=>{if(change.exists)markGone(change.id,change.exists.current===false);});
     RuxgetOpen.onGone(id=>markGone(id,true));
     // The side panel stays open while files are moved in Explorer: look again when it comes back into view.
     document.addEventListener('visibilitychange',()=>{if(!document.hidden&&currentJob)checkFile(currentJob);});
