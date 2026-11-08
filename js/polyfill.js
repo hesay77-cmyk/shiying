@@ -54,7 +54,7 @@ globalThis.RuxgetPageLocale = (function () {
     // or with a dialog open. Those keep their in-place switch; the rest of their text follows at the next opening.
     const changeHandlers = [], busyChecks = [];
     const file = page ? location.pathname.split('/').pop() : '';
-    const reloadsWhenIdle = ['m3u8.html', 'mpd.html', 'json.html', 'downloader.html', 'preview.html', 'popup.html', 'options.html'].includes(file);
+    const reloadsWhenIdle = false; // 0.4.79: the inherited tool pages that needed a quiet reload are gone
     let touched = false, ownChange = false, reloadPending = false, applied = lang;
     if (page) {
         try {
@@ -182,41 +182,3 @@ const i18nRender = (function () {
     });
     return render;
 })();
-
-// 简写翻译函数: i18n.key 或 i18n("key", [substitutions])
-const i18n = new Proxy(() => { }, {
-    get: function (target, key) {
-        return typeof key === 'symbol' ? undefined : RuxgetPageLocale.get(key);
-    },
-    apply: function (target, thisArg, args) {
-        return RuxgetPageLocale.get(args[0], args[1]);
-    }
-});
-
-// 手机浏览器不支持右键菜单
-if (!chrome.contextMenus) {
-    chrome.contextMenus = {
-        create: function () { },
-        remove: function () { },
-        removeAll: function () { },
-        onClicked: { addListener: function () { } },
-    }
-}
-
-// 手机浏览器没有windows API 只能使用tabs API
-if (!chrome.windows) {
-    chrome.windows = {
-        onFocusChanged: { addListener: function () { } },
-        create: function (obj, callback) {
-            chrome.tabs.create({ url: obj.url }, function (tab) {
-                callback && callback(tab);
-            });
-        },
-    }
-}
-// 手机浏览器木有快捷键
-if (!chrome.commands) {
-    chrome.commands = {
-        onCommand: { addListener: function () { } }
-    }
-}
