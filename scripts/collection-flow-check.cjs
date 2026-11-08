@@ -70,7 +70,7 @@ async function browserChecks(){
       testCalls.push(message);
       if(message.Message==='shiyingPlatformRead')return {ok:true,id:'catalog',url:'https://www.bilibili.com/video/BV15z4y1U7HS/',title:'一段可以安心下载的视频',site:'bilibili',parts:Number(localStorage.getItem('parts')||2),loginLimited:localStorage.getItem('login')==='1',duration:252,choices:[{height:1080,label:'1080p'},{height:720,label:'720p'}],audioAvailable:true};
       if(message.Message==='shiyingPlatformStart'){await new Promise(r=>setTimeout(r,30));return {ok:true,id:'job',url:'https://www.bilibili.com/video/BV15z4y1U7HS/',status:'downloading',stage:'正在下载',progress:12};}
-      if(message.Message==='shiyingCollectionRead'){if(delayCollection)await new Promise(resolve=>window.resolveCollection=resolve);return {ok:true,id:'list',title:'公开视频列表测试',entries,hasMore:true};}
+      if(message.Message==='shiyingCollectionRead'){if(delayCollection)await new Promise(resolve=>window.resolveCollection=resolve);return {ok:true,id:'list',site:'bilibili',loggedIn:localStorage.getItem('login')==='1'?false:null,title:'公开视频列表测试',entries,hasMore:true};}
       if(message.Message==='shiyingCollectionStart')return {ok:true,id:'queue',items:message.indices.map(i=>({...entries[i],status:'waiting'}))};
       if(message.Message==='shiyingCollectionState')return {ok:true};
       if(message.Message==='getData')return [];
@@ -96,6 +96,7 @@ async function browserChecks(){
   assert.equal(await page.locator('#collectionOpen').isVisible(),true);await page.locator('#collectionOpen').click();
   // 0.4.72: the sheet reads its list by itself when it opens with the video's link (no 读取列表 click).
   await page.locator('#collectionList').waitFor({state:'visible'});assert.equal(await page.locator('#collectionURL').inputValue(),'https://www.bilibili.com/video/BV15z4y1U7HS/');assert.equal(await page.evaluate(()=>testCalls.filter(c=>c.Message==='shiyingCollectionRead').length),1);
+  assert.equal(await page.locator('#collectionLoginNote').isVisible(),false);
   check('分 P 勾选下载 loads the list by itself when it opens');
   assert.equal(await page.locator('#collectionItems input:checked').count(),0);assert.equal(await page.locator('#collectionItems input:disabled').count(),1);assert(await page.locator('#collectionStart').isDisabled());
   await page.locator('#collectionAll').check();assert.equal(await page.locator('#collectionItems input:checked').count(),2);await page.locator('#collectionAll').uncheck();
@@ -109,11 +110,29 @@ async function browserChecks(){
    // 0.4.72: no 480p login line unless the read says B站 limited it; with loginLimited, one quiet line in the card.
    assert.equal(await single.locator('#platformLoginNote').isVisible(),false);
    await single.evaluate(()=>localStorage.setItem('login','1'));await single.reload();await single.waitForFunction(()=>!document.querySelector('#platformDownload').disabled);
+   // 0.4.73: the remembered format here is MP3, and audio isn't limited that way: no note until 视频 is chosen.
+   assert.equal(await single.locator('#formatAudio').isChecked(),true);await single.waitForTimeout(300);assert.equal(await single.locator('#platformLoginNote').isVisible(),false,'MP3: no 480p note');
+   await single.locator('label[for=formatVideo]').click();
    await single.locator('#platformLoginNote').waitFor({state:'visible'});
    assert.match(await single.locator('#platformLoginNote').innerText(),/B站未登录时最高提供 480p。在本浏览器登录 B站后，可选择更高清晰度。/);assert.equal(await single.locator('dialog[open]').count(),0);
    await single.evaluate(async()=>RuxgetI18n.setLanguage('en'));assert.match(await single.locator('#platformLoginNote').innerText(),/Sign in to Bilibili in this browser/);await single.evaluate(async()=>RuxgetI18n.setLanguage('zh_CN'));
    await single.evaluate(()=>{localStorage.removeItem('parts');localStorage.removeItem('login');});await single.close();}
   check('B站 limited to 480p without signing in: one quiet line in the card says why (Chinese and English), only when the read says so');
+  // 0.4.73: the 分 P sheet says the same when B站 reports the visitor is signed out (its quality limit can't go higher).
+  {const multi=await browser.newPage();await multi.addInitScript(()=>localStorage.setItem('login','1'));await multi.goto(url);await multi.waitForFunction(()=>!document.querySelector('#platformDownload').disabled);
+   await multi.locator('#collectionOpen').click();await multi.locator('#collectionList').waitFor({state:'visible'});await multi.locator('#collectionLoginNote').waitFor({state:'visible'});
+   assert.match(await multi.locator('#collectionLoginNote').innerText(),/B站未登录时最高提供 480p，所选上限不会更高。在本浏览器登录 B站后，可下载更高清晰度。/);
+   await multi.screenshot({path:path.join(report,'playlist-signed-out.png')});
+   // 0.4.73 retest: with MP3 there is no quality limit, so the queue note doesn't mention one.
+   assert.match(await multi.locator('#collectionQueueNote').innerText(),/画质不超过所选上限/);await multi.locator('#collectionFormat').selectOption('mp3');assert.doesNotMatch(await multi.locator('#collectionQueueNote').innerText(),/画质/);await multi.locator('#collectionFormat').selectOption('mp4');
+   await multi.locator('#collectionFormat').selectOption('mp3');assert.equal(await multi.locator('#collectionLoginNote').isVisible(),false,'分 P sheet, MP3: no 480p note');await multi.locator('#collectionFormat').selectOption('mp4');assert.equal(await multi.locator('#collectionLoginNote').isVisible(),true);
+   // 0.4.73: in a 360×560 panel 「下载所选」 is in view without scrolling inside the sheet.
+   await multi.setViewportSize({width:360,height:560});await multi.waitForTimeout(200);{const sheet=await multi.locator('#collectionSheet').boundingBox(),start=await multi.locator('#collectionStart').boundingBox();assert(start.y>=sheet.y&&start.y+start.height<=sheet.y+sheet.height+.5,'下载所选 is inside the visible sheet');assert.equal(await multi.locator('#collectionSheet').evaluate(s=>s.scrollTop),0);}
+   await multi.screenshot({path:path.join(report,'playlist-360x560.png')});await multi.setViewportSize({width:440,height:640});
+   await multi.evaluate(async()=>RuxgetI18n.setLanguage('en'));
+   assert.match(await multi.locator('#collectionLoginNote').innerText(),/Sign in to Bilibili in this browser for higher qualities/);await multi.evaluate(async()=>RuxgetI18n.setLanguage('zh_CN'));
+   await multi.evaluate(()=>localStorage.removeItem('login'));await multi.close();}
+  check('分 P sheet: signed out of B站, one quiet line under the options says only 480p is offered (Chinese and English); signed in or unknown, nothing');
   check('分 P 勾选下载 shows only when the B站 video has more than one part');
   // Render the actual desktop resources with a local host double; no native app is started.
   const desktop=await browser.newPage();let html=fs.readFileSync(path.join(productRoot,'desktop/interface.html'),'utf8');

@@ -15,6 +15,12 @@ const ShiyingPlatform = {
     coverURL(value) {
         try {const url=new URL(String(value||'').replace(/^http:/,'https:'));return url.protocol==='https:'&&/(^|\.)hdslb\.com$/.test(url.hostname)?url.href:'';} catch {return '';}
     },
+    // 0.4.73: the cover the desktop app shows in its task list. Only the video sites' own image servers, over HTTPS,
+    // on the default port, without user names, at most 1024 characters; anything else is dropped (the app shows ▷).
+    thumbnailHosts: /(^|\.)(hdslb\.com|douyinpic\.com|yximgs\.com|kwimgs\.com|kwaicdn\.com|ndcimgs\.com|xhscdn\.com)$/,
+    thumbnailURL(value) {
+        try {const url=new URL(String(value||'').replace(/^\/\//,'https://').replace(/^http:/,'https:'));return url.protocol==='https:'&&!url.username&&!url.password&&!url.port&&url.href.length<=1024&&this.thumbnailHosts.test(url.hostname)?url.href:'';} catch {return '';}
+    },
     subtitleURL(value) {
         try {const url=new URL(String(value||'').replace(/^\/\//,'https://').replace(/^http:/,'https:'));return url.protocol==='https:'&&/(^|\.)hdslb\.com$/.test(url.hostname)?url.href:'';} catch {return '';}
     },
@@ -78,7 +84,15 @@ const ShiyingPlatform = {
             const response = await fetch(`https://api.bilibili.com${route}?${new URLSearchParams(parameters)}`, {credentials:'include'});
             if (!response.ok) throw new Error(`B站返回 ${response.status}，请刷新视频网页后重试`);
             const json = await response.json();
-            if (json.code !== 0) throw new Error(json.message || 'B站视频信息读取失败');
+            // 0.4.73: our own sentence for B站's error codes (its own message, such as 「啥都木有」, also showed in the English UI).
+            if (json.code !== 0) {
+                const code = Number(json.code);
+                if ([-404, -400, 62002, 62012].includes(code)) throw new Error('没有找到这个视频，请检查链接');
+                if (code === 62004) throw new Error('这个视频正在审核，暂时不能下载');
+                if (code === -403 || code === 87008) throw new Error('没有权限观看这个视频，请在本浏览器登录 B站后重试');
+                if (code === -412 || code === -352) throw new Error('B站暂时拦截了请求，请稍后刷新视频网页再试');
+                throw new Error('B站视频信息读取失败，请刷新视频网页后重试');
+            }
             return json.data;
         };
         const identity = /^av/i.test(id) ? {aid:id.slice(2)} : {bvid:id};

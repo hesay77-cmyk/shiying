@@ -11,6 +11,8 @@ window.ShiyingCollectionUI=(()=>{
         $('collectionStart').disabled=starting||!chosen.length;
         $('collectionStart').textContent=say('下载所选 '+chosen.length+' 项','Download '+chosen.length+' selected');
         $('collectionHeight').hidden=$('collectionFormat').value==='mp3';
+        $('collectionQueueNote').textContent=$('collectionFormat').value==='mp3'?say('按顺序下载到 Chrome 默认位置。关闭面板仍会继续。','Downloads in order to Chrome’s default folder. Closing this panel keeps the queue running.'):RuxgetI18n.t('flowQueueNote');
+        loginNote();
         queueView(lastQueue);
     }
     function queueView(queue){
@@ -39,6 +41,8 @@ window.ShiyingCollectionUI=(()=>{
     $('collectionClose').onclick=()=>{$('collectionSheet').close();};
     $('collectionSheet').addEventListener('close',()=>{reading++;$('collectionRead').disabled=false;$('collectionRead').textContent=say('读取列表','Read list');});
     $('collectionURL').addEventListener('input',()=>{catalog=null;reading++;$('collectionList').hidden=true;$('collectionRead').disabled=false;$('collectionRead').textContent=say('读取列表','Read list');});
+    function loginNote(){const note=$('collectionLoginNote');if(!note)return;note.hidden=!(catalog?.site==='bilibili'&&catalog?.loggedIn===false&&$('collectionFormat').value!=='mp3');note.textContent=say('B站未登录时最高提供 480p，所选上限不会更高。在本浏览器登录 B站后，可下载更高清晰度。','Bilibili offers up to 480p to visitors who aren’t signed in, whatever the limit above. Sign in to Bilibili in this browser for higher qualities.');}
+    document.addEventListener('ruxget-i18n-applied',loginNote);
     $('collectionForm').onsubmit=async event=>{
         event.preventDefault();const serial=++reading;catalog=null;$('collectionList').hidden=true;$('collectionError').hidden=true;$('collectionRead').disabled=true;
         $('collectionRead').textContent=say('读取中…','Reading…');
@@ -56,6 +60,8 @@ window.ShiyingCollectionUI=(()=>{
             // A truncated list must not read as "everything selected".
             const loaded=$('collectionItems').querySelectorAll('input:not(:disabled)').length;$('collectionLimit').classList.toggle('warn',!!result.hasMore);
             $('collectionAll').nextElementSibling.textContent=result.hasMore?say('全选已载入的 '+loaded+' 项','Select all '+loaded+' loaded'):say('全选','Select all');
+            // 0.4.73: logged out, B站 serves at most 480p whatever the cap says; say so once, quietly, under the options.
+            loginNote();
             $('collectionList').hidden=false;summary();
         }catch(error){if(serial!==reading)return;$('collectionError').textContent=RuxgetText.tr(error.message);$('collectionError').hidden=false;}
         finally{if(serial===reading){$('collectionRead').disabled=false;$('collectionRead').textContent=say('读取列表','Read list');}}

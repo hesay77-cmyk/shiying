@@ -139,8 +139,10 @@ async function run(task){
   }
   check(task);await update(task,{stage:'检查通过，正在保存',progress:97});
   task.blobURL=URL.createObjectURL(blob);
+  // The track's stored size (width/height, already checked against the chosen quality) against what Chrome plays:
+  // a stream with non-square pixels plays at another display size (see Shiying.pictureMatches in js/shiying-core.js).
   const actual=await outputInfo(task.blobURL,job.format);
-  if(!Number.isFinite(actual.duration)||Math.abs(actual.duration-catalog.duration)>Math.max(2,catalog.duration*0.005)||!audioOnly&&job.height&&actual.height!==job.height)throw new Error('成品时长或清晰度不符合选择，请重新下载');
+  if(!Number.isFinite(actual.duration)||Math.abs(actual.duration-catalog.duration)>Math.max(2,catalog.duration*0.005)||!audioOnly&&!Shiying.pictureMatches(actual,{width,height}))throw new Error('成品时长或清晰度不符合选择，请重新下载');
   const verification={...actual,audio:audioOnly?'mp3':'aac',video:audioOnly?null:'h264',audioActive:sound.active,bytes:blob.size,fullDecode:true,expectedDuration:catalog.duration,videoFrames,trackBytes:downloads.map(({bytes,expected})=>({bytes,expected}))};
   await send('shiyingEngineSave',{id:job.id,url:task.blobURL,filename:`${filename(job.title)}-${audioOnly?'声音':Math.min(width,height)?Math.min(width,height)+'p':'原画'}.${job.format}`,verification});
  }catch(error){const message=task.timedOut?'下载耗时过长，请检查网络后重试':(error.message||String(error));await send('shiyingEngineUpdate',{id:job.id,values:{status:task.cancelled?'cancelled':'error',stage:task.cancelled?'已取消':'下载失败',error:task.cancelled?null:(/[\u4e00-\u9fff]/.test(message)?message:'文件未通过处理或完整性检查，请重新读取后再试')}}).catch(()=>{});if(task.blobURL)URL.revokeObjectURL(task.blobURL);tasks.delete(job.id)}finally{clearTimeout(timer)}

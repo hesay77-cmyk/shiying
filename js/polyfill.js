@@ -33,10 +33,80 @@ if (!chrome.sidePanel || !chrome.sidePanel.setPanelBehavior) {
     }
 }
 
-// 简写翻译函数
-const i18n = new Proxy(chrome.i18n.getMessage, {
+// Ruxget interface language (0.4.73). The setting is chrome.storage.local.ruxgetUiLanguage ("zh_CN" | "en" | "auto"),
+// which can only be read asynchronously, but these pages translate while they load (js/i18n.js, templates, outerHTML).
+// So extension pages mirror the setting into localStorage (shared by every page of the extension), and pages that load
+// js/ruxget-locale-data.js before this file pick the matching catalog synchronously. If the mirror was missing or stale,
+// the page reloads once in the right language. Without that file (service worker, pages that only use js/shiying-locale.js)
+// messages come from chrome.i18n until shiying-locale.js hands over its catalog through RuxgetPageLocale.use().
+globalThis.RuxgetPageLocale = (function () {
+    const KEY = 'ruxgetUiLanguage', RELOADED = 'ruxgetUiLanguageReloaded';
+    const page = typeof document !== 'undefined' && typeof location !== 'undefined' && location.protocol === 'chrome-extension:';
+    let store = null;
+    try { store = page ? globalThis.localStorage : null; } catch (e) { store = null; }
+    const browserLang = () => { try { return /^zh/i.test(chrome.i18n.getUILanguage() || '') ? 'zh_CN' : 'en'; } catch (e) { return 'zh_CN'; } };
+    const resolve = pref => pref === 'en' || pref === 'zh_CN' ? pref : browserLang();
+    const readMirror = () => { try { return store ? store.getItem(KEY) : null; } catch (e) { return null; } };
+    const writeMirror = pref => {
+        try { if (store && pref) { if (store.getItem(KEY) !== pref) store.setItem(KEY, pref); return store.getItem(KEY) === pref; } } catch (e) { }
+        return false;
+    };
+    const data = globalThis.RuxgetLocaleData;
+    let lang = resolve(readMirror());
+    let catalog = data && data[lang] || null;
+    const synchronous = !!catalog;
+    const own = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
+    // Same substitution rules as chrome.i18n.getMessage: $name$ → placeholder content, $1-$9 → substitutions, $$ → $.
+    function format(entry, substitutions) {
+        let message = String(entry.message);
+        const list = substitutions == null ? [] : (Array.isArray(substitutions) ? substitutions : [substitutions]);
+        if (entry.placeholders) {
+            const named = {};
+            for (const name of Object.keys(entry.placeholders)) named[name.toLowerCase()] = String(entry.placeholders[name].content);
+            message = message.replace(/\$([a-z0-9_@]+)\$/gi, (all, name) => own(named, name.toLowerCase()) ? named[name.toLowerCase()] : all);
+        }
+        return message.replace(/\$(\$|[1-9])/g, (all, n) => n === '$' ? '$' : (list[n - 1] == null ? '' : String(list[n - 1])));
+    }
+    function get(key, substitutions) {
+        key = String(key);
+        if (catalog && own(catalog, key)) return format(catalog[key], substitutions);
+        try { return chrome.i18n.getMessage(key, substitutions); } catch (e) { return ''; }
+    }
+    function use(nextLang, nextCatalog) {
+        if (!nextCatalog || typeof nextCatalog !== 'object') return;
+        lang = nextLang; catalog = nextCatalog;
+    }
+    if (page && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.get(KEY).then(stored => {
+            const pref = stored && stored[KEY] || 'auto', saved = writeMirror(pref);
+            if (!synchronous || resolve(pref) === lang) { try { sessionStorage.removeItem(RELOADED); } catch (e) { } return; }
+            // Painted from a missing or stale mirror: reload once. Never twice for the same address, and never when the
+            // mirror cannot be saved (the reload would come back in the same language).
+            let again = true;
+            try { again = sessionStorage.getItem(RELOADED) === location.href; } catch (e) { again = true; }
+            if (!saved || again) return;
+            try { sessionStorage.setItem(RELOADED, location.href); } catch (e) { return; }
+            location.reload();
+        }).catch(() => { });
+        try {
+            chrome.storage.onChanged.addListener((changes, area) => { if (area === 'local' && changes[KEY]) writeMirror(changes[KEY].newValue || 'auto'); });
+        } catch (e) { }
+    }
+    return {
+        KEY, get, use, resolve, writeMirror, synchronous,
+        // The language messages currently come from; null while they still come from chrome.i18n.
+        get lang() { return catalog ? lang : null; },
+        pick(zh, en) { return (catalog ? lang : browserLang()) === 'en' ? en : zh; }
+    };
+})();
+
+// 简写翻译函数: i18n.key 或 i18n("key", [substitutions])
+const i18n = new Proxy(() => { }, {
     get: function (target, key) {
-        return chrome.i18n.getMessage(key);
+        return typeof key === 'symbol' ? undefined : RuxgetPageLocale.get(key);
+    },
+    apply: function (target, thisArg, args) {
+        return RuxgetPageLocale.get(args[0], args[1]);
     }
 });
 

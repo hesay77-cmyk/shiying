@@ -42,3 +42,16 @@ const root=require('node:path').resolve(__dirname,'..'),background=fs.readFileSy
 assert(!/17863|SHIYING_HELPER|server\.cjs|node\.exe|yt-dlp|ffmpeg/i.test(background+engine));
 assert(JSON.parse(fs.readFileSync(root+'/manifest.json','utf8')).permissions.includes('offscreen'));
 console.log('原站地址边界、真实清晰度、放大格式排除与无助手依赖检查通过');
+// 0.4.73: B站's own error text (「啥都木有」 for a wrong BV id) never reaches the card; ours does, in both languages.
+(async()=>{
+ const original=globalThis.fetch;require('../js/shiying-text.js');
+ try{
+  for(const [code,expected] of [[-404,'没有找到这个视频，请检查链接'],[62002,'没有找到这个视频，请检查链接'],[62004,'这个视频正在审核，暂时不能下载'],[-412,'B站暂时拦截了请求，请稍后刷新视频网页再试'],[-999,'B站视频信息读取失败，请刷新视频网页后重试']]){
+   globalThis.fetch=async()=>({ok:true,json:async()=>({code,message:'啥都木有',data:null})});
+   const result=await platform.readBilibiliPage('https://www.bilibili.com/video/BV1xxxxxxxxx/');
+   assert.equal(result.error,expected,'B站 code '+code);assert(!/木有/.test(result.error));
+   assert(globalThis.RuxgetText.exact[expected],'English for: '+expected);
+  }
+ }finally{globalThis.fetch=original;}
+ console.log('B站错误码改为插件自己的说明（中英）检查通过');
+})().catch(error=>{console.error(error);process.exit(1);});

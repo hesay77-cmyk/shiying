@@ -16,6 +16,12 @@
     }
     const releaseUrl = () => typeof ShiyingNative !== 'undefined' ? ShiyingNative.DESKTOP_RELEASE_URL : 'https://hidaydream.cloud/?from=ext#editions';
     function label() {
+        staticText();
+        renderDesktop(); showFolder().catch(() => {});
+    }
+    // 0.4.73: the fixed wording, also applied at once when the page starts (the language is known synchronously from
+    // js/ruxget-locale-data.js, see js/shiying-locale.js), so an English page doesn't show Chinese first.
+    function staticText() {
         document.title = pick('Ruxget · 设置', 'Ruxget · Settings');
         document.documentElement.lang = window.RuxgetI18n?.getLang?.() === 'en' ? 'en' : 'zh-CN';
         const text = {
@@ -48,7 +54,6 @@
         for (const [selector, [zh, en]] of Object.entries(text)) { const node = $(selector); if (node) node.textContent = pick(zh, en); }
         $('#advancedLink').title = pick('文件类型过滤、自定义规则等，一般用不到', 'File-type filters, custom rules and more; rarely needed');
         $('#versionText').textContent = pick('版本 ', 'Version ') + chrome.runtime.getManifest().version;
-        renderDesktop(); showFolder().catch(() => {});
     }
     // --- Who downloads -------------------------------------------------------------------------------------------
     async function readMode() {
@@ -139,6 +144,7 @@
         if (window.RuxgetI18n) { await RuxgetI18n.setLanguage(input.value); label(); }
     }));
     // --- Start ---------------------------------------------------------------------------------------------------
+    staticText();
     (async () => {
         if (window.RuxgetI18n) await RuxgetI18n.ready().catch(() => {});
         const [{saveAs = false, enable = true}, {shiyingFloating: floating = {}}, language] = await Promise.all([

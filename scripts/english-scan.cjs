@@ -1,4 +1,5 @@
-// Lists visible Chinese text left in the English interface (popup, its dialogs, desktop app, extension pages).
+// Lists visible Chinese text left in the English interface (popup, its dialogs, desktop app, extension pages,
+// and the inherited tool pages m3u8/mpd/json/downloader/preview/popup/options on a Chinese Chrome).
 // Fixture titles are Chinese on purpose and are ignored. Exit code 1 when anything is found.
 const fs=require('node:fs'),path=require('node:path'),{pathToFileURL}=require('node:url');
 const root=path.resolve(__dirname,'..'),report=fs.mkdtempSync(require('node:path').join((process.env.RUXGET_TMP||require('node:os').tmpdir()),'ruxget-english-scan-'));
@@ -54,6 +55,95 @@ const collect=()=>{const out=[];const walker=document.createTreeWalker(document.
   await page.locator('#platformURL').fill('https://example.com/file.zip');await page.locator('#platformRead').click();await page.locator('#linkDownload').waitFor({state:'visible'});await record('popup-link-dialog',page);
   for(const name of ['ruxget-settings.html','shiying-help.html','shiying-desktop.html','shiying-task.html']){const p=await browser.newPage();await p.setViewportSize({width:900,height:900});await p.goto(`chrome-extension://${id}/${name}`);await p.waitForTimeout(800);await record('page-'+name.replace('.html',''),p);await p.close();}
  }finally{await browser.close();}
+ // C. Inherited tool pages follow ruxgetUiLanguage, not Chrome's language (0.4.73: a Chinese Chrome showed m3u8/mpd in Chinese
+ //    with Ruxget set to English). Chrome runs in Chinese with Ruxget in English, then English Chrome with Ruxget in Chinese,
+ //    and "auto" on a Chinese Chrome; each run also checks the one-time reload after a stale or missing localStorage mirror.
+ //    Media and JSON come from stub responses; downloads are stubbed so nothing is saved.
+ const fixture={
+  m3u8:'#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:10\n#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:10.0,\nseg0.ts\n#EXTINF:10.0,\nseg1.ts\n#EXT-X-ENDLIST\n',
+  mpd:'<?xml version="1.0"?><MPD xmlns="urn:mpeg:dash:schema:mpd:2011" type="static" mediaPresentationDuration="PT20S" minBufferTime="PT2S" profiles="urn:mpeg:dash:profile:isoff-on-demand:2011"><Period><AdaptationSet mimeType="video/mp4" contentType="video"><Representation id="v1" bandwidth="800000" width="1280" height="720" codecs="avc1.64001f"><SegmentTemplate media="v1-$Number$.m4s" initialization="v1-init.mp4" duration="10" startNumber="1" timescale="1"/></Representation></AdaptationSet><AdaptationSet mimeType="audio/mp4" contentType="audio" lang="en"><Representation id="a1" bandwidth="128000" codecs="mp4a.40.2"><SegmentTemplate media="a1-$Number$.m4s" initialization="a1-init.mp4" duration="10" startNumber="1" timescale="1"/></Representation></AdaptationSet></Period></MPD>',
+  json:JSON.stringify({title:'Fixture',items:[1,2,{kind:'sample'}]})};
+ const media='https://media.fixture/video/';
+ const toolPages=[
+  ['m3u8',`m3u8.html?url=${encodeURIComponent(media+'index.m3u8')}&title=${encodeURIComponent('Fixture clip')}`],
+  ['mpd',`mpd.html?url=${encodeURIComponent(media+'manifest.mpd')}`],
+  ['json',`json.html?url=${encodeURIComponent('https://media.fixture/data.json')}`],
+  ['downloader','downloader.html'],
+  ['downloader-file',`downloader.html?JSON=${encodeURIComponent(JSON.stringify({url:media+'file.bin',requestId:'91003',name:'file.bin',ext:'bin'}))}`],
+  ['preview','preview.html?tabId=TAB'],['popup','popup.html?tabId=TAB'],['options','options.html']];
+ const toolRun=async(chromeLang,pref,expect)=>{
+  const context=await chromium.launchPersistentContext(path.join(report,`profile-tools-${chromeLang}-${pref}`),{executablePath:exe,headless:true,locale:chromeLang,viewport:{width:1000,height:900},ignoreDefaultArgs:['--disable-extensions'],args:['--mute-audio','--autoplay-policy=user-gesture-required',`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,`--lang=${chromeLang}`,'--disable-background-networking','--host-resolver-rules=MAP * ~NOTFOUND']});
+  try{
+   await context.route('**/*',route=>{const u=new URL(route.request().url());if(u.protocol==='chrome-extension:')return route.continue();
+    if(u.pathname.endsWith('.m3u8'))return route.fulfill({contentType:'application/vnd.apple.mpegurl',body:fixture.m3u8});
+    if(u.pathname.endsWith('.mpd'))return route.fulfill({contentType:'application/dash+xml',body:fixture.mpd});
+    if(u.pathname.endsWith('.json'))return route.fulfill({contentType:'application/json',body:fixture.json});
+    if(/\.(ts|m4s|mp4|bin)$/.test(u.pathname))return route.fulfill({contentType:'application/octet-stream',body:Buffer.alloc(4096)});
+    return route.fulfill({contentType:'text/html',body:'<!doctype html><title>Fixture</title>'});});
+   await context.addInitScript(()=>{
+    if(location.protocol!=='chrome-extension:')return;
+    chrome.downloads.download=(options,callback)=>{callback&&setTimeout(()=>callback(4242));return callback?undefined:Promise.resolve(4242);};
+    const items=[{url:'https://media.fixture/video/clip.mp4',name:'clip.mp4',ext:'mp4',type:'video/mp4',size:4096,title:'Fixture page',webUrl:'https://www.example.com/page',requestId:'91001',getTime:Date.now(),favIconUrl:'img/icon16.png',requestHeaders:{referer:'https://www.example.com/page'}},
+     {url:'https://media.fixture/video/index.m3u8',name:'index.m3u8',ext:'m3u8',type:'application/vnd.apple.mpegurl',size:0,title:'Fixture page',webUrl:'https://www.example.com/page',requestId:'91002',getTime:Date.now(),favIconUrl:'img/icon16.png',requestHeaders:{referer:'https://www.example.com/page'}}];
+    const send=chrome.runtime.sendMessage.bind(chrome.runtime);
+    chrome.runtime.sendMessage=(...args)=>{const message=typeof args[0]==='string'?args[1]:args[0],callback=typeof args.at(-1)==='function'?args.at(-1):null;
+     if(message&&message.Message==='getData'&&message.tabId!=null){const data=items.map(item=>({...item,tabId:message.tabId}));if(callback){setTimeout(()=>callback(data));return;}return Promise.resolve(data);}
+     return send(...args);};
+   });
+   const worker=context.serviceWorkers()[0]||await context.waitForEvent('serviceworker'),id=new URL(worker.url()).hostname;
+   await worker.evaluate(p=>chrome.storage.local.set({ruxgetUiLanguage:p}),pref);
+   const site=await context.newPage();await site.goto('https://www.example.com/page');
+   const tabId=await worker.evaluate(async()=>(await chrome.tabs.query({})).find(t=>t.url?.includes('example.com/page')).id);
+   let first=true;
+   for(const [label,address] of toolPages){
+    const name=`tool-${label}-${chromeLang}-${pref}`,p=await context.newPage(),errors=[];
+    p.on('pageerror',e=>errors.push('pageerror: '+e.message));p.on('console',m=>{if(m.type()==='error')errors.push('console: '+m.text().slice(0,160)+(m.location()?.url?' ('+m.location().url.slice(0,120)+')':''));});
+    await p.goto(`chrome-extension://${id}/${address.replace('TAB',tabId)}`);await p.waitForTimeout(1500);
+    const state=await p.evaluate(()=>({title:document.title,lang:document.documentElement.lang,reloaded:performance.getEntriesByType('navigation')[0]?.type==='reload',mirror:localStorage.getItem('ruxgetUiLanguage')}));
+    const problems=[...errors];
+    // Only the very first page may need the reload (if no extension page has mirrored the setting yet).
+    if(state.reloaded&&!first)problems.push('reloaded although the language mirror was already set');
+    if(state.mirror!==pref)problems.push(`language mirror is ${state.mirror}, expected ${pref}`);
+    first=false;
+    if(expect==='en'){
+     if(state.lang!=='en')problems.push('html lang is '+state.lang);
+     await record(name,p);
+     const advanced=p.locator('.shiying-tool-heading button');
+     if(await advanced.count()){await advanced.click();await record(name+'-advanced',p);await advanced.click();}
+     if(label==='m3u8'){await p.locator('#mergeTs').click();await p.waitForTimeout(1500);await record(name+'-merge',p);}
+     if(/[\u3400-\u9fff]/.test(state.title))problems.push('title: '+state.title);
+    }else{
+     await p.screenshot({path:path.join(report,name+'.png')});
+     // popup.html is titled just "Ruxget"; the file download shows its progress ("1/1") as the title.
+     if(state.lang!=='zh-CN'||!/[\u3400-\u9fff]/.test(state.title)&&!['popup','downloader-file'].includes(label))problems.push(`expected Chinese, got lang=${state.lang} title=${state.title}`);
+     const chinese=await p.evaluate(()=>/[\u3400-\u9fff]/.test(document.body.innerText));if(!chinese)problems.push('no Chinese text on the page');
+    }
+    if(problems.length){results[name+' (state)']=problems;console.log('FOUND '+name+' (state)\n   '+problems.join('\n   '));}
+    else if(expect!=='en')console.log('clean '+name+' (Chinese as expected)');
+    await p.close();
+   }
+   // A stale or missing mirror (setting changed while no extension page was open) paints the wrong language first;
+   // the page must then reload exactly once and end in the right language.
+   for(const mirror of [expect==='en'?'zh_CN':'en',null]){
+    const name=`tool-json-${chromeLang}-${pref}-mirror-${mirror||'missing'}`,address=`chrome-extension://${id}/${toolPages.find(t=>t[0]==='json')[1]}`;
+    const setup=await context.newPage();await setup.goto(address);await setup.waitForTimeout(500);
+    await setup.evaluate(v=>v?localStorage.setItem('ruxgetUiLanguage',v):localStorage.removeItem('ruxgetUiLanguage'),mirror);await setup.close();
+    const p=await context.newPage();let loads=0;p.on('load',()=>loads++);
+    await p.goto(address);await p.waitForTimeout(2000);
+    const state=await p.evaluate(()=>({title:document.title,lang:document.documentElement.lang,nav:performance.getEntriesByType('navigation')[0]?.type,mirror:localStorage.getItem('ruxgetUiLanguage')}));
+    const wanted=expect==='en'?'en':'zh-CN',needsReload=(mirror||(chromeLang.startsWith('zh')?'zh_CN':'en'))!==(expect==='en'?'en':'zh_CN'),problems=[];
+    if(state.lang!==wanted)problems.push(`html lang is ${state.lang}, expected ${wanted} (title ${state.title})`);
+    if(state.mirror!==pref)problems.push(`language mirror is ${state.mirror}, expected ${pref}`);
+    if(needsReload&&state.nav!=='reload')problems.push('expected one reload, navigation type '+state.nav);
+    if(loads>2)problems.push(`loaded ${loads} times`);
+    if(problems.length){results[name]=problems;console.log('FOUND '+name+'\n   '+problems.join('\n   '));}else console.log(`clean ${name} (${needsReload?'reloaded once':'no reload needed'})`);
+    await p.close();
+   }
+  }finally{await context.close();}
+ };
+ await toolRun('zh-CN','en','en');
+ await toolRun('en-US','zh_CN','zh');
+ await toolRun('zh-CN','auto','zh');
  // B. Desktop app (embedded interface from the latest native report) in English.
  const native=path.join(root,'reports',fs.readdirSync(path.join(root,'reports')).filter(n=>n.startsWith('plugin-native-')).sort().at(-1));
  const desk=await chromium.launch({executablePath:exe,headless:true});

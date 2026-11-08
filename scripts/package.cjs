@@ -6,6 +6,11 @@ const root = path.resolve(__dirname, '..');
 //   build-full/  GitHub edition — the store edition plus js/shiying-youtube.js and its permissions.
 const output = path.join(root, 'build'), full = path.join(root, 'build-full');
 const YOUTUBE_MODULE = 'js/shiying-youtube.js';
+// js/ruxget-locale-data.js mirrors _locales for the pages that translate synchronously; keep the source copy current too.
+// (scripts/native-prompt-check.cjs packages a copy of this file alone; it then keeps the copied js/ruxget-locale-data.js.)
+let localeData = {write() { return false; }, FILE: 'js/ruxget-locale-data.js'};
+try { localeData = require('./locale-data.cjs'); } catch (error) { if (error.code !== 'MODULE_NOT_FOUND') throw error; }
+if (localeData.write(root)) console.log('updated ' + localeData.FILE + ' from _locales');
 for (const folder of [output, full]) fs.rmSync(folder, {recursive:true, force:true});
 fs.mkdirSync(output, {recursive:true});
 for (const folder of ['css','img','js','lib','catch-script']) fs.cpSync(path.join(root, folder), path.join(output, folder), {recursive:true});
@@ -16,6 +21,7 @@ for (const locale of fs.readdirSync(path.join(root, '_locales'), {withFileTypes:
 }
 for (const name of fs.readdirSync(root)) if (name.endsWith('.html') || ['manifest.json','LICENSE','NOTICE.md','PRIVACY.md'].includes(name)) fs.copyFileSync(path.join(root,name), path.join(output,name));
 fs.rmSync(path.join(output, YOUTUBE_MODULE), {force:true});
+localeData.write(output);
 // The store edition always shows its real version (a version_name left over in the source manifest showed 0.4.54 in 0.4.56).
 { const file = path.join(output, 'manifest.json'), store = JSON.parse(fs.readFileSync(file, 'utf8')); store.version_name = store.version; fs.writeFileSync(file, JSON.stringify(store, null, 2) + '\n'); }
 
@@ -37,6 +43,7 @@ for (const [locale, text] of Object.entries({zh_CN: "免费开源、无广告、
   const file = path.join(full, '_locales', locale, 'messages.json'), messages = JSON.parse(fs.readFileSync(file, 'utf8'));
   messages.extDescription = {message: text}; fs.writeFileSync(file, JSON.stringify(messages, null, 2) + '\n');
 }
+localeData.write(full); // after the description patch, so its catalog matches build-full/_locales
 manifest.host_permissions = [...youtubePages, 'https://youtu.be/*', 'https://*.googlevideo.com/*', ...manifest.host_permissions];
 for (const script of manifest.content_scripts) {
   script.matches = [...(script.js.includes('js/content-script.js') ? [...youtubePages, 'https://youtu.be/*'] : youtubePages), ...script.matches];

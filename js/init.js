@@ -386,7 +386,15 @@ chrome.storage.onChanged.addListener(function (changes, namespace) {
     }
 });
 
+// 0.4.73: only the service worker builds the menus. The tool pages (m3u8, mpd, downloader…) load this file too, and
+// each of them rebuilding the same menus at a language switch logged "duplicate id" errors. Rebuilds also run one after
+// another, so a storage change and a language change arriving together cannot interleave their removeAll/create.
+let contextMenusQueue = Promise.resolve();
 function contextMenusInit(visible = false) {
+    if (typeof ServiceWorkerGlobalScope === 'undefined' || !(globalThis instanceof ServiceWorkerGlobalScope)) return;
+    contextMenusQueue = contextMenusQueue.then(() => new Promise(resolve => buildContextMenus(visible, resolve))).catch(() => { });
+}
+function buildContextMenus(visible, done) {
     // 注册右键
     chrome.contextMenus.removeAll(() => {
         // The toolbar icon's own right-click menu: takeover on/off and the desktop page, always one click away.
@@ -436,7 +444,7 @@ function contextMenusInit(visible = false) {
             parentId: "cat-catch",
             title: i18n.autoDownload,
             contexts: ["page", "image"]
-        });
+        }, () => { void chrome.runtime.lastError; done(); });
     });
 }
 

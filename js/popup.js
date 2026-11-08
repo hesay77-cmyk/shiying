@@ -123,7 +123,7 @@ function AddMedia(data, currentTab = true) {
                     ${data.type ? `<br><b>MIME:</b>  ${data.type}` : ""}
                 </div>
                 <div class="moreButton">
-                    <div id="qrcode"><img src="img/qrcode.png" class="icon qrcode" title="QR Code"/></div>
+                    <div id="qrcode"><img src="img/qrcode.png" class="icon qrcode" title="${i18n.qrCode}"/></div>
                     <div id="catDown"><img src="img/cat-down.png" class="icon cat-down" title="${i18n.downloadWithRequestHeader}"/></div>
                     <div id="catDownFFmpeg"><img src="img/send2ffmpeg.svg" class="icon send2ffmpeg" title="${i18n.sendFfmpeg}"/></div>
                     <div><img src="img/invoke.svg" class="icon invoke" title="${i18n.invoke}"/></div>

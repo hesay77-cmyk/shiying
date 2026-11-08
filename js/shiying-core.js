@@ -50,6 +50,21 @@ const Shiying = (() => {
         }
         return {variants: variants.sort((a,b) => b.rate - a.rate), separateAudio: lines.some(line => /^#EXT-X-MEDIA:.*TYPE=AUDIO/.test(line) && /URI=/.test(line))};
     }
-    return {kind, validURL, size, name, filename, playlist};
+    // 0.4.73: the finished file's picture, as Chrome plays it, against the track that was checked and merged.
+    // The track header gives the stored size (640×360); Chrome reports the display size, which differs when the
+    // stream has non-square pixels (an old 4:3 B站 video stored as 640×360 plays as 640×480) or is rotated. So one
+    // side must match the stored size and the other may only be stretched by a real pixel shape (at most 2.5×);
+    // a different quality, a missing picture or a broken file still fails.
+    function pictureMatches(actual, stored) {
+        const width = Number(actual?.width) || 0, height = Number(actual?.height) || 0;
+        const storedWidth = Number(stored?.width) || 0, storedHeight = Number(stored?.height) || 0;
+        if (!(width > 0 && height > 0)) return false;
+        if (!(storedWidth > 0 && storedHeight > 0)) return true;
+        const near = (value, expected) => Math.abs(value - expected) <= Math.max(2, expected * 0.02);
+        const stretched = (value, expected) => value / expected >= 1 / 2.5 && value / expected <= 2.5;
+        const fits = (w, h) => near(w, storedWidth) && (near(h, storedHeight) || stretched(h, storedHeight)) || near(h, storedHeight) && stretched(w, storedWidth);
+        return fits(width, height) || fits(height, width);
+    }
+    return {kind, validURL, size, name, filename, playlist, pictureMatches};
 })();
 if (typeof module !== 'undefined') module.exports = Shiying;

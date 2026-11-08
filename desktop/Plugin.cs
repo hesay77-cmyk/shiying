@@ -47,7 +47,16 @@ public partial class MainWindow {
             files=(job.BtFiles??new TorrentFileInfo[0]).Select(file=>new{index=file.Index,path=file.Path,length=file.Length,size=TransferData.Bytes(file.Length),completed=TransferData.Bytes(file.Completed),selected=file.Selected}).ToArray()};
     }
     object PluginSnapshot(){return new{type="state",version=Util.Version,jobs=manager.Snapshot().AsEnumerable().Reverse().Select(PluginJob).ToArray(),settings=manager.Config,mini=miniMode,maximized=WindowState==FormWindowState.Maximized,miniId,busy=pluginBusy||batchBusy||closingWindow};}
-    void PushPluginState(){if(pluginReady)PluginSend(PluginSnapshot());}
+    void PushPluginState(){if(pluginReady){PluginSend(PluginSnapshot());PushThumbs();}}
+    // 0.4.73: task-list covers go to the page once each (it keeps them by task id), never inside the periodic snapshot.
+    // A reloaded page ("ready") gets them all again, at most 40 per push so a long list doesn't arrive in one lump.
+    readonly HashSet<string> thumbsSent=new HashSet<string>();int thumbsVersion=-1;
+    void PushThumbs(){
+        int version=manager.ThumbVersion;if(version==thumbsVersion)return;
+        var ids=manager.ThumbIds();thumbsSent.IntersectWith(ids);var items=new Dictionary<string,string>();bool more=false;
+        foreach(string id in ids){if(thumbsSent.Contains(id))continue;if(items.Count>=40){more=true;break;}string data=manager.ThumbData(id);if(data==null){manager.ThumbMissing(id);continue;}thumbsSent.Add(id);items[id]=data;}
+        if(!more)thumbsVersion=version;if(items.Count>0)PluginSend(new{type="thumbs",items});
+    }
     void PluginNotice(string text,string close=null){PluginSend(new{type="notice",text,close});}
     // A single web or magnet link on the clipboard, or "". Anything else (text, several lines) is left alone.
     static string ClipboardLink(){try{return Clipboard.ContainsText()?LinkFromText(Clipboard.GetText()):"";}catch(Exception){return "";}}
@@ -76,7 +85,7 @@ public partial class MainWindow {
     async void PluginMessage(string json){try{
         if(json.Length>3*1024*1024)throw new Exception("操作内容过长");var data=Util.Json().Deserialize<Dictionary<string,object>>(json);if(data==null)return;
         string command=Util.Str(data,"command"),id=Util.Str(data,"id");
-        if(command=="ready"){pluginReady=true;PushPluginState();var updated=Updater.TakeDoneNotice(manager.DataDirectory);if(updated!=null)PluginNotice(updated);if(editorToken.Length>0)PluginEditor(editorInput);return;}
+        if(command=="ready"){pluginReady=true;thumbsSent.Clear();thumbsVersion=-1;PushPluginState();var updated=Updater.TakeDoneNotice(manager.DataDirectory);if(updated!=null)PluginNotice(updated);if(editorToken.Length>0)PluginEditor(editorInput);return;}
         if(closingWindow)return;
         if(command=="cancelEditor"){if(Util.Str(data,"token")==editorToken){editorToken="";editorInput=null;playlistCatalog=null;if(playlistCancel!=null)playlistCancel.Cancel();}return;}
         if(command=="cancelBatch"){batchFolder="";return;}

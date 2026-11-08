@@ -14,8 +14,10 @@ const ShiyingPlatformUI = (() => {
         why.hidden=!desktop;why.dataset.state=desktopState;why.textContent=desktopState==='ready'?pick('桌面版已连接 · 支持多线程下载与断点续传','Ruxget Desktop is connected · multi-connection downloads that resume'):pick('桌面版支持多线程下载与断点续传','Ruxget Desktop downloads with several connections and resumes after a break');
         promo.hidden=!(catalog&&!desktop&&!['ready','checking','idle'].includes(desktopState)&&Number(catalog.duration)<1800);promo.textContent=pick('大文件与断点续传，可使用 Ruxget 桌面版（免费，3 MB）','For large files and resumable downloads, use Ruxget Desktop (free, 3 MB)');}
     // B站 without signing in: one quiet line on why only 480p and lower are offered (see ShiyingPlatform.bilibiliCatalog).
-    function updateLoginNote(){const note=$('#platformLoginNote');if(!note)return;note.hidden=!catalog?.loginLimited;note.textContent=pick('B站未登录时最高提供 480p。在本浏览器登录 B站后，可选择更高清晰度。','Bilibili offers up to 480p to visitors who aren’t signed in. Sign in to Bilibili in this browser for higher qualities.');}
-    function updateActions(){updateBrowserLink();updateDesktopLines();updateLoginNote();document.querySelector('label[for=formatVideo]').textContent=pick('视频','Video');document.querySelector('label[for=formatAudio]').textContent=pick('MP3 音频','MP3 audio');const active=starting||(currentJob?.url===catalog?.url&&!['complete','error','cancelled'].includes(currentJob?.status));const audio=selectedFormat()==='mp3';$('#formatAudio').disabled=!catalog||!catalog.audioAvailable;$('#formatVideo').disabled=!catalog;$('#platformQuality').hidden=audio;$('#platformAudioNote').hidden=!audio;$('#platformAudioNote').textContent=pick('原站最佳音轨','Best available audio');$('#platformDownload').disabled=!catalog||active||(audio&&!catalog.audioAvailable);$('#platformAudio').disabled=!catalog||active||!catalog.audioAvailable;const desktop=effectiveMethod()==='desktop';$('#platformMethod').disabled=!catalog||active;$('#platformDownload').textContent=desktop?(audio?pick('桌面版下载 MP3','Desktop MP3'):pick('用桌面版下载','Download in app')):audio?pick('下载 MP3','Download MP3'):pick('下载视频','Download video');$('#platformDownload').title=desktop?pick('交给 Ruxget 桌面版，可暂停续传','Send to Ruxget Desktop (pause and resume)'):pick('在 Chrome 里下载并保存','Download and save in Chrome');renderMethods();}
+    function updateLoginNote(){const note=$('#platformLoginNote');if(!note)return;note.hidden=!catalog?.loginLimited||selectedFormat()==='mp3';note.textContent=pick('B站未登录时最高提供 480p。在本浏览器登录 B站后，可选择更高清晰度。','Bilibili offers up to 480p to visitors who aren’t signed in. Sign in to Bilibili in this browser for higher qualities.');}
+    // Site name and length under the title; rendered again when the language changes while the panel is open.
+    function renderMeta(){if(!catalog)return;const duration=Math.max(0,Math.round(catalog.duration)),minutes=Math.floor(duration/60),seconds=duration%60;$('#platformMeta').textContent=`${catalog.siteName?RuxgetText.tr(catalog.siteName):pick('B站','Bilibili')}${pick('　',' · ')}${minutes}:${String(seconds).padStart(2,'0')}`;}
+    function updateActions(){renderMeta();updateBrowserLink();updateDesktopLines();updateLoginNote();document.querySelector('label[for=formatVideo]').textContent=pick('视频','Video');document.querySelector('label[for=formatAudio]').textContent=pick('MP3 音频','MP3 audio');const active=starting||(currentJob?.url===catalog?.url&&!['complete','error','cancelled'].includes(currentJob?.status));const audio=selectedFormat()==='mp3';$('#formatAudio').disabled=!catalog||!catalog.audioAvailable;$('#formatVideo').disabled=!catalog;$('#platformQuality').hidden=audio;$('#platformAudioNote').hidden=!audio;$('#platformAudioNote').textContent=pick('原站最佳音轨','Best available audio');$('#platformDownload').disabled=!catalog||active||(audio&&!catalog.audioAvailable);$('#platformAudio').disabled=!catalog||active||!catalog.audioAvailable;const desktop=effectiveMethod()==='desktop';$('#platformMethod').disabled=!catalog||active;$('#platformDownload').textContent=desktop?(audio?pick('桌面版下载 MP3','Desktop MP3'):pick('用桌面版下载','Download in app')):audio?pick('下载 MP3','Download MP3'):pick('下载视频','Download video');$('#platformDownload').title=desktop?pick('交给 Ruxget 桌面版，可暂停续传','Send to Ruxget Desktop (pause and resume)'):pick('在 Chrome 里下载并保存','Download and save in Chrome');renderMethods();}
     function savePreference(){const option=$('#platformQuality').selectedOptions[0];preference={...preference,format:selectedFormat(),height:parseInt(option?.textContent)||Number(option?.value)||preference.height};chrome.storage.local.set({shiyingVideoPreference:preference});updateActions();}
     // Download method: one main button; settings → 交给桌面版 decides who downloads (see effectiveMethod).
     const desktopNotes={idle:['可暂停续传，适合大文件','Pause, resume, large files'],checking:['正在检查桌面版…','Checking the desktop app…'],ready:['已连接 · 可暂停续传','Connected · pause and resume'],permission:['首次使用时允许连接即可','Allow the connection on first use'],missing:['还没有安装桌面版','Desktop app not installed'],connection:['已安装，需要重新连接','Installed, needs reconnecting']};
@@ -128,17 +130,18 @@ const ShiyingPlatformUI = (() => {
     // Two clicks: the first only arms the button, so a stray click never deletes a file.
     let deleteTimer=0;
     function disarmDelete(){clearTimeout(deleteTimer);const button=$('#platformDelete');delete button.dataset.armed;button.classList.remove('is-armed');button.textContent=currentJob&&currentJob.status!=='complete'?pick('移除记录','Remove'):pick('删除文件','Delete file');}
-    async function restoreJob(tab){
-        const url=ShiyingPlatform.source(tab.url).url;
-        const current=()=>{try{return currentTab?.id===tab.id&&ShiyingPlatform.source(currentTab.url).url===url;}catch{return false;}};
+    // 0.4.73: the card shows only the download of the video it shows. Every read (the tab's video, a pasted link,
+    // the refresh button) looks the job up again by that video's address, and a failed read for an address without a
+    // download leaves no job: a finished or failed download of another video, with its 「删除文件」, never stays behind.
+    async function restoreJob(urls,serial){
         const {shiyingJobIds:ids=[]}=await chrome.storage.local.get('shiyingJobIds');
         const records=await chrome.storage.local.get(ids.slice(-50).map(id=>'shiyingJob:'+id));
-        const job=ids.slice().reverse().map(id=>records['shiyingJob:'+id]).find(item=>item?.url===url);
-        if(!current())return;
-        renderJob(job);
+        const job=ids.slice().reverse().map(id=>records['shiyingJob:'+id]).find(item=>item&&urls.includes(item.url));
+        if(serial!==generation)return;
+        renderJob(job||null);
         if(job&&!['complete','error','cancelled'].includes(job.status)){
             const snapshot=await send('shiyingPlatformJob',{id:job.id});
-            if(current()&&currentJob?.id===job.id)renderJob(snapshot);
+            if(serial===generation&&currentJob?.id===job.id)renderJob(snapshot);
         }
     }
     chrome.storage.onChanged.addListener((changes,area)=>{
@@ -154,7 +157,7 @@ const ShiyingPlatformUI = (() => {
     $('#platformJob').addEventListener('dblclick',event=>{if(!event.target.closest('button'))openJob();});
     $('#platformDelete').addEventListener('click',async()=>{
         const button=$('#platformDelete');if(!currentJob)return;
-        if(button.dataset.armed!==currentJob.id){button.dataset.armed=currentJob.id;button.classList.add('is-armed');button.textContent=pick('再点一次确认删除','Click again to delete');clearTimeout(deleteTimer);deleteTimer=setTimeout(disarmDelete,4000);return;}
+        if(button.dataset.armed!==currentJob.id){button.dataset.armed=currentJob.id;button.classList.add('is-armed');button.textContent=currentJob.status==='complete'?pick('再点一次确认删除','Click again to delete'):pick('再点一次移除记录（文件不受影响）','Click again to remove the record (no file is deleted)');clearTimeout(deleteTimer);deleteTimer=setTimeout(disarmDelete,4000);return;}
         button.disabled=true;
         try{const hadFile=currentJob.status==='complete',result=await send('shiyingPlatformDelete',{id:currentJob.id,removeFile:hadFile});renderJob(null);if(typeof notify==='function')notify(!hadFile?pick('已移除记录','Removed'):result.removed?pick('已删除文件','File deleted'):pick('文件已不在原位置，已移除记录','The file was already gone; record removed'));}
         catch(error){$('#platformError').textContent=RuxgetText.tr(error.message);$('#platformError').hidden=false;}
@@ -177,18 +180,20 @@ const ShiyingPlatformUI = (() => {
         $('#platformQuality').disabled = true;
         $('#platformDownload').disabled = true;
         $('#platformAudio').disabled = true;
-        closeMethods(false);$('#subtitleBox').hidden=true;
+        closeMethods(false);$('#subtitleBox').hidden=true;$('#collectionOpen').hidden=true;
         $('#platformRead').disabled = true;
+        let source = null;
+        try {source = ShiyingPlatform.source($('#platformURL').value.trim());} catch {}
+        if (currentJob && currentJob.url !== source?.url) renderJob(null);
         try {
-            const source = ShiyingPlatform.source($('#platformURL').value.trim());
+            if (!source) ShiyingPlatform.source($('#platformURL').value.trim());
             const result = await send('shiyingPlatformRead', {url:source.url});
             if (serial !== generation) return;
             catalog = result;pasteNote('');
             $('#platformTitle').textContent = result.title;
             $('#platformTitle').title = result.title;
             $('#platformTitle').dataset.liveTitle = result.title;
-            const duration = Math.max(0,Math.round(result.duration)), minutes = Math.floor(duration / 60), seconds = duration % 60;
-            $('#platformMeta').textContent = `${result.siteName?RuxgetText.tr(result.siteName):pick('B站','Bilibili')}　${minutes}:${String(seconds).padStart(2,'0')}`;
+            renderMeta();
             $('#platformNote').textContent = '';renderHint();
             $('#platformQuality').replaceChildren(...result.choices.map(choice => new Option(choice.label, choice.height)));
             await prefsReady;
@@ -214,6 +219,10 @@ const ShiyingPlatformUI = (() => {
             $('#platformError').hidden = false;
             $('#platformQuality').replaceChildren(new Option(pick('读取成功后选择','Choose after reading'), ''));
         } finally {if (serial === generation){$('#platformRead').disabled = false;updateActions();}}
+        if (serial !== generation) return;
+        const urls = [source?.url, catalog?.url].filter(Boolean);
+        if (!urls.length) {renderJob(null);return;}
+        try {await restoreJob(urls, serial);} catch {/* The catalog stays usable without a job snapshot. */}
     }
     // A share text from an app or site (title plus link) becomes just the link as soon as it is pasted.
     $('#platformURL').addEventListener('input', () => {pasteNote('');const field=$('#platformURL'),value=field.value.trim(),link=value.match(/https?:\/\/[^\s<>"'，。、；）)】」]+/i);if(link&&link[0]!==value)field.value=link[0];});
@@ -294,7 +303,7 @@ const ShiyingPlatformUI = (() => {
         layout(!!source);
         $('#platformURL').value = source?.url || '';pasteNote('');
         $('#platformEntry').hidden = false;
-        if (source && serial === generation) {await read();try{await restoreJob(tab);}catch{/* The existing catalog remains usable if no job snapshot is available. */}}
+        if (source && serial === generation) await read();
     }
     return {bind,stream:openStream,url:()=>currentTab?.url||$('#platformURL').value,refresh:() => $('#platformCard').hidden ? Promise.resolve() : read(),desktop:desktopPayload};
 })();

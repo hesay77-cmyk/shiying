@@ -155,8 +155,34 @@
     }
   }
 
+  // Extension pages share localStorage, so the preference is mirrored there for pages that translate synchronously
+  // while loading (js/polyfill.js reads it). Only on extension pages: in a content script localStorage is the website's.
+  function writeMirror(pref) {
+    if (!isExtensionPage()) return;
+    try {
+      if (typeof RuxgetPageLocale !== "undefined" && RuxgetPageLocale.writeMirror) { RuxgetPageLocale.writeMirror(pref); return; }
+      if (global.localStorage && global.localStorage.getItem(STORAGE_KEY) !== pref) global.localStorage.setItem(STORAGE_KEY, pref);
+    } catch (e) {}
+  }
+
+  // Lets the bare i18n.key / i18n("key") of js/polyfill.js follow this catalog too (its const i18n shadows window.i18n).
+  function shareCatalog() {
+    try {
+      if (typeof RuxgetPageLocale !== "undefined" && RuxgetPageLocale.use) RuxgetPageLocale.use(currentLang, catalog);
+    } catch (e) {}
+  }
+
   async function loadCatalog(lang) {
     let loaded = null;
+    // Pages that load js/ruxget-locale-data.js already have every catalog.
+    const bundled = global.RuxgetLocaleData && global.RuxgetLocaleData[lang];
+    if (bundled) {
+      catalog = bundled;
+      currentLang = lang;
+      installI18nProxy();
+      shareCatalog();
+      return catalog;
+    }
     // Prefer the service worker: it can always read extension package URLs.
     try {
       loaded = await requestCatalogFromBackground(lang);
@@ -170,6 +196,7 @@
     catalog = loaded.catalog;
     currentLang = loaded.lang;
     installI18nProxy();
+    shareCatalog();
     return catalog;
   }
 
@@ -181,6 +208,7 @@
         const stored = await chrome.storage.local.get(STORAGE_KEY);
         if (stored && stored[STORAGE_KEY]) pref = stored[STORAGE_KEY];
       } catch (e) {}
+      writeMirror(pref);
       const lang = resolveLang(pref);
       try {
         await loadCatalog(lang);
@@ -200,6 +228,7 @@
   async function setLanguage(pref) {
     if (pref !== "auto" && pref !== "en" && pref !== "zh_CN") pref = "auto";
     await chrome.storage.local.set({ [STORAGE_KEY]: pref });
+    writeMirror(pref);
     const lang = resolveLang(pref);
     await loadCatalog(lang);
     applyDom(document);
@@ -217,6 +246,7 @@
       chrome.storage.onChanged.addListener(function (changes, area) {
         if (area !== "local" || !changes[STORAGE_KEY]) return;
         const pref = changes[STORAGE_KEY].newValue || "auto", lang = resolveLang(pref);
+        writeMirror(pref);
         if (lang === currentLang) return;
         loadCatalog(lang).then(function () {
           applyDom(document);
@@ -235,6 +265,33 @@
     return currentLang === "en" ? en : zh;
   }
 
+  // 0.4.73: extension pages that load js/ruxget-locale-data.js start in the language mirrored in localStorage (see
+  // RuxgetPageLocale in js/polyfill.js) instead of painting Chinese until the catalog arrives from the service worker.
+  // init() still reads the real setting and corrects the page if the mirror was stale.
+  let startLang = null;
+  function reveal() {
+    try { if (document.documentElement.style.visibility === "hidden") document.documentElement.style.removeProperty("visibility"); } catch (e) {}
+  }
+  try {
+    if (typeof document !== "undefined" && isExtensionPage() && global.RuxgetLocaleData) {
+      let mirror = null;
+      try { mirror = global.localStorage.getItem(STORAGE_KEY); } catch (e) {}
+      const lang = resolveLang(mirror);
+      if (global.RuxgetLocaleData[lang]) {
+        catalog = global.RuxgetLocaleData[lang];
+        currentLang = startLang = lang;
+        installI18nProxy();
+        shareCatalog();
+        // The markup is Chinese: an English page stays unpainted until its text is applied (at most 400 ms), so a
+        // frame painted while the deferred scripts load can't show Chinese first.
+        if (lang === "en" && document.documentElement) {
+          document.documentElement.style.visibility = "hidden";
+          setTimeout(reveal, 400);
+        }
+      }
+    }
+  } catch (e) {}
+
   global.RuxgetI18n = {
     STORAGE_KEY,
     init,
@@ -247,12 +304,19 @@
     ready: function () { return readyPromise || init(); }
   };
 
+  const whenParsed = function (run) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", run);
+    else run();
+  };
+  if (startLang) whenParsed(function () { try { applyDom(document); } finally { reveal(); } });
   // Kick off early; pages that need translations should await RuxgetI18n.ready()
   init().then(function () {
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", function () { applyDom(document); });
-    } else {
+    whenParsed(function () {
       applyDom(document);
-    }
+      // The mirror was stale: code that rendered text in the start language renders it again.
+      if (startLang && startLang !== currentLang) {
+        try { document.dispatchEvent(new CustomEvent("ruxget-i18n-applied", { detail: { lang: currentLang } })); } catch (e) {}
+      }
+    });
   });
 })(typeof globalThis !== "undefined" ? globalThis : window);

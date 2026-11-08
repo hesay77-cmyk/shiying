@@ -7,6 +7,8 @@ class CollectionChecks {
     static void Check(bool value,string message){if(!value)throw new Exception(message);}
     static int Main(string[] args){try{
         string root=args[0];Directory.CreateDirectory(root);
+        // 0.4.73: YouTube entries ask i.ytimg.com for their cover; checks never reach the real network.
+        Thumbs.Fetch=(address,proxy)=>{throw new InvalidDataException("no network in checks");};
         var list=Playlist.Parse(File.ReadAllText(args[1]));Check(list.entries.Length==3,"real flat-playlist response");
         Check(Playlist.Source("https://www.youtube.com/watch?v=abcdefghijk&list=PL1234567890")=="https://www.youtube.com/playlist?list=PL1234567890","canonical source");
         foreach(string source in new[]{"https://youtube.com.evil.test/playlist?list=PL1234567890","http://www.youtube.com/playlist?list=PL1234567890","https://user:pass@www.youtube.com/playlist?list=PL1234567890"}){bool rejected=false;try{Playlist.Source(source);}catch{rejected=true;}Check(rejected,"source boundary");}

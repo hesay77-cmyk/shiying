@@ -56,7 +56,8 @@ body.desktop-app{background:rgba(10,19,30,.56);background-image:none;}
 #deleteName{overflow-wrap:anywhere;margin:0 0 18px}#deleteNote{min-height:38px;line-height:1.7;margin-top:9px}.sheet .delete-actions{display:flex;justify-content:flex-end;align-items:center;gap:16px;margin-top:18px}.sheet .delete-actions .download-button{width:auto;margin:0;background:#c74856;color:#fff;min-height:33px;padding:6px 14px}.sheet .delete-actions .download-button:hover{background:#db5665}.delete-actions button:disabled{opacity:.5}
 
 /* Language control: trailing fixed grid column — zh/en cannot shift its screen position */
-.desktop-toolbar .topbar-actions{display:grid;grid-template-columns:minmax(0,max-content) 28px 32px;align-items:center;gap:6px;flex-shrink:0;margin-left:0}
+/* 0.4.73: no language button in the toolbar (it lives in 下载设置 → 界面语言, following the system by default). */
+.desktop-toolbar .topbar-actions{display:grid;grid-template-columns:minmax(0,max-content) 28px;align-items:center;gap:6px;flex-shrink:0;margin-left:0}
 .desktop-toolbar .topbar-actions>#miniToggle{grid-column:1;justify-self:stretch;width:4.5em;max-width:4.5em;min-width:0;justify-content:center;text-align:center;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .desktop-toolbar .topbar-actions>.menu{grid-column:2;width:28px;justify-self:center}
 .desktop-toolbar .topbar-actions>.language-switch{grid-column:3;display:inline-flex;align-items:center;justify-content:center;width:32px;min-width:32px;max-width:32px;height:30px;margin:0;padding:0;box-sizing:border-box;font-variant-numeric:tabular-nums;letter-spacing:0;cursor:pointer;user-select:none}
@@ -155,3 +156,6 @@ input::placeholder,textarea::placeholder,.link-input input::placeholder,.sheet i
 .menu-panel button,.menu-panel label{color:var(--fg)}.menu-panel button:hover{background:var(--raise)}
 .menu-panel .version-note,.menu-panel .menu-links,.menu-panel .menu-links button{color:var(--sub)}
 .desktop-toolbar .link-input>span{display:grid;place-items:center;width:16px;height:16px;font-size:0}.desktop-toolbar .link-input>span svg{width:16px;height:16px}
+/* 0.4.73: a video's cover in the same box as ▷ (rows keep their height); the picture fills it, cropped, corners kept. */
+.file-icon.has-thumb{overflow:hidden;padding:0;background:var(--raise);outline:1px solid rgba(42,53,32,.08);outline-offset:-1px}
+.file-icon.has-thumb img{display:block;width:100%;height:100%;object-fit:cover;border-radius:inherit;pointer-events:none}

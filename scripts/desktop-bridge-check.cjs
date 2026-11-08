@@ -28,9 +28,11 @@ function native(caller,bytes,program=exe){return new Promise((resolve,reject)=>{
  // Execute the real service-worker desktop route with an explicit catalog fixture.
  const listeners=[],catalog={id:'catalog',url:'https://www.youtube.com/watch?v=abcdefghijk',site:'youtube',title:'fixture',createdAt:Date.now(),video:[{height:720,url:'https://r1.googlevideo.com/video'}],audio:[{url:'https://r1.googlevideo.com/audio'}],cookie:'never-forward'};
  const context={console,Date,URL,crypto:require('node:crypto').webcrypto,importScripts(){},navigator:{userAgent:'fixture-agent'},chrome:{runtime:{id,getURL:file=>origin+file,onMessage:{addListener:fn=>listeners.push(fn)}},storage:{session:{get:async()=>({'shiyingCatalog:catalog':catalog})}},downloads:{onChanged:{addListener(){}}}}};
- vm.createContext(context);vm.runInContext(fs.readFileSync(path.join(root,'js/shiying-background.js'),'utf8'),context);
+ vm.createContext(context);vm.runInContext(fs.readFileSync(path.join(root,'js/shiying-platform.js'),'utf8').replace(/^const ShiyingPlatform/m,'var ShiyingPlatform')+fs.readFileSync(path.join(root,'js/shiying-background.js'),'utf8'),context);
  const dispatch=(height,sender=origin+'shiying.html')=>new Promise(resolve=>listeners[0]({Message:'shiyingPlatformDesktop',id:'catalog',height},{id,url:sender},resolve));
  const actual=await dispatch(720);assert(actual.ok);assert.equal(actual.payload.videoUrl,catalog.video[0].url);assert.equal(actual.payload.height,720);assert(!('cookie' in actual.payload));
+ // 0.4.73: the cover goes along only from the sites' own image servers (the desktop app checks it again).
+ assert.equal(actual.payload.cover,'');catalog.cover='https://i0.hdslb.com/bfs/archive/fixture.jpg';assert.equal((await dispatch(720)).payload.cover,catalog.cover);catalog.cover='https://images.evil.test/x.jpg';assert.equal((await dispatch(720)).payload.cover,'');catalog.cover='https://i0.hdslb.com:8443/x.jpg';assert.equal((await dispatch(720)).payload.cover,'');delete catalog.cover;
  assert.equal((await dispatch(1080)).ok,false);assert.equal((await dispatch(720,'https://evil.test/')).ok,false);
  catalog.createdAt=0;assert.equal((await dispatch(720)).ok,false);
  let nativeCalls=0,opened=[];const helperContext={chrome:{permissions:{contains:async()=>false,request:async()=>false},runtime:{getURL:file=>file,sendNativeMessage:async()=>{nativeCalls++;throw new Error('Specified native messaging host not found.');}},tabs:{create:async tab=>opened.push(tab)}},document:{querySelector:()=>null}};

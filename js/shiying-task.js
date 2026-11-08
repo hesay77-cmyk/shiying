@@ -71,7 +71,7 @@ let deleteTimer = 0;
 function disarmDelete() { clearTimeout(deleteTimer); const button = $('#deleteTask'); delete button.dataset.armed; button.classList.remove('is-armed'); button.textContent = button.dataset.file ? pick('删除文件', 'Delete file') : pick('移除记录', 'Remove'); }
 $('#deleteTask').addEventListener('click', async () => {
     const button = $('#deleteTask');
-    if (!button.dataset.armed) { button.dataset.armed = '1'; button.classList.add('is-armed'); button.textContent = pick('再点一次确认删除', 'Click again to delete'); clearTimeout(deleteTimer); deleteTimer = setTimeout(disarmDelete, 4000); return; }
+    if (!button.dataset.armed) { button.dataset.armed = '1'; button.classList.add('is-armed'); button.textContent = button.dataset.file ? pick('再点一次确认删除', 'Click again to delete') : pick('再点一次移除记录（文件不受影响）', 'Click again to remove the record (no file is deleted)'); clearTimeout(deleteTimer); deleteTimer = setTimeout(disarmDelete, 4000); return; }
     button.disabled = true;
     try {
         const hadFile = !!button.dataset.file, result = await chrome.runtime.sendMessage({Message: 'shiyingPlatformDelete', id, removeFile: hadFile});

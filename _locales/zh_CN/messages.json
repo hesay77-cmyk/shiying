@@ -186,10 +186,10 @@
     "message": "Ruxget 设置"
   },
   "titleDownload": {
-    "message": "Ruxget · File Download"
+    "message": "Ruxget · 文件下载"
   },
   "titleM3U8": {
-    "message": "Ruxget · Video Download"
+    "message": "Ruxget · 视频下载"
   },
   "titleJson": {
     "message": "Ruxget JSON 格式化"
@@ -1406,5 +1406,191 @@
   },
   "uiHelpPageTitle": {
     "message": "Ruxget · 使用说明"
+  },
+  "toolKeepPageOpen": {
+    "message": "请保持这个页面打开，下载进度会显示在这里。"
+  },
+  "toolShowAdvanced": {
+    "message": "显示高级选项"
+  },
+  "toolHideAdvanced": {
+    "message": "收起高级选项"
+  },
+  "tipCurrentPage": {
+    "message": "当前页面"
+  },
+  "tipOtherPages": {
+    "message": "其他页面"
+  },
+  "tipOtherFeatures": {
+    "message": "其他功能与媒体控制"
+  },
+  "tipPossibleKey": {
+    "message": "可能的密钥"
+  },
+  "tipVideoTab": {
+    "message": "视频所在的标签页"
+  },
+  "tipVideo": {
+    "message": "视频"
+  },
+  "tipPlaybackRate": {
+    "message": "播放倍速"
+  },
+  "tipSpeed": {
+    "message": "调整播放倍速"
+  },
+  "tipPlayPause": {
+    "message": "播放或暂停"
+  },
+  "tipPip": {
+    "message": "切换画中画"
+  },
+  "tipFullscreen": {
+    "message": "切换全屏"
+  },
+  "tipScreenshot": {
+    "message": "截取当前画面"
+  },
+  "tipLoop": {
+    "message": "循环播放"
+  },
+  "tipMute": {
+    "message": "静音"
+  },
+  "tipVolume": {
+    "message": "音量"
+  },
+  "tipVolumeControl": {
+    "message": "调节音量"
+  },
+  "tipTime": {
+    "message": "播放时间"
+  },
+  "tipTimeControl": {
+    "message": "调节播放进度"
+  },
+  "tipDownloader": {
+    "message": "打开下载器"
+  },
+  "tipM3u8Parser": {
+    "message": "打开 M3U8 解析"
+  },
+  "tipMpdParser": {
+    "message": "打开 MPD 解析"
+  },
+  "tipJsonFormatter": {
+    "message": "打开 JSON 格式化"
+  },
+  "tipOpenSettings": {
+    "message": "打开设置"
+  },
+  "tipRegexFilter": {
+    "message": "正则筛选"
+  },
+  "tipExtensions": {
+    "message": "按后缀筛选"
+  },
+  "tipExpandAll": {
+    "message": "全部展开"
+  },
+  "tipExpandPlayable": {
+    "message": "展开可播放的条目"
+  },
+  "tipExpandSelected": {
+    "message": "展开已选的条目"
+  },
+  "tipCollapseAll": {
+    "message": "全部收起"
+  },
+  "tipRecordVideo": {
+    "message": "开始录制视频"
+  },
+  "tipRecordWebRTC": {
+    "message": "录制 WebRTC 流"
+  },
+  "tipRecordScreen": {
+    "message": "录制屏幕内容"
+  },
+  "tipMobile": {
+    "message": "模拟手机浏览"
+  },
+  "tipAutoDownload": {
+    "message": "开启或关闭自动下载"
+  },
+  "tipSend2local": {
+    "message": "发送所选条目"
+  },
+  "tipMergeDownload": {
+    "message": "合并所选条目后下载"
+  },
+  "tipDownloadSelected": {
+    "message": "下载所选条目"
+  },
+  "tipCopySelected": {
+    "message": "复制所选条目的链接"
+  },
+  "tipSelectAll": {
+    "message": "全选"
+  },
+  "tipFilter": {
+    "message": "打开筛选"
+  },
+  "tipClear": {
+    "message": "清空列表"
+  },
+  "tipDeepSearch": {
+    "message": "深度搜索网页里的媒体"
+  },
+  "tipCacheCapture": {
+    "message": "捕捉播放时缓存的媒体"
+  },
+  "tipPauseDetection": {
+    "message": "暂停或恢复识别"
+  },
+  "tipPopupWindow": {
+    "message": "在独立窗口中打开"
+  },
+  "tipSwitchCurrent": {
+    "message": "切换到当前页面"
+  },
+  "tipResetSuffix": {
+    "message": "恢复默认后缀"
+  },
+  "tipDisableAllSuffix": {
+    "message": "停用全部后缀"
+  },
+  "tipEnableAllSuffix": {
+    "message": "启用全部后缀"
+  },
+  "tipResetType": {
+    "message": "恢复默认类型"
+  },
+  "tipDisableAllType": {
+    "message": "停用全部类型"
+  },
+  "tipEnableAllType": {
+    "message": "启用全部类型"
+  },
+  "tipResetRegex": {
+    "message": "恢复默认正则"
+  },
+  "tipDisableAllRegex": {
+    "message": "停用全部正则"
+  },
+  "tipEnableAllRegex": {
+    "message": "启用全部正则"
+  },
+  "tipResetBlockUrl": {
+    "message": "恢复默认屏蔽网址"
+  },
+  "tipDisableAllBlockUrl": {
+    "message": "停用全部屏蔽网址"
+  },
+  "tipEnableAllBlockUrl": {
+    "message": "启用全部屏蔽网址"
+  },
+  "qrCode": {
+    "message": "二维码"
   }
 }

@@ -33,6 +33,10 @@ public class Download {
     // A server check running outside the lock for this download; a newer token (or none) makes its result stale.
     [ScriptIgnore] public string ProbeToken;
     public string NetdiskProvider,NetdiskFileKey,NetdiskCookie,NetdiskUrl;
+    // 0.4.73: the video's cover on its site's image server (see Thumbs); "" once fetched for good or refused.
+    public string Cover;
+    // 0.4.73: starts on which the cover couldn't be reached (network); after 3 the cover is given up, quietly.
+    public int CoverTries;
     public long NetdiskSize=-1;
     public int Height;
     public TransferInfo Transfer=new TransferInfo();
@@ -148,7 +152,7 @@ static class Util {
     // Windows proxy for HTTPS traffic, as http://host:port, or "" when the system proxy is off or uses only a PAC script.
     public static string SystemProxy(){try{using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Internet Settings")){if(key==null||Convert.ToInt32(key.GetValue("ProxyEnable",0))!=1)return "";string server=Convert.ToString(key.GetValue("ProxyServer","")).Trim();if(server.Contains("=")){var parts=server.Split(';').Select(p=>p.Split(new[]{'='},2)).Where(p=>p.Length==2).ToDictionary(p=>p[0].Trim().ToLowerInvariant(),p=>p[1].Trim());server=parts.ContainsKey("https")?parts["https"]:parts.ContainsKey("http")?parts["http"]:"";}if(server.Length==0)return "";if(!server.Contains("://"))server="http://"+server;Uri uri;return Uri.TryCreate(server,UriKind.Absolute,out uri)&&(uri.Scheme=="http"||uri.Scheme=="https"||uri.Scheme.StartsWith("socks"))?server:"";}}catch{return "";}}
     public static void CheckProxy(string value){if(value.Length>0&&value!=SystemProxyMode)Url(value);}
-    public const string Version="0.4.72";
+    public const string Version="0.4.73";
     // Links added without a browser's own name (pasted, batch, magnet-free files) go out with an ordinary browser name.
     // Many CDNs refuse the download engine's default "aria2/x.y": Aliyun's answers "403 denied by UA ACL = blacklist" (0.4.63).
     public const string BrowserAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
@@ -315,6 +319,7 @@ public partial class Manager : IDisposable {
             foreach (var job in jobs){if(TorrentInfo.IsBt(job)){if(job.Status=="已完成"&&job.BtSelected==null)job.BtSelected=(job.BtFiles??new TorrentFileInfo[0]).Select(f=>f.Index).ToArray();SyncBtSelection(job);if(job.HasMetadata&&!HasBtSelection(job)&&job.Status!="已完成"){job.Status="等待选文件";job.Speed="";continue;}}if(job.Status!="已完成"&&job.Status!="失败"){job.Status="已暂停";job.Speed="";}else if(job.Status=="已完成"&&(job.Transfer==null||job.Transfer.Total<0))TransferData.Complete(job);}
         }
         foreach(var job in jobs){job.BtReason="";job.BtAdvice="";if(job.Status!="已完成"&&YouTubeTracks(job))YouTubeItself(job);}
+        LoadThumbs();
         PublishSnapshot();
     }
     // Chrome's download folder as the extension last saw it. Returns true when the save folder changed.
@@ -424,6 +429,9 @@ public partial class Manager : IDisposable {
                 if(yt)YouTubeItself(job);
             }
             if(input!=null) { job.Referer=Util.Str(input,"referer"); if(job.Referer.Length>0)job.Referer=Util.Url(job.Referer); job.UserAgent=Util.Str(input,"userAgent"); if(job.UserAgent.Length>512||job.UserAgent.Any(Char.IsControl))throw new Exception("浏览器信息无效"); }
+            // 0.4.73: a video's cover for the task list (fetched in the background once the task is saved; every caller
+            // holds the gate, so the fetch never sees a task that isn't in the list). Audio and plain files keep their icons.
+            if((kind=="video"||kind=="tracks")&&!job.ExtractAudio){job.Cover=Thumbs.CoverUrl(input==null?"":Util.Str(input,"cover"));if(job.Cover.Length==0)job.Cover=Thumbs.YouTubeCover(job.Url);if(job.Cover.Length>0)QueueThumb(job.Id);}
             return job;
     }
     // 0.4.70: YouTube serves addresses copied from its page at a few KB/s; yt-dlp reads the video itself at full speed.
@@ -742,6 +750,7 @@ public partial class Manager : IDisposable {
         if(deleteFiles){DetachForDeletion(job);try{DeleteTaskFiles(job);}catch(Exception ex){throw new IOException("文件未能全部删除，任务已保留。"+Util.SafeError(ex.Message),ex);}}TidyWork(job);
         if(!deleteFiles&&job.Status!="已完成"&&NearWork(job)!=null&&String.Equals(Work(job),NearWork(job),StringComparison.OrdinalIgnoreCase)){try{DetachForDeletion(job);DeleteTaskFiles(job);}catch(Exception){}TidyWork(job);}
         if(TorrentInfo.IsBt(job)){ResetBt(job);DropBtPeers(job);}lock(relayGate)relayJobs.Remove(job.Id);int index=jobs.IndexOf(job);jobs.RemoveAt(index);try{Save();}catch{jobs.Insert(index,job);PublishSnapshot();throw;}
+        DropThumb(job.Id);
     }}
     public void Dispose() {
         closing=true;CloseNetdisk();var probe=activeProbe;if(probe!=null)try{probe.Abort();}catch{}
@@ -1029,6 +1038,142 @@ public partial class Manager {
     public int AddPlaylist(PlaylistEntry[] entries,string kind,string folder,int height,bool categorize) {
         if(entries==null||entries.Length<1||entries.Length>100||!new[]{"video","audio"}.Contains(kind)||entries.Any(e=>e==null||!e.available))throw new Exception("请勾选可下载的条目");
         lock(gate){CanAdd(entries.Length);var added=entries.GroupBy(e=>e.url).Select(g=>g.First()).Select(e=>CreateDownload(e.url,kind,e.title,height,folder,null,categorize)).ToArray();jobs.AddRange(added);try{Save();}catch{foreach(var job in added)jobs.Remove(job);PublishSnapshot();throw;}return added.Length;}
+    }
+}
+// 0.4.73: the small cover a video task shows in the task list instead of ▷. The address comes from the extension
+// (B站, 抖音, 快手, 小红书 send their cover) or, for YouTube, from the video's id. The picture is fetched once from
+// the site's own image server, checked to be a real JPEG or PNG, shrunk to the icon box and kept only in
+// data\thumbs\<task id>.jpg; it is deleted with its task. Any failure just leaves the ▷ icon, without a word.
+static class Thumbs {
+    public const int MaxBytes=2*1024*1024,MaxStored=256*1024,Width=84,Height=96,MaxSide=5000,MaxPixels=12000000,MaxSeconds=20;
+    static readonly Regex Hosts=new Regex(@"(^|\.)(hdslb\.com|ytimg\.com|douyinpic\.com|yximgs\.com|kwimgs\.com|kwaicdn\.com|ndcimgs\.com|xhscdn\.com)$",RegexOptions.IgnoreCase);
+    // An HTTPS address on one of the video sites' image servers (default port, no user name, at most 1024 characters), or "".
+    public static string CoverUrl(string value){
+        value=value??"";if(value.Length==0||value.Length>1024||value.Any(c=>Char.IsControl(c)||Char.IsWhiteSpace(c)))return "";
+        Uri uri;if(!Uri.TryCreate(value,UriKind.Absolute,out uri)||uri.Scheme!="https"||!uri.IsDefaultPort||uri.UserInfo.Length>0||uri.HostNameType!=UriHostNameType.Dns||!Hosts.IsMatch(uri.Host))return "";
+        string url=uri.AbsoluteUri;return url.Length<=1024?url:"";
+    }
+    // YouTube's own still for a watch, shorts or youtu.be link (320×180 JPEG on i.ytimg.com), or "".
+    public static string YouTubeCover(string page){
+        Uri uri;if(!Uri.TryCreate(page??"",UriKind.Absolute,out uri)||uri.Scheme!="https")return "";string host=uri.Host.ToLowerInvariant(),id="";
+        if(host=="youtu.be")id=uri.AbsolutePath.Trim('/');
+        else if(host=="www.youtube.com"||host=="youtube.com"||host=="m.youtube.com"){var path=Regex.Match(uri.AbsolutePath,@"^/(?:shorts|live)/([^/]+)/?$");if(path.Success)id=path.Groups[1].Value;else if(uri.AbsolutePath=="/watch"){var query=Regex.Match(uri.Query,@"[?&]v=([^&#]*)");if(query.Success)id=query.Groups[1].Value;}}
+        return Regex.IsMatch(id,@"^[A-Za-z0-9_-]{11}$")?"https://i.ytimg.com/vi/"+id+"/mqdefault.jpg":"";
+    }
+    // B站's image server makes a small JPEG when asked by suffix (@320w_180h_1c.jpg); the plain address is the fallback.
+    public static string[] Candidates(string cover){
+        Uri uri=new Uri(cover);
+        // 0.4.73: 小红书 serves its covers as WebP (…!nd_dft_wlteh_webp_3), which GDI+ can't read; its JPEG variant comes first.
+        if(Regex.IsMatch(uri.Host,@"(^|\.)xhscdn\.com$",RegexOptions.IgnoreCase)){string jpeg=Regex.Replace(cover,@"(![a-z0-9_]*_)webp(_[0-9]+)$","${1}jpg${2}",RegexOptions.IgnoreCase);if(jpeg!=cover)return new[]{jpeg,cover};}
+        return Regex.IsMatch(uri.Host,@"(^|\.)hdslb\.com$",RegexOptions.IgnoreCase)&&!uri.AbsolutePath.Contains("@")&&uri.Query.Length==0&&Regex.IsMatch(uri.AbsolutePath,@"\.(jpe?g|png|webp)$",RegexOptions.IgnoreCase)?new[]{cover+"@320w_180h_1c.jpg",cover}:new[]{cover};
+    }
+    // Tests replace this with a local fixture; nothing else does.
+    internal static Func<string,string,byte[]> Fetch=Get;
+    // One GET, no redirects (they could lead off the image server), at most MaxBytes. A refusal throws
+    // InvalidDataException or a WebException that has a response; anything else is the network (tried again next start).
+    internal static byte[] Get(string url,string proxy){
+        var request=(HttpWebRequest)WebRequest.Create(url);request.Method="GET";request.Timeout=10000;request.ReadWriteTimeout=10000;request.KeepAlive=false;request.AllowAutoRedirect=false;
+        request.UserAgent=Util.BrowserAgent;request.Accept="image/jpeg,image/png;q=0.9,*/*;q=0.1";
+        request.Proxy=new Uri(url).IsLoopback||String.IsNullOrEmpty(proxy)?null:new WebProxy(proxy);
+        try{using(var response=(HttpWebResponse)request.GetResponse()){
+            if(response.StatusCode!=HttpStatusCode.OK)throw new InvalidDataException("no picture ("+(int)response.StatusCode+")");
+            if(response.ContentLength>MaxBytes)throw new InvalidDataException("picture too large");
+            using(var stream=response.GetResponseStream())using(var buffer=new MemoryStream()){
+                var chunk=new byte[16384];int n;var clock=System.Diagnostics.Stopwatch.StartNew();
+                while((n=stream.Read(chunk,0,chunk.Length))>0){buffer.Write(chunk,0,n);if(buffer.Length>MaxBytes)throw new InvalidDataException("picture too large");if(clock.Elapsed.TotalSeconds>MaxSeconds)throw new TimeoutException("picture too slow");}
+                return buffer.ToArray();
+            }
+        }}finally{request.Abort();}
+    }
+    static bool IsJpeg(byte[] d){return d!=null&&d.Length>3&&d[0]==0xFF&&d[1]==0xD8&&d[2]==0xFF;}
+    static bool IsPng(byte[] d){return d!=null&&d.Length>8&&d[0]==0x89&&d[1]==0x50&&d[2]==0x4E&&d[3]==0x47&&d[4]==0x0D&&d[5]==0x0A&&d[6]==0x1A&&d[7]==0x0A;}
+    // A real JPEG or PNG (by its first bytes and by what GDI+ reads), at most MaxSide a side, center-cropped to the icon
+    // box at twice its size (42×48 → 84×96) and saved as a small JPEG.
+    internal static byte[] Shrink(byte[] data){
+        bool jpeg=IsJpeg(data),png=IsPng(data);if(!jpeg&&!png)throw new InvalidDataException("not a JPEG or PNG");
+        // validateImageData=false: GDI+ reads only the header here, so the size is checked before anything is decoded.
+        using(var input=new MemoryStream(data))using(var image=Image.FromStream(input,false,false)){
+            if(!(jpeg?image.RawFormat.Equals(System.Drawing.Imaging.ImageFormat.Jpeg):image.RawFormat.Equals(System.Drawing.Imaging.ImageFormat.Png)))throw new InvalidDataException("not a JPEG or PNG");
+            if(image.Width<8||image.Height<8||image.Width>MaxSide||image.Height>MaxSide||(long)image.Width*image.Height>MaxPixels)throw new InvalidDataException("odd picture size");
+            double scale=Math.Max((double)Width/image.Width,(double)Height/image.Height);float w=(float)(Width/scale),h=(float)(Height/scale);
+            using(var output=new Bitmap(Width,Height,System.Drawing.Imaging.PixelFormat.Format24bppRgb))using(var g=Graphics.FromImage(output))using(var wrap=new System.Drawing.Imaging.ImageAttributes()){
+                g.Clear(Color.FromArgb(0xED,0xE8,0xD9));g.InterpolationMode=System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;g.PixelOffsetMode=System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;g.CompositingQuality=System.Drawing.Drawing2D.CompositingQuality.HighQuality;
+                wrap.SetWrapMode(System.Drawing.Drawing2D.WrapMode.TileFlipXY);
+                g.DrawImage(image,new Rectangle(0,0,Width,Height),(image.Width-w)/2,(image.Height-h)/2,w,h,GraphicsUnit.Pixel,wrap);
+                var codec=System.Drawing.Imaging.ImageCodecInfo.GetImageEncoders().First(c=>c.FormatID==System.Drawing.Imaging.ImageFormat.Jpeg.Guid);
+                using(var options=new System.Drawing.Imaging.EncoderParameters(1))using(var saved=new MemoryStream()){options.Param[0]=new System.Drawing.Imaging.EncoderParameter(System.Drawing.Imaging.Encoder.Quality,85L);output.Save(saved,codec,options);return saved.ToArray();}
+            }
+        }
+    }
+}
+public partial class Manager {
+    readonly object thumbGate=new object();
+    readonly Queue<string> thumbQueue=new Queue<string>();
+    // Covers that failed on the network before this start wait behind new tasks' covers (a server that doesn't answer
+    // must not hold up the picture of the task just added).
+    readonly Queue<string> thumbRetry=new Queue<string>();
+    public const int CoverTriesMax=3;
+    // Tasks whose thumbnail is saved; ThumbVersion changes whenever one is added or removed.
+    readonly HashSet<string> thumbIds=new HashSet<string>();
+    bool thumbRunning;int thumbVersion;
+    internal string ThumbFolder{get{return Path.Combine(dataRoot,"thumbs");}}
+    internal string ThumbPath(string id){return Regex.IsMatch(id??"",@"^[a-f0-9]{16}$")?Path.Combine(ThumbFolder,id+".jpg"):null;}
+    public int ThumbVersion{get{lock(thumbGate)return thumbVersion;}}
+    public string[] ThumbIds(){lock(thumbGate)return thumbIds.ToArray();}
+    // The saved thumbnail as a data: address for the task list (its page loads nothing from the network), or null.
+    public string ThumbData(string id){
+        string path=ThumbPath(id);
+        try{if(path==null||!System.IO.File.Exists(path))return null;byte[] bytes=System.IO.File.ReadAllBytes(path);return bytes.Length<4||bytes.Length>Thumbs.MaxStored||!(bytes[0]==0xFF&&bytes[1]==0xD8)?null:"data:image/jpeg;base64,"+Convert.ToBase64String(bytes);}
+        catch(Exception){return null;}
+    }
+    // At start: thumbnails whose task is gone (removed by an older version, a crash) are deleted, and tasks that are
+    // still waiting for theirs are queued.
+    void LoadThumbs(){
+        var ids=new HashSet<string>(jobs.Select(j=>j.Id));
+        // A picture that isn't a small JPEG (emptied, replaced by hand) is deleted and fetched again.
+        try{if(Directory.Exists(ThumbFolder))foreach(string file in Directory.GetFiles(ThumbFolder)){string id=Path.GetFileNameWithoutExtension(file);if(Path.GetExtension(file)==".jpg"&&ids.Contains(id)&&ThumbData(id)!=null)lock(thumbGate)thumbIds.Add(id);else try{System.IO.File.Delete(file);}catch(Exception){}}}catch(Exception){}
+        List<string> waiting;lock(thumbGate)waiting=jobs.Where(j=>!String.IsNullOrEmpty(j.Cover)&&!thumbIds.Contains(j.Id)).Select(j=>j.Id).ToList();
+        foreach(string id in waiting)QueueThumb(id,true);
+    }
+    // One background worker, one picture at a time: never the UI thread, never a download's own work.
+    void QueueThumb(string id,bool retry=false){
+        lock(thumbGate){(retry?thumbRetry:thumbQueue).Enqueue(id);if(thumbRunning)return;thumbRunning=true;}
+        Task.Run(()=>{while(true){string next;lock(thumbGate){if(thumbQueue.Count+thumbRetry.Count==0||closing){thumbQueue.Clear();thumbRetry.Clear();thumbRunning=false;return;}next=thumbQueue.Count>0?thumbQueue.Dequeue():thumbRetry.Dequeue();}try{FetchThumb(next);}catch(Exception){}}});
+    }
+    // The page couldn't get a saved picture (deleted or damaged meanwhile): forget it and fetch it again.
+    public void ThumbMissing(string id){
+        string path=ThumbPath(id);if(path==null)return;
+        lock(thumbGate){if(!thumbIds.Remove(id))return;thumbVersion++;}
+        try{if(System.IO.File.Exists(path))System.IO.File.Delete(path);}catch(Exception){}
+        bool again;lock(gate){var job=jobs.FirstOrDefault(j=>j.Id==id);again=job!=null&&!String.IsNullOrEmpty(job.Cover)&&!closing;}
+        if(again)QueueThumb(id);
+    }
+    void FetchThumb(string id){
+        string cover;lock(gate){var job=jobs.FirstOrDefault(j=>j.Id==id);if(job==null||String.IsNullOrEmpty(job.Cover)||ThumbPath(id)==null)return;cover=Thumbs.CoverUrl(job.Cover);if(cover.Length==0){job.Cover="";return;}}
+        string proxy=ProxyUrl;byte[] picture=null;bool refused=false;
+        foreach(string candidate in Thumbs.Candidates(cover)){
+            try{picture=Thumbs.Shrink(Thumbs.Fetch(candidate,proxy));break;}
+            catch(WebException ex){var answer=ex.Response as HttpWebResponse;int code=answer==null?0:(int)answer.StatusCode;if(ex.Response!=null)ex.Response.Close();refused=code>=400&&code<500&&code!=429;if(!refused)break;}
+            catch(Exception ex){refused=ex is InvalidDataException||ex is ArgumentException||ex is OutOfMemoryException||ex is System.Runtime.InteropServices.ExternalException;if(!refused)break;}
+        }
+        if(picture==null){
+            // The server said no (or it isn't a picture): not asked again. A network failure is tried at the next start,
+            // at most CoverTriesMax starts in all.
+            lock(gate){if(closing)return;var job=jobs.FirstOrDefault(j=>j.Id==id);if(job==null||String.IsNullOrEmpty(job.Cover))return;
+                if(!refused){job.CoverTries++;if(job.CoverTries<CoverTriesMax){try{Save();}catch(Exception){}return;}}
+                job.Cover="";try{Save();}catch(Exception){}}
+            return;
+        }
+        string path=ThumbPath(id),temp=path+".tmp";
+        try{
+            Directory.CreateDirectory(ThumbFolder);System.IO.File.WriteAllBytes(temp,picture);
+            // Under the gate, like Forget: a task deleted meanwhile leaves no picture behind.
+            lock(gate){if(closing||!jobs.Any(j=>j.Id==id)){System.IO.File.Delete(temp);return;}if(System.IO.File.Exists(path))System.IO.File.Delete(path);System.IO.File.Move(temp,path);lock(thumbGate){thumbIds.Add(id);thumbVersion++;}}
+        }catch(Exception){try{System.IO.File.Delete(temp);}catch(Exception){}}
+    }
+    void DropThumb(string id){
+        lock(thumbGate){if(thumbIds.Remove(id))thumbVersion++;}
+        string path=ThumbPath(id);try{if(path!=null){if(System.IO.File.Exists(path))System.IO.File.Delete(path);if(System.IO.File.Exists(path+".tmp"))System.IO.File.Delete(path+".tmp");}}catch(Exception){/* Removed at the next start. */}
     }
 }
 }

@@ -135,15 +135,16 @@ chrome.runtime.onMessage.addListener((event,sender,respond)=>{
  })();
  else if(event.Message?.startsWith('shiyingFloating'))task=floatingRequest(event,sender);
  else if(event.Message==='shiyingPlatformRead')task=platformRead(event);
+ // 0.4.73: the hand-off also names the video's cover (its image server only), shown small in the desktop task list.
  else if(event.Message==='shiyingPlatformDesktop')task=(async()=>{
   if(sender.url?.split('?')[0]!==chrome.runtime.getURL('shiying.html'))throw new Error('请在 Ruxget 面板中发送桌面下载');
   const catalog=(await chrome.storage.session.get(NATIVE_CATALOG_PREFIX+event.id))[NATIVE_CATALOG_PREFIX+event.id];
   if(!catalog||Date.now()-catalog.createdAt>20*60*1000)throw new Error('视频信息已过期，请重新读取');
-  if(catalog.muxed){const track=event.format==='mp3'?catalog.audio[0]:catalog.video.find(item=>item.height===Number(event.height));if(!track)throw new Error('请选择实际可用的清晰度');return {payload:{action:'add',kind:'tracks',url:catalog.url,title:catalog.title,height:track.height||1080,videoUrl:track.url,audioUrl:'',extractAudio:event.format==='mp3',referer:catalog.url,userAgent:navigator.userAgent}};}
+  if(catalog.muxed){const track=event.format==='mp3'?catalog.audio[0]:catalog.video.find(item=>item.height===Number(event.height));if(!track)throw new Error('请选择实际可用的清晰度');return {payload:{action:'add',kind:'tracks',url:catalog.url,title:catalog.title,height:track.height||1080,videoUrl:track.url,audioUrl:'',extractAudio:event.format==='mp3',cover:event.format==='mp3'?'':ShiyingPlatform.thumbnailURL(catalog.cover),referer:catalog.url,userAgent:navigator.userAgent}};}
   if(event.format==='mp3')return {payload:{action:'add',kind:'audio',url:catalog.url,title:catalog.title}};
   const height=Number(event.height),video=catalog.video.find(track=>track.height===height),audio=catalog.audio[0];
   if(!video||!audio)throw new Error('请选择实际可用的清晰度');
-  return {payload:{action:'add',kind:'tracks',url:catalog.url,title:catalog.title,height,videoUrl:video.url,audioUrl:audio.url,referer:catalog.url,userAgent:navigator.userAgent}};
+  return {payload:{action:'add',kind:'tracks',url:catalog.url,title:catalog.title,height,videoUrl:video.url,audioUrl:audio.url,cover:ShiyingPlatform.thumbnailURL(catalog.cover),referer:catalog.url,userAgent:navigator.userAgent}};
  })();
  else if(event.Message==='shiyingPlatformStart')task=platformStart(event);
  else if(event.Message==='shiyingPlatformSubtitle')task=(async()=>{

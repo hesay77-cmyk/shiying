@@ -38,6 +38,8 @@ class StructureCheck {
     static void Wait(Manager manager,Func<bool> done,string name,int seconds=60){var watch=Stopwatch.StartNew();while(!done()){if(watch.Elapsed.TotalSeconds>seconds)throw new Exception("timed out: "+name);manager.Tick();Thread.Sleep(200);}}
     static int Main(string[] args){try{
         string report=Path.GetFullPath(args[0]);
+        // 0.4.73: a YouTube task asks i.ytimg.com for its cover; checks never reach the real network.
+        Thumbs.Fetch=(address,proxy)=>{throw new InvalidDataException("no network in checks");};
         // Destination on another drive than the app's data (the case that used to copy the whole file).
         string other=Path.Combine(Path.GetTempPath(),"ruxget-structure-"+Guid.NewGuid().ToString("N").Substring(0,8));
         bool otherDrive=!String.Equals(Path.GetPathRoot(other),Path.GetPathRoot(report),StringComparison.OrdinalIgnoreCase);

@@ -18,11 +18,14 @@ const ShiyingCollection = {
         if(this.readers[source.site])return {...source,...await this.readers[source.site](source)};
         const id=new URL(source.url).pathname.match(/\/video\/(BV\w+|av\d+)/i)[1];
         const query=new URLSearchParams(/^av/i.test(id)?{aid:id.slice(2)}:{bvid:id});
+        // 0.4.73: signed in or not, from B站's own answer (as the single-video card does); unknown stays null and the panel says nothing.
+        const login=fetch('https://api.bilibili.com/x/web-interface/nav',{credentials:'include',signal:AbortSignal.timeout(8000)}).then(r=>r.json()).then(nav=>typeof nav?.data?.isLogin==='boolean'?nav.data.isLogin:null).catch(()=>null);
         const response=await fetch('https://api.bilibili.com/x/web-interface/view?'+query,{credentials:'include',signal:AbortSignal.timeout(20000)});
         if(!response.ok)throw new Error('B站列表读取失败');
         const json=await response.json(), data=json.data;
         if(json.code!==0||!Array.isArray(data?.pages)||!data.pages.length)throw new Error('没有读到分 P 列表，请检查视频网址');
-        return {...source,title:String(data.title),total:data.pages.length,hasMore:data.pages.length>this.LIMIT,entries:data.pages.slice(0,this.LIMIT).map(p=>({
+        const loggedIn=await login;
+        return {...source,loggedIn,title:String(data.title),total:data.pages.length,hasMore:data.pages.length>this.LIMIT,entries:data.pages.slice(0,this.LIMIT).map(p=>({
             url:'https://www.bilibili.com/video/'+data.bvid+'/?p='+p.page,title:'P'+p.page+' '+p.part,duration:Math.floor((p.duration||0)/60)+':'+String((p.duration||0)%60).padStart(2,'0'),available:true}))};
     }
 };

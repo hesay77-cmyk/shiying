@@ -654,7 +654,7 @@
     "message": "HEVC / H.265 may not play in every browser."
   },
   "m3u8Info": {
-    "message": "Stream info",
+    "message": "$num$ segments, $time$ in total",
     "placeholders": {
       "num": {
         "content": "$1"
@@ -1411,5 +1411,191 @@
   },
   "uiHelpPageTitle": {
     "message": "Ruxget · Getting Started"
+  },
+  "toolKeepPageOpen": {
+    "message": "Keep this page open. Download progress appears here."
+  },
+  "toolShowAdvanced": {
+    "message": "Show advanced options"
+  },
+  "toolHideAdvanced": {
+    "message": "Hide advanced options"
+  },
+  "tipCurrentPage": {
+    "message": "This page"
+  },
+  "tipOtherPages": {
+    "message": "Other pages"
+  },
+  "tipOtherFeatures": {
+    "message": "Other features and media control"
+  },
+  "tipPossibleKey": {
+    "message": "Possible key"
+  },
+  "tipVideoTab": {
+    "message": "Tab with the video"
+  },
+  "tipVideo": {
+    "message": "Video"
+  },
+  "tipPlaybackRate": {
+    "message": "Playback speed"
+  },
+  "tipSpeed": {
+    "message": "Adjust playback speed"
+  },
+  "tipPlayPause": {
+    "message": "Play or pause"
+  },
+  "tipPip": {
+    "message": "Toggle picture-in-picture"
+  },
+  "tipFullscreen": {
+    "message": "Toggle full screen"
+  },
+  "tipScreenshot": {
+    "message": "Take a screenshot of the current frame"
+  },
+  "tipLoop": {
+    "message": "Loop"
+  },
+  "tipMute": {
+    "message": "Mute"
+  },
+  "tipVolume": {
+    "message": "Volume"
+  },
+  "tipVolumeControl": {
+    "message": "Adjust the volume"
+  },
+  "tipTime": {
+    "message": "Time"
+  },
+  "tipTimeControl": {
+    "message": "Seek"
+  },
+  "tipDownloader": {
+    "message": "Open the downloader"
+  },
+  "tipM3u8Parser": {
+    "message": "Open the M3U8 parser"
+  },
+  "tipMpdParser": {
+    "message": "Open the MPD parser"
+  },
+  "tipJsonFormatter": {
+    "message": "Open the JSON formatter"
+  },
+  "tipOpenSettings": {
+    "message": "Open settings"
+  },
+  "tipRegexFilter": {
+    "message": "Regex filter"
+  },
+  "tipExtensions": {
+    "message": "Filter by extension"
+  },
+  "tipExpandAll": {
+    "message": "Expand all"
+  },
+  "tipExpandPlayable": {
+    "message": "Expand playable items"
+  },
+  "tipExpandSelected": {
+    "message": "Expand selected items"
+  },
+  "tipCollapseAll": {
+    "message": "Collapse all"
+  },
+  "tipRecordVideo": {
+    "message": "Start recording the video"
+  },
+  "tipRecordWebRTC": {
+    "message": "Record WebRTC streams"
+  },
+  "tipRecordScreen": {
+    "message": "Record the screen"
+  },
+  "tipMobile": {
+    "message": "Simulate a mobile device"
+  },
+  "tipAutoDownload": {
+    "message": "Turn automatic downloads on or off"
+  },
+  "tipSend2local": {
+    "message": "Send the selected items"
+  },
+  "tipMergeDownload": {
+    "message": "Merge the selected items and download"
+  },
+  "tipDownloadSelected": {
+    "message": "Download the selected items"
+  },
+  "tipCopySelected": {
+    "message": "Copy the links of the selected items"
+  },
+  "tipSelectAll": {
+    "message": "Select all"
+  },
+  "tipFilter": {
+    "message": "Open filters"
+  },
+  "tipClear": {
+    "message": "Clear the list"
+  },
+  "tipDeepSearch": {
+    "message": "Search the page deeply for media"
+  },
+  "tipCacheCapture": {
+    "message": "Capture media cached while playing"
+  },
+  "tipPauseDetection": {
+    "message": "Pause or resume detection"
+  },
+  "tipPopupWindow": {
+    "message": "Open in a separate window"
+  },
+  "tipSwitchCurrent": {
+    "message": "Switch to the current page"
+  },
+  "tipResetSuffix": {
+    "message": "Reset extensions to the defaults"
+  },
+  "tipDisableAllSuffix": {
+    "message": "Turn off all extensions"
+  },
+  "tipEnableAllSuffix": {
+    "message": "Turn on all extensions"
+  },
+  "tipResetType": {
+    "message": "Reset MIME types to the defaults"
+  },
+  "tipDisableAllType": {
+    "message": "Turn off all MIME types"
+  },
+  "tipEnableAllType": {
+    "message": "Turn on all MIME types"
+  },
+  "tipResetRegex": {
+    "message": "Reset regex rules to the defaults"
+  },
+  "tipDisableAllRegex": {
+    "message": "Turn off all regex rules"
+  },
+  "tipEnableAllRegex": {
+    "message": "Turn on all regex rules"
+  },
+  "tipResetBlockUrl": {
+    "message": "Reset blocked URLs to the defaults"
+  },
+  "tipDisableAllBlockUrl": {
+    "message": "Turn off all blocked URLs"
+  },
+  "tipEnableAllBlockUrl": {
+    "message": "Turn on all blocked URLs"
+  },
+  "qrCode": {
+    "message": "QR code"
   }
 }

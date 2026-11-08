@@ -60,6 +60,10 @@ main,.view-panel{background:transparent!important}
 #platformQuality,select{border-radius:8px!important;border:1px solid var(--edge)!important;background-color:var(--field)!important;color:var(--fg)!important;font-size:14px!important}
 #platformQuality{min-height:36px;padding:8px 12px!important;flex:1}
 select option,select optgroup{background:var(--field)!important;color:var(--fg)!important}
+/* 0.4.73: shiying.css gives select its own dark color-scheme (for the desktop app); here its native parts stay light. */
+select{color-scheme:light!important}
+/* 0.4.73: 分 P sheet in a 360×560 panel: 「下载所选」 stays in view at the sheet's bottom edge instead of needing a second scroll. */
+#collectionStart{position:sticky;bottom:0;z-index:1;box-shadow:0 0 0 8px var(--card),0 12px 0 8px var(--card)!important}#collectionStart:disabled{opacity:1}
 .split-download{box-shadow:none!important;border-radius:8px!important}
 .download-button{background:var(--olive)!important;color:var(--olive-ink)!important;border:0!important;border-radius:8px!important;box-shadow:none!important;font-size:14px!important;line-height:20px!important;font-weight:600!important;padding:8px 12px!important;min-height:36px}
 .download-button:hover:not(:disabled){background:var(--olive-hover)!important}

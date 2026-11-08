@@ -33,7 +33,7 @@ summary { cursor:pointer; }
 @media (max-width:600px) { .shiying-tool-heading { flex-wrap:wrap; margin-top:20px; } .shiying-tool-heading h1 { font-size:19px; } .shiying-tool .videoInfo { flex-wrap:wrap; } .shiying-tool #mergeDown { flex-wrap:wrap; } }
 /* Shared fix for the old file, HLS and DASH download pages. */
 .shiying-tool,.shiying-tool *,.shiying-tool *::before,.shiying-tool *::after{box-sizing:border-box}
-.shiying-tool{color-scheme:dark;min-height:100vh;margin:0;background:var(--paper);color:var(--ink)}
+.shiying-tool{color-scheme:light;min-height:100vh;margin:0;background:var(--paper);color:var(--ink)}
 .shiying-tool .wrapper,.shiying-tool .wrapper1080,.shiying-tool .wrapper1024,.shiying-tool .m3u8_wrapper{width:auto;min-width:0;max-width:940px;margin:16px auto;padding:0 24px}
 .shiying-tool section,.shiying-tool .optionBox,.shiying-tool .block,.shiying-tool .downItem{min-width:0;max-width:100%}
 .shiying-tool .optionBox{background:var(--background-color);border-color:var(--line);border-radius:10px;padding:20px}
