@@ -153,6 +153,18 @@ class WindowShellCheck {
    Point moved=new Point(window.Left+37,window.Top+23);window.Location=moved;Application.DoEvents();restoreNative();Require(window.Location==moved&&window.Size==before,"A moved window came back at "+window.Bounds+" instead of "+moved);
    JS(window,"document.getElementById('miniToggle').click()");Pump(()=>(bool)Field(window,"miniMode"),"Mini before taskbar restore failed");Size mini=window.Size;restoreNative();Require((bool)Field(window,"miniMode")&&window.Size==mini,"The mini window came back at "+window.Size+" instead of "+mini);
    JS(window,"document.getElementById('expand').click()");Pump(()=>!(bool)Field(window,"miniMode"),"Mini expand after taskbar restore failed");Application.DoEvents();Require(window.Size==before,"Leaving mini after a taskbar restore changed the window size ("+window.Size+" vs "+before+")");
+   // 0.4.75: hidden in the tray, the interface (WebView2) is released and its processes end; opening the window builds
+   // it again at the window's size, ready for the host's messages.
+   Func<int> webviews=()=>{int n=0;using(var q=new System.Management.ManagementObjectSearcher("SELECT CommandLine FROM Win32_Process WHERE Name='msedgewebview2.exe'"))foreach(System.Management.ManagementObject p in q.Get()){string c=(p["CommandLine"] as string)??"";if(c.IndexOf(report,StringComparison.OrdinalIgnoreCase)>=0)n++;}return n;};
+   Func<double> privateMB=()=>{double bytes=0;using(var q=new System.Management.ManagementObjectSearcher("SELECT ProcessId,CommandLine,PrivatePageCount FROM Win32_Process WHERE Name='msedgewebview2.exe' OR ProcessId="+System.Diagnostics.Process.GetCurrentProcess().Id))foreach(System.Management.ManagementObject p in q.Get()){string c=(p["CommandLine"] as string)??"";if(Convert.ToInt32(p["ProcessId"])==System.Diagnostics.Process.GetCurrentProcess().Id||c.IndexOf(report,StringComparison.OrdinalIgnoreCase)>=0)bytes+=Convert.ToDouble(p["PrivatePageCount"]);}return Math.Round(bytes/1048576,1);};
+   GC.Collect();Thread.Sleep(1500);double memoryWithInterface=privateMB();
+   int webviewsBefore=webviews();Require(webviewsBefore>0,"no WebView2 process found for this window");
+   Call(window,"ReleaseInterface");Require(Field(window,"pluginView")==null&&!(bool)Field(window,"pluginReady"),"the interface was not released");
+   Pump(()=>webviews()==0,"WebView2 processes did not end after the interface was released ("+webviews()+" left of "+webviewsBefore+")",30);
+   GC.Collect();GC.WaitForPendingFinalizers();Thread.Sleep(3000);double memoryReleased=privateMB();Util.Atomic(Path.Combine(report,"interface-memory.json"),new{withInterfaceMB=memoryWithInterface,releasedMB=memoryReleased});
+   window.RestoreFromTray();Pump(()=>(bool)Field(window,"pluginReady")&&Field(window,"pluginView")!=null,"the interface did not come back when the window was opened",30);Application.DoEvents();
+   var back=(Control)Field(window,"pluginView");Require(back.Dock==DockStyle.Fill&&back.Size==window.ClientSize,"the rebuilt interface does not fill the window ("+back.Size+" vs "+window.ClientSize+")");
+   Require(JS(window,"document.readyState==='complete'&&!!document.querySelector('.desktop-app')")=="true","the rebuilt interface did not load its page");
    Util.Atomic(Path.Combine(report,"child.json"),new{ok=true,version=Util.Version,privateDesktop=expected,wholeWindowCaptured=true,nativeCaptionRemoved=true,dragHit=drag,maximizeFitsWorkArea=true,miniRestoresSize=true,normalWidth=normal.Width,normalHeight=normal.Height,dpr,mediaDownloaded=false});CheckClose(window,manager,report);backdrop.Close();
   }
  }

@@ -18,9 +18,32 @@ public partial class MainWindow {
     System.Threading.CancellationTokenSource playlistCancel;
     PlaylistCatalog playlistCatalog;string playlistSource="";
     public void PreparePluginLayout(){if(IsHandleCreated)throw new InvalidOperationException("Prepare the desktop layout before creating a window handle");MinimumSize=new Size(720,520);FormBorderStyle=FormBorderStyle.Sizable;MaximizeBox=true;SizeGripStyle=SizeGripStyle.Hide;resizeFrameEnabled=true;RestoreWindowSize();UpdateResizeFrame();}
+    // 0.4.75: hidden in the tray for a while, the interface (WebView2, about 200 MB of the ~250 MB Ruxget uses) is
+    // closed and only the download manager keeps running (about 45 MB). Downloads, the tray icon and the extension's
+    // connection don't go through the interface. Opening the window, or a download that needs confirming, builds it
+    // again (about a second); nothing is shown or said about it.
+    internal static TimeSpan InterfaceReleaseAfter=TimeSpan.FromSeconds(60);
+    DateTime hiddenSince=DateTime.MaxValue;bool interfaceReleased,closeHooked;string interfaceCache,interfaceLibrary;
+    void TrackHiddenInterface(){
+        if(preview||closingWindow||IsDisposed||pluginView==null||Visible||!hiddenToTray){hiddenSince=DateTime.MaxValue;return;}
+        if(hiddenSince==DateTime.MaxValue){hiddenSince=DateTime.UtcNow;return;}
+        if(DateTime.UtcNow-hiddenSince<InterfaceReleaseAfter||!pluginReady||pluginBusy||editorToken.Length>0)return;
+        ReleaseInterface();
+    }
+    internal void ReleaseInterface(){
+        var view=pluginView;if(view==null)return;
+        pluginReady=false;sendPlugin=null;pluginView=null;interfaceReleased=true;hiddenSince=DateTime.MaxValue;thumbsSent.Clear();thumbsVersion=-1;
+        Controls.Remove(view);try{view.Dispose();}catch(Exception){/* the WebView2 processes end with the controller */}
+    }
+    // Before the window is shown again (or a confirmation needs it): the interface comes back as it was.
+    internal void EnsureInterface(){
+        if(pluginView!=null||!interfaceReleased||closingWindow||IsDisposed)return;
+        interfaceReleased=false;StartPlugin();
+    }
     public async Task InitializePlugin(string cache,string library=null){
         if(pluginView!=null)return;
-        FormClosed+=(s,e)=>{if(playlistCancel!=null)playlistCancel.Cancel();};
+        interfaceCache=cache;interfaceLibrary=library;
+        if(!closeHooked){closeHooked=true;FormClosed+=(s,e)=>{if(playlistCancel!=null)playlistCancel.Cancel();};}
         var type=Assembly.LoadFrom(library??Path.Combine(Util.Root,"Shiying.Interface.dll")).GetType("ShiyingInterface.PluginView",true);
         pluginView=(Control)Activator.CreateInstance(type);pluginView.Dock=DockStyle.Fill;
         sendPlugin=json=>{if(!pluginView.IsDisposed)type.GetMethod("Send").Invoke(pluginView,new object[]{json});};
@@ -29,7 +52,7 @@ public partial class MainWindow {
         Controls.Add(pluginView);pluginView.BringToFront();mainSurface.Visible=miniSurface.Visible=false;
         await (Task)type.GetMethod("Initialize").Invoke(pluginView,new object[]{cache});
     }
-    async void StartPlugin(){try{await InitializePlugin(Path.Combine(Util.Root,"data","interface-cache"));}catch(Exception ex){
+    async void StartPlugin(){try{await InitializePlugin(interfaceCache??Path.Combine(Util.Root,"data","interface-cache"),interfaceLibrary);}catch(Exception ex){
         if(IsDisposed)return;if(pluginView!=null)pluginView.Visible=false;
         var message=new Label{Dock=DockStyle.Fill,TextAlign=ContentAlignment.MiddleCenter,Padding=new Padding(24),ForeColor=Muted,Text="下载界面未能启动。\n请重新运行新版安装器，并确认已安装 Microsoft Edge WebView2。\n\n"+Util.SafeError(ex.GetBaseException().Message)};Controls.Add(message);message.BringToFront();
     }}
