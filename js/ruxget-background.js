@@ -4,6 +4,7 @@
 importScripts(
     '/js/shiying-access.js',
     '/js/ruxget-engine.js',
+    '/js/ruxget-probe.js',
     '/js/shiying-background.js',
     '/js/shiying-native.js',
     '/js/shiying-takeover.js',

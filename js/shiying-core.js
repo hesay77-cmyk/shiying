@@ -20,6 +20,8 @@ const Shiying = (() => {
         return `${(bytes / 1024 ** power).toFixed(power ? 1 : 0)} ${units[power]}`;
     }
     function name(data) {
+        // 2026-11-08 (spec 06 §3): a playlist found by 页面播放器探测 that has no address of its own.
+        if (/#ruxget-text:[0-9a-f]{16}$/.test(String(data.url || ''))) return globalThis.RuxgetI18n ? RuxgetI18n.pick('网页生成的播放列表', 'Playlist made by the page') : '网页生成的播放列表';
         let result = data.name || data.title || (window.RuxgetI18n ? RuxgetI18n.pick('网页视频', 'Web video') : '网页视频');
         try { result = decodeURIComponent(result); } catch { /* 保留原文件名 */ }
         return result;

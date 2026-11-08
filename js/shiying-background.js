@@ -213,6 +213,10 @@ async function startDownload(data, tabId) {
         // a pasted playlist waits on the page for the person to choose.
         const page = new URLSearchParams({url:data.url, title:data.title || '', filename:Shiying.filename({...data, ext:'mp4'}), requestHeaders:JSON.stringify(requestHeaders)});
         if (kind === 'hls' && !data.pasted) page.set('autoStart', '1');
+        // 2026-11-08 (spec 06 §6): a playlist the page made itself is read from the probe's copy (textKey), and its
+        // relative entries resolve against the page that made it.
+        const text = /#ruxget-text:([0-9a-f]{16})$/.exec(data.url);
+        if (text) { page.set('url', data.url.slice(0, text.index)); page.set('textKey', text[1]); }
         await chrome.tabs.create({url:chrome.runtime.getURL(`${kind === 'hls' ? 'hls' : 'dash'}-download.html?${page}`), active:true});
         return {};
     }

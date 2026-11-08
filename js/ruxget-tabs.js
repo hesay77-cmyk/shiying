@@ -27,7 +27,8 @@
     }
     // Something to download here: detected media, a supported site's video card, a netdisk share, or the
     // "允许此网站" step that has to come before Ruxget can look for videos on this site.
-    const found = () => !document.body.classList.contains('no-media') || ['#platformCard', '#netdiskEntry', '#siteAccess'].some(id => $(id)?.hidden === false);
+    // 2026-11-08 (spec 06): an allowed web page offers 页面播放器探测 there, so it counts as something to do here.
+    const found = () => !document.body.classList.contains('no-media') || document.body.classList.contains('probe-offered') ||['#platformCard', '#netdiskEntry', '#siteAccess'].some(id => $(id)?.hidden === false);
     // Called by shiying.js each time it has read the current page.
     function decide() { decidedAt = performance.now(); document.body.dataset.decided = '1'; if (!chosen) show(found() ? 'page' : 'downloads'); }
     // If reading the page fails or hangs, the panel still shows (on 本页视频, where the error is).

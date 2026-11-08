@@ -114,7 +114,10 @@ function render() {
     allToggle.textContent = showAll ? pick('收起全部请求', 'Hide all requests') : pick(`显示全部请求（${others.length}）`, `Show all requests (${others.length})`);
     allToggle.setAttribute('aria-expanded', String(showAll));
     allToggle.addEventListener('click', () => { showAll = !showAll; render(); });
+    allToggle.hidden = !others.length;
     note.replaceChildren(...(noteText.textContent ? [noteText, ' '] : []), allToggle);
+    // 2026-11-08 (spec 06): 页面播放器探测 follows 「显示全部请求」 on this line, on any allowed web page.
+    if (typeof RuxgetProbePanel !== 'undefined' && RuxgetProbePanel.attach(note, currentSite, tabId)) note.hidden = false;
     renderAllRequests(showAll ? others : [], pick);
     const list = $('#mediaList');
     list.replaceChildren();
