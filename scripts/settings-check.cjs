@@ -37,7 +37,7 @@ const checks=[];function check(name){checks.push(name);console.log('PASS '+name)
   assert.equal(await page.locator('input[name=language][value=zh_CN]').isChecked(),true);
   assert.equal(await page.locator('#versionText').innerText(),'版本 '+manifest.version);
   assert.equal(await page.locator('a.desktop-get').innerText(),'下载 Ruxget 桌面版（免费，3 MB）');assert.equal(await page.locator('a.desktop-get').getAttribute('href'),'https://hidaydream.cloud/desktop/?from=ext');
-  assert.equal(await page.locator('#helpLink').getAttribute('href'),'shiying-help.html');assert.equal(await page.locator('#advancedLink').getAttribute('href'),'options.html');
+  assert.equal(await page.locator('#helpLink').getAttribute('href'),'shiying-help.html');assert.equal(await page.locator('#advancedLink').count(),0,'0.4.79: no link to the old options page');
   assert.equal(await page.locator('#sitesLink').getAttribute('href'),'shiying-help.html#site-access');
   assert.match(await page.locator('#privacyLink').getAttribute('href'),/PRIVACY\.md$/);
   assert.equal(await page.locator('#siteLink').innerText(),'Ruxget 桌面版介绍');assert.equal(await page.locator('#siteLink').getAttribute('href'),'https://hidaydream.cloud/desktop/?from=ext');assert.equal(await page.locator('#siteLink').getAttribute('target'),'_blank');

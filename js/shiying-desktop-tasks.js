@@ -61,7 +61,7 @@ const RuxgetDesktopTasks={
             if(text)await chrome.action.setBadgeText({text,tabId:tab.id}).catch(()=>{});
             else{
                 await chrome.action.setBadgeText({text:'',tabId:tab.id}).catch(()=>{});
-                if(typeof SetIcon==='function'&&typeof cacheData!=='undefined')SetIcon({number:cacheData[tab.id]?.length||0,tabId:tab.id});
+                if(typeof RuxgetEngine!=='undefined')RuxgetEngine.updateBadge(tab.id); // 0.4.79: the page's own count again
             }
         }
     },

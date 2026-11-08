@@ -6,7 +6,7 @@ const root=path.resolve(__dirname,'..'),report=fs.mkdtempSync(path.join(process.
 (async()=>{
  const {chromium}=require(process.env.SHIYING_PLAYWRIGHT||'playwright');
  const extension=path.join(report,'extension');fs.mkdirSync(extension);
- for(const dir of ['js','css','img','lib','catch-script','_locales'])fs.cpSync(path.join(root,dir),path.join(extension,dir),{recursive:true});
+ for(const dir of ['js','css','img','lib','_locales'])fs.cpSync(path.join(root,dir),path.join(extension,dir),{recursive:true});
  for(const name of fs.readdirSync(root))if(name.endsWith('.html')||name.endsWith('.md')||name==='manifest.json'||name==='LICENSE')fs.copyFileSync(path.join(root,name),path.join(extension,name));
  const context=await chromium.launchPersistentContext(path.join(report,'profile'),{executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true,viewport:{width:1100,height:900},ignoreDefaultArgs:['--disable-extensions'],args:['--mute-audio','--autoplay-policy=user-gesture-required',`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--lang=zh-CN','--disable-background-networking','--host-resolver-rules=MAP * ~NOTFOUND']});
  const problems=[];

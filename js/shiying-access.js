@@ -24,14 +24,12 @@ const ShiyingAccess = (() => {
     async function sync() {
         granted = (await chrome.permissions.getAll()).origins || [];
         if (typeof document !== 'undefined') return;
-        const optional = granted.filter(pattern => !required.includes(pattern) && /^https?:\/\/[^/*]+\/\*$/.test(pattern));
+        // 0.4.79: the old page script (media controls for the classic popup) is gone; a registration left by an
+        // earlier version is removed so nothing is injected into authorized sites any more.
         registration = registration.catch(() => {}).then(async () => {
             const id = 'shiying-authorized-sites';
             const exists = (await chrome.scripting.getRegisteredContentScripts({ids:[id]})).length;
-            if (!optional.length) {if (exists) await chrome.scripting.unregisterContentScripts({ids:[id]}); return;}
-            const script = {id, matches:optional, js:['js/content-script.js'], runAt:'document_start', allFrames:true, persistAcrossSessions:true};
-            if (exists) await chrome.scripting.updateContentScripts([script]);
-            else await chrome.scripting.registerContentScripts([script]);
+            if (exists) await chrome.scripting.unregisterContentScripts({ids:[id]});
         });
         await registration;
     }

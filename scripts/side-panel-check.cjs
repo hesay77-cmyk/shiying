@@ -1,7 +1,7 @@
 // Exercise the actual tab-update listener without opening Chrome or making requests.
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
-const root=path.resolve(__dirname,'..'),source=fs.readFileSync(path.join(root,'js/background.js'),'utf8');
-const begin=source.indexOf('chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {');
+const root=path.resolve(__dirname,'..'),source=fs.readFileSync(path.join(root,'js/ruxget-background.js'),'utf8');
+const begin=source.indexOf('chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {');
 const end=source.indexOf('\n});',begin)+5;
 assert(begin>=0&&end>begin,'tab-update listener not found');
 let update;const options=[];

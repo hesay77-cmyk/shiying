@@ -1,5 +1,5 @@
 // Lists visible Chinese text left in the English interface (popup, its dialogs, desktop app, extension pages,
-// and the inherited tool pages m3u8/mpd/json/downloader/preview/popup/options on a Chinese Chrome).
+// and Ruxget's own download pages on a Chinese Chrome; the inherited CatCatch tool pages are gone since 0.4.79).
 // 0.4.74: also the Chinese interface (no English labels, colons in each language's style) and switching the language
 // while the panel or a tool page stays open (A2, D: visible pages switch in place, hidden idle pages may reload once,
 // touched or busy pages and the page the change was made on never reload). Fixture titles are Chinese on purpose.
@@ -136,22 +136,22 @@ const mixedText=lang=>{const out=[];const keep=/^(Ruxget|FFmpeg|ffmpeg|Aria2|ari
    // Settings: tab A, tab B and 高级选项 open together.
    {
     const name='follow-settings',problems=[];
-    const a=await open('ruxget-settings.html'),b=await open('ruxget-settings.html'),options=await open('options.html');
+    const a=await open('ruxget-settings.html'),b=await open('ruxget-settings.html');
     const ticked=p=>p.evaluate(()=>document.querySelector('input[name=language]:checked')?.value||null);
     const labels={'#settingsSubtitle':['设置','Settings'],'#languageTitle':['语言','Language'],'#desktopTitle':['交给桌面版','Hand downloads to the desktop app'],'#versionText':[/^版本 /,/^Version /]};
     const step=async(label,lang,choice)=>{await b.waitForTimeout(900);for(const [tab,p] of Object.entries({A:a,B:b})){problems.push(...await follows(p,lang,`${label}, tab ${tab}`,labels));const value=await ticked(p);if(value!==choice)problems.push(`[${label}, tab ${tab}] ticked ${value}, expected ${choice}`);}};
     await a.locator('label:has(input[name=language][value=en])').click();await step('English chosen in tab A','en','en');
     await b.screenshot({path:path.join(report,'follow-settings-B-en.png')});
-    await options.locator('#languageSelect').selectOption('zh_CN');await step('中文 chosen in 高级选项','zh_CN','zh_CN');
+    await a.locator('label:has(input[name=language][value=zh_CN])').click();await step('中文 chosen in tab A','zh_CN','zh_CN');
     await b.screenshot({path:path.join(report,'follow-settings-B-zh.png')});
     // The tester's case: tab B still had its old choice ticked, so clicking it did nothing.
     await b.locator('label:has(input[name=language][value=en])').click();await step('English clicked in tab B','en','en');
     await b.locator('label:has(input[name=language][value=zh_CN])').click();await step('中文 clicked in tab B','zh_CN','zh_CN');
     // 跟随浏览器 on this English Chromium: the text is English, 跟随浏览器 ticked.
-    await options.locator('#languageSelect').selectOption('auto');await step('跟随浏览器 chosen in 高级选项','en','auto');
-    await options.locator('#languageSelect').selectOption('zh_CN');await step('中文 chosen in 高级选项 again','zh_CN','zh_CN');
-    await a.close();await b.close();await options.close();
-    conclude(name,problems,'second tab and 高级选项 → both tabs follow, choice ticked');
+    await a.locator('label:has(input[name=language][value=auto])').click();await step('跟随浏览器 chosen in tab A','en','auto');
+    await a.locator('label:has(input[name=language][value=zh_CN])').click();await step('中文 chosen in tab A again','zh_CN','zh_CN');
+    await a.close();await b.close();
+    conclude(name,problems,'second tab → both tabs follow, choice ticked');
    }
    // The progress page after the download has ended (it no longer refreshes itself).
    {
@@ -196,18 +196,12 @@ const mixedText=lang=>{const out=[];const keep=/^(Ruxget|FFmpeg|ffmpeg|Aria2|ari
   mpd:'<?xml version="1.0"?><MPD xmlns="urn:mpeg:dash:schema:mpd:2011" type="static" mediaPresentationDuration="PT20S" minBufferTime="PT2S" profiles="urn:mpeg:dash:profile:isoff-on-demand:2011"><Period><AdaptationSet mimeType="video/mp4" contentType="video"><Representation id="v1" bandwidth="800000" width="1280" height="720" codecs="avc1.64001f"><SegmentTemplate media="v1-$Number$.m4s" initialization="v1-init.mp4" duration="10" startNumber="1" timescale="1"/></Representation></AdaptationSet><AdaptationSet mimeType="audio/mp4" contentType="audio" lang="en"><Representation id="a1" bandwidth="128000" codecs="mp4a.40.2"><SegmentTemplate media="a1-$Number$.m4s" initialization="a1-init.mp4" duration="10" startNumber="1" timescale="1"/></Representation></AdaptationSet></Period></MPD>',
   json:JSON.stringify({title:'Fixture',items:[1,2,{kind:'sample'}]})};
  const media='https://media.fixture/video/';
+ // 0.4.79: only Ruxget's own download pages are left (the CatCatch tool pages are gone).
  const toolPages=[
-  ['m3u8-master',`m3u8.html?url=${encodeURIComponent(media+'master.m3u8')}`],
-  ['m3u8',`m3u8.html?url=${encodeURIComponent(media+'index.m3u8')}&title=${encodeURIComponent('Fixture clip')}`],
-  ['mpd',`mpd.html?url=${encodeURIComponent(media+'manifest.mpd')}`],
-  ['json',`json.html?url=${encodeURIComponent('https://media.fixture/data.json')}`],
-  ['downloader','downloader.html'],
-  ['downloader-file',`downloader.html?JSON=${encodeURIComponent(JSON.stringify({url:media+'file.bin',requestId:'91003',name:'file.bin',ext:'bin'}))}`],
   ['dash',`dash-download.html?url=${encodeURIComponent(media+'manifest.mpd')}&title=Fixture`],
   ['file-form','file-download.html'],
-  ['hls',`hls-download.html?url=${encodeURIComponent(media+'master.m3u8')}&title=Fixture`],
   ['file',`file-download.html?task=${encodeURIComponent(JSON.stringify({url:media+'file.bin',filename:'file.bin',title:'Fixture'}))}`],
-  ['preview','preview.html?tabId=TAB'],['popup','popup.html?tabId=TAB'],['options','options.html']];
+  ['hls',`hls-download.html?url=${encodeURIComponent(media+'master.m3u8')}&title=Fixture`]];
  const toolRun=async(chromeLang,pref,expect)=>{
   const context=await chromium.launchPersistentContext(path.join(report,`profile-tools-${chromeLang}-${pref}`),{executablePath:exe,headless:true,locale:chromeLang,viewport:{width:1000,height:900},ignoreDefaultArgs:['--disable-extensions'],args:['--mute-audio','--autoplay-policy=user-gesture-required',`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,`--lang=${chromeLang}`,'--disable-background-networking','--host-resolver-rules=MAP * ~NOTFOUND']});
   try{
@@ -264,23 +258,6 @@ const mixedText=lang=>{const out=[];const keep=/^(Ruxget|FFmpeg|ffmpeg|Aria2|ari
     else if(expect!=='en')console.log('clean '+name+' (Chinese as expected)');
     await p.close();
    }
-   // A stale or missing mirror (setting changed while no extension page was open) paints the wrong language first;
-   // the page must then reload exactly once and end in the right language.
-   for(const mirror of [expect==='en'?'zh_CN':'en',null]){
-    const name=`tool-json-${chromeLang}-${pref}-mirror-${mirror||'missing'}`,address=`chrome-extension://${id}/${toolPages.find(t=>t[0]==='json')[1]}`;
-    const setup=await context.newPage();await setup.goto(address);await setup.waitForTimeout(500);
-    await setup.evaluate(v=>v?localStorage.setItem('ruxgetUiLanguage',v):localStorage.removeItem('ruxgetUiLanguage'),mirror);await setup.close();
-    const p=await context.newPage();let loads=0;p.on('load',()=>loads++);
-    await p.goto(address);await p.waitForTimeout(2000);
-    const state=await p.evaluate(()=>({title:document.title,lang:document.documentElement.lang,nav:performance.getEntriesByType('navigation')[0]?.type,mirror:localStorage.getItem('ruxgetUiLanguage')}));
-    const wanted=expect==='en'?'en':'zh-CN',needsReload=(mirror||(chromeLang.startsWith('zh')?'zh_CN':'en'))!==(expect==='en'?'en':'zh_CN'),problems=[];
-    if(state.lang!==wanted)problems.push(`html lang is ${state.lang}, expected ${wanted} (title ${state.title})`);
-    if(state.mirror!==pref)problems.push(`language mirror is ${state.mirror}, expected ${pref}`);
-    if(needsReload&&state.nav!=='reload')problems.push('expected one reload, navigation type '+state.nav);
-    if(loads>2)problems.push(`loaded ${loads} times`);
-    if(problems.length){results[name]=problems;console.log('FOUND '+name+'\n   '+problems.join('\n   '));}else console.log(`clean ${name} (${needsReload?'reloaded once':'no reload needed'})`);
-    await p.close();
-   }
   }finally{await context.close();}
  };
  await toolRun('zh-CN','en','en');
@@ -320,23 +297,12 @@ const mixedText=lang=>{const out=[];const keep=/^(Ruxget|FFmpeg|ffmpeg|Aria2|ari
    const hide=p=>p.evaluate(()=>{Object.defineProperty(document,'visibilityState',{configurable:true,get:()=>'hidden'});Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});document.dispatchEvent(new Event('visibilitychange'));}).catch(()=>{});
    const mark=p=>p.evaluate(()=>{window.__sameDocument=true;}).catch(()=>{});
    const same=p=>p.evaluate(()=>window.__sameDocument===true).catch(()=>false);
-   const m3u8=toolPages.find(t=>t[0]==='m3u8')[1],popup=toolPages.find(t=>t[0]==='popup')[1];
    const text=selector=>p=>p.evaluate(s=>document.querySelector(s)?.textContent.trim()??null,selector);
    // 0.4.74 retest: text these pages render once from code (list lines, summaries, tooltips) follows an in-place switch
    // too. [selector, attribute or null] → [Chinese, English]; a RegExp matches.
-   const rendered={
-    'm3u8-master':[['#next_m3u8 .more_text',null,/^分辨率：320×184 \| 码率：800 Kbps$/,/^Resolution: 320×184 \| Bitrate: 800 Kbps$/],['#next_m3u8 #parser',null,'解析','Parser'],['#next_m3u8 .sendFfmpeg',null,'发送到在线 FFmpeg','Send to FFmpeg']],
-    'm3u8':[['#count',null,/^共 2 个文件，总时长 /,/^2 segments, .* in total$/]],
-    'mpd':[['#count',null,/^共 2 个文件，总时长 /,/^2 segments, .* in total$/],['#tips span',null,'初始化分段：','Initialization segment: '],['#info',null,/^视频：v1 /,/^Video: v1 /]],
-    'popup':[['img.copy','title','复制','Copy'],['img.play','title','预览','Preview'],['img.download','title','下载','Download']]};
-   const cases=[...toolPages.map(([label,address])=>({label,address,reload:!['downloader-file','dash','file-form','file','hls'].includes(label) /* 0.4.76: Ruxget's own pages switch in place */,rendered:rendered[label]})),
-    {label:'m3u8-downloading',address:m3u8,reload:false,run:async p=>{await p.locator('#mergeTs').click();await p.waitForTimeout(800);}},
-    {label:'m3u8-ticked',address:m3u8,reload:false,run:async p=>{const box=p.locator('input[type=checkbox]:visible').first();await box.click();}},
-    // The play button sits under 「查看切片」; the fixture segments are empty, so hls.js may hide it after a parsing error (shown again here).
-    {label:'m3u8-playing',address:m3u8,reload:false,run:async p=>{await p.locator('#textarea summary').click();await p.evaluate(()=>{document.querySelector('#play').style.display='';});await p.locator('#play').click();await p.waitForTimeout(300);},state:text('#play'),states:{en:'Close',zh:'关闭'}},
-    {label:'popup-paused',address:popup,reload:false,run:async p=>{await p.locator('#enable').click();await p.waitForFunction(()=>document.querySelector('#enable').textContent.trim()==='启用');},state:text('#enable'),states:{en:'Enable',zh:'启用'},after:p=>p.locator('#enable').click()},
-    {label:'options-typed',address:'options.html',reload:false,run:async p=>{const field=p.locator('input[type=text]:visible').first();await field.click();await field.type('x');await field.press('Backspace');}},
-    {label:'options-self',address:'options.html',reload:false,self:true}];
+   // 0.4.79: Ruxget's own download pages switch in place and are never reloaded for a language change.
+   const rendered={};
+   const cases=toolPages.map(([label,address])=>({label,address,reload:false,rendered:rendered[label]}));
    for(const item of cases){
     const name=`tool-live-${item.label}`,p=await context.newPage(),errors=[];let loads=0;
     p.on('load',()=>loads++);p.on('pageerror',e=>errors.push('pageerror: '+e.message));

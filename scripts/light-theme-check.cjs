@@ -65,7 +65,7 @@ async function audit(page,label){label=label+' ['+scheme+' system]';await wait(3
    const worker=ext.serviceWorkers()[0]||await ext.waitForEvent('serviceworker'),id=new URL(worker.url()).hostname;
    await worker.evaluate(()=>chrome.storage.local.set({ruxgetUiLanguage:'zh_CN'}));
    await ext.route('**/*',route=>new URL(route.request().url()).protocol==='chrome-extension:'?route.continue():route.fulfill({contentType:'text/html',body:'<!doctype html><title>Fixture</title>'}));
-   const pages=['shiying.html','ruxget-settings.html','shiying-help.html','shiying-desktop.html','shiying-get-desktop.html','shiying-task.html','options.html','popup.html','m3u8.html','mpd.html','downloader.html','json.html','preview.html','file-download.html','dash-download.html','hls-download.html'];
+   const pages=['shiying.html','ruxget-settings.html','shiying-help.html','shiying-desktop.html','shiying-get-desktop.html','shiying-task.html','file-download.html','dash-download.html','hls-download.html'];
    for(const file of pages){const p=await ext.newPage();p.on('pageerror',()=>{});await p.goto(`chrome-extension://${id}/${file}`).catch(()=>{});await wait(900);
     if(file==='shiying.html'){await p.setViewportSize({width:360,height:560});await audit(p,'extension '+file+' page');await p.locator('#tabDownloads').click().catch(()=>{});await audit(p,'extension '+file+' downloads');}
     else await audit(p,'extension '+file);

@@ -283,12 +283,11 @@ async function updateSiteAccess() {
     const missing = accessPatterns.filter(pattern => !ShiyingAccess.allows(pattern.slice(0,-1)));
     $('#siteAccess').hidden = !missing.length;
     const sourcesOnly=ShiyingAccess.allows(currentSite.url);RuxgetI18n.live($('#allowSite'),()=>sourcesOnly ? RuxgetI18n.pick('允许媒体来源','Allow media sources') : RuxgetI18n.pick('允许此网站','Allow this site'));
-    RuxgetI18n.live($('#siteAccessNote'),()=>RuxgetI18n.pick('允许此网站后，Ruxget 才能检测页面里的视频。','Allow this site so Ruxget can find videos on the page.'));
+    RuxgetI18n.live($('#siteAccessNote'),()=>sourcesOnly?RuxgetI18n.pick('这个网页的视频来自另一个网站，再允许一次，Ruxget 才能检测到。','This page’s videos come from another site; allow it too so Ruxget can find them.'):RuxgetI18n.pick('允许此网站后，Ruxget 才能检测页面里的视频。','Allow this site so Ruxget can find videos on the page.'));
     if (!missing.length) {await recordSiteMedia(currentSite, accessCandidates);await refresh();}
 }
 async function recordSiteMedia(tab, candidates) {
     if (!ShiyingAccess.allows(tab.url)) return;
-    await chrome.scripting.executeScript({target:{tabId:tab.id},files:['js/content-script.js']});
     for (const item of candidates) if (ShiyingAccess.allows(item.url)) await chrome.runtime.sendMessage({Message:'addMedia',href:tab.url,url:item.url,mime:item.type,extraExt:item.ext});
 }
 $('#allowSite').addEventListener('click', () => {

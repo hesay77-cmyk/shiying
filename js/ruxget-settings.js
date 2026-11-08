@@ -1,5 +1,5 @@
 // Ruxget's own settings page (0.4.71). Everything that used to crowd the panel: who downloads (Chrome or the desktop
-// app), where files go, the page button, recognition, language. The older detailed options stay behind "高级选项".
+// app), where files go, the page button, recognition, language. The recognition rules sit folded under 网页上 (0.4.79).
 (() => {
     const $ = selector => document.querySelector(selector);
     const pick = (zh, en) => window.RuxgetI18n ? RuxgetI18n.pick(zh, en) : zh;
@@ -49,10 +49,8 @@
             '#siteLink': ['Ruxget 桌面版介绍', 'About Ruxget Desktop'],
             '#helpLink': ['帮助', 'Help'],
             '#privacyLink': ['隐私说明', 'Privacy'],
-            '#advancedLink': ['高级选项', 'Advanced options'],
         };
         for (const [selector, [zh, en]] of Object.entries(text)) { const node = $(selector); if (node) node.textContent = pick(zh, en); }
-        $('#advancedLink').title = pick('文件类型过滤、自定义规则等，一般用不到', 'File-type filters, custom rules and more; rarely needed');
         $('#versionText').textContent = pick('版本 ', 'Version ') + chrome.runtime.getManifest().version;
     }
     // --- Who downloads -------------------------------------------------------------------------------------------

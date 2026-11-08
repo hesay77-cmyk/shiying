@@ -5,7 +5,7 @@ const checks=[];function check(name){checks.push(name);console.log('PASS '+name)
 (async()=>{
  const {chromium}=require(process.env.SHIYING_PLAYWRIGHT||'playwright');
  const extension=path.join(report,'extension');fs.mkdirSync(extension);
- for(const dir of ['js','css','img','lib','catch-script','_locales'])fs.cpSync(path.join(root,dir),path.join(extension,dir),{recursive:true});
+ for(const dir of ['js','css','img','lib','_locales'])fs.cpSync(path.join(root,dir),path.join(extension,dir),{recursive:true});
  for(const name of fs.readdirSync(root))if(name.endsWith('.html')||name==='manifest.json')fs.copyFileSync(path.join(root,name),path.join(extension,name));
  const browser=await chromium.launchPersistentContext(path.join(report,'profile'),{executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true,viewport:{width:360,height:640},ignoreDefaultArgs:['--disable-extensions'],args:['--mute-audio','--autoplay-policy=user-gesture-required',`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--disable-background-networking','--host-resolver-rules=MAP * ~NOTFOUND']});
  const errors=[];browser.on('page',p=>p.on('pageerror',e=>errors.push(e.message)));

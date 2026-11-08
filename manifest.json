@@ -1,6 +1,6 @@
 {
   "background": {
-    "service_worker": "js/background.js"
+    "service_worker": "js/ruxget-background.js"
   },
   "action": {
     "default_icon": {
@@ -44,33 +44,6 @@
     "contextMenus",
     "activeTab"
   ],
-  "commands": {
-    "_execute_action": {},
-    "enable": {
-      "description": "__MSG_pause__ / __MSG_enable__"
-    },
-    "auto_down": {
-      "description": "__MSG_autoDownload__"
-    },
-    "catch": {
-      "description": "__MSG_cacheCapture__"
-    },
-    "m3u8": {
-      "description": "__MSG_m3u8Parser__"
-    },
-    "clear": {
-      "description": "__MSG_clear__"
-    },
-    "reboot": {
-      "description": "__MSG_restartExtension__"
-    },
-    "deepSearch": {
-      "description": "__MSG_deepSearch__"
-    },
-    "preview": {
-      "description": "__MSG_preview__"
-    }
-  },
   "host_permissions": [
     "https://www.bilibili.com/*",
     "https://bilibili.com/*",
@@ -79,17 +52,6 @@
     "https://*.bilivideo.cn/*"
   ],
   "content_scripts": [
-    {
-      "matches": [
-        "https://www.bilibili.com/*",
-        "https://bilibili.com/*"
-      ],
-      "js": [
-        "js/content-script.js"
-      ],
-      "run_at": "document_start",
-      "all_frames": true
-    },
     {
       "matches": [
         "https://www.bilibili.com/*",

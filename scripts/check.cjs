@@ -46,10 +46,14 @@ for (const name of fs.readdirSync(path.join(root, 'build'))) if (name.endsWith('
 // The synchronous catalog of the tool pages must match each edition's _locales.
 const localeData = require('./locale-data.cjs');
 for (const folder of ['', 'build', 'build-full']) assert.ok(localeData.inSync(path.join(root, folder)), `${folder || 'source'}: ${localeData.FILE} differs from _locales`);
-for (const name of ['m3u8.html', 'mpd.html', 'json.html', 'downloader.html', 'preview.html', 'popup.html', 'options.html', 'shiying-help.html']) {
+for (const name of ['shiying-help.html', 'shiying.html']) {
     const html = fs.readFileSync(path.join(root, 'build', name), 'utf8'), data = html.indexOf('js/ruxget-locale-data.js'), polyfill = html.indexOf('js/polyfill.js');
     assert.ok(data >= 0 && data < polyfill, `${name}: js/ruxget-locale-data.js must load before js/polyfill.js`);
 }
 assert.ok(fs.readFileSync(path.join(root, 'build/LICENSE'), 'utf8').includes('GNU GENERAL PUBLIC LICENSE'));
-assert.ok(fs.readFileSync(path.join(root, 'build/js/init.js'), 'utf8').includes('M3u8Ffmpeg: false'));
+// 0.4.79: the old CatCatch pages, background and page script are gone, and nothing points at the third-party servers.
+for (const gone of ['popup.html', 'options.html', 'm3u8.html', 'mpd.html', 'downloader.html', 'preview.html', 'json.html', 'js/background.js', 'js/init.js', 'js/content-script.js', 'catch-script']) assert.ok(!fs.existsSync(path.join(root, 'build', gone)), `build still has ${gone}`);
+for (const name of fs.readdirSync(path.join(root, 'build/js'))) assert.ok(!/bmmmd.com|94cat.com/.test(fs.readFileSync(path.join(root, 'build/js', name), 'utf8')), `${name} points at a third-party server`);
+assert.equal(manifest.background.service_worker, 'js/ruxget-background.js');
+assert.ok(!manifest.commands, 'no keyboard commands');
 console.log('逻辑、中文包、资源路径与许可检查通过');

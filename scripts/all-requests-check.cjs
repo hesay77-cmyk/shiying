@@ -55,9 +55,8 @@ const server=http.createServer((request,response)=>{const name=new URL(request.u
  check(page.url().includes('/file-download.html?'),'with a source page, the link opens Ruxget’s file download page');
  const done=await worker.evaluate(async after=>{for(let n=0;n<200;n++){const d=(await chrome.downloads.search({})).filter(i=>i.id>after&&i.state==='complete');if(d.length)return d[0].filename;await new Promise(r=>setTimeout(r,100));}return '';},before);
  check(done&&fs.readFileSync(done).equals(body),'the file that needs its source page is saved whole');
- // The old advanced pages carry the quiet retirement line.
- for(const name of ['popup.html','options.html']){const p=await context.newPage();await p.goto(`chrome-extension://${id}/${name}?tabId=${tab}`);await p.locator('.ruxget-retire-note').waitFor({state:'attached',timeout:5000});
-  check(/后续版本中移除/.test(await p.locator('.ruxget-retire-note').innerText()),name+' says quietly that some tools go away in a later version');await p.screenshot({path:path.join(report,name+'.png')});await p.close();}
+ // 0.4.79: the old advanced pages are gone.
+ for(const name of ['popup.html','options.html']){const p=await context.newPage();const r=await p.goto(`chrome-extension://${id}/${name}`).catch(()=>null);check(!r||!r.ok(),name+' is no longer part of the extension');await p.close();}
  check(dialogs.length===0,'no dialog appeared');
  fs.writeFileSync(path.join(report,'summary.json'),JSON.stringify({checks},null,1));console.log(`all-requests-check passed (${checks.length} checks). Report: ${report}`);
 }catch(error){console.error(error);process.exitCode=1;}finally{await context?.close().catch(()=>{});server.close();}})();

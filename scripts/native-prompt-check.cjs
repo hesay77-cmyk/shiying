@@ -20,7 +20,7 @@ async function main(){
  if(!process.argv.includes('--browser')){console.log(JSON.stringify({ok:true,checks},null,2));return;}
  const {chromium}=require(process.env.SHIYING_PLAYWRIGHT||'playwright');
  const report=fs.mkdtempSync(path.join(process.env.SHIYING_TEST_OUTPUT||os.tmpdir(),'shiying-native-prompt-')),project=path.join(report,'package');fs.mkdirSync(project);
- for(const name of ['css','js','img','lib','catch-script','_locales'])fs.cpSync(path.join(root,name),path.join(project,name),{recursive:true});
+ for(const name of ['css','js','img','lib','_locales'])fs.cpSync(path.join(root,name),path.join(project,name),{recursive:true});
  for(const name of fs.readdirSync(root))if(name.endsWith('.html')||name==='manifest.json')fs.copyFileSync(path.join(root,name),path.join(project,name));
  fs.mkdirSync(path.join(project,'scripts'));fs.copyFileSync(path.join(root,'scripts/package.cjs'),path.join(project,'scripts/package.cjs'));
  const pack=require('node:child_process').spawnSync(process.execPath,[path.join(project,'scripts/package.cjs')],{encoding:'utf8',windowsHide:true});assert.equal(pack.status,0,pack.stderr);

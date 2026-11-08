@@ -14,6 +14,7 @@
 <script src="js/ruxget-offer.js" defer></script>
 <script src="js/ruxget-desktop-get.js" defer></script>
 <script src="js/ruxget-settings.js" defer></script>
+<script src="js/ruxget-recognition-settings.js" defer></script>
 </head>
 <body class="settings-page">
 <main class="settings">
@@ -46,6 +47,13 @@
     <label class="settings-check"><input type="checkbox" id="floating"><span id="floatingLabel">在视频网页上显示下载浮钮</span></label>
     <label class="settings-check"><input type="checkbox" id="recognize"><span id="recognizeLabel">识别网页里的视频和音频</span></label>
     <div class="settings-actions"><a class="text-button" id="sitesLink" href="shiying-help.html#site-access">管理网站权限</a></div>
+    <details id="recognitionRules" class="rule-box"><summary id="ruleSummary">识别规则</summary>
+      <label id="ruleTypesLabel" for="ruleTypes">识别这些文件类型（用空格分隔）</label><textarea id="ruleTypes" rows="3" spellcheck="false"></textarea>
+      <label id="ruleSitesLabel" for="ruleSites">不识别这些网址（每行一个，可用 * 代替任意部分）</label><textarea id="ruleSites" rows="3" spellcheck="false" placeholder="https://example.com/*"></textarea>
+      <label class="settings-check"><input type="checkbox" id="ruleWhite"><span id="ruleWhiteLabel">改为只在这些网址识别</span></label>
+      <div class="settings-actions"><button type="button" class="text-button" id="ruleSave">保存规则</button><button type="button" class="text-button" id="ruleReset">恢复默认</button></div>
+      <p id="ruleNote" class="rule-note" role="status" hidden></p>
+    </details>
   </section>
 
   <section class="settings-card" aria-labelledby="languageTitle">
@@ -61,7 +69,6 @@
     <a href="https://hidaydream.cloud/desktop/?from=ext" target="_blank" rel="noopener" id="siteLink">Ruxget 桌面版介绍</a>
     <a href="shiying-help.html" id="helpLink">帮助</a>
     <a href="https://github.com/hesay77-cmyk/shiying/blob/main/PRIVACY.md" target="_blank" rel="noopener" id="privacyLink">隐私说明</a>
-    <a href="options.html" id="advancedLink" title="文件类型过滤、自定义规则等，一般用不到">高级选项</a>
     <span id="versionText"></span>
   </footer>
 </main>

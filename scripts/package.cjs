@@ -13,7 +13,7 @@ try { localeData = require('./locale-data.cjs'); } catch (error) { if (error.cod
 if (localeData.write(root)) console.log('updated ' + localeData.FILE + ' from _locales');
 for (const folder of [output, full]) fs.rmSync(folder, {recursive:true, force:true});
 fs.mkdirSync(output, {recursive:true});
-for (const folder of ['css','img','js','lib','catch-script']) fs.cpSync(path.join(root, folder), path.join(output, folder), {recursive:true});
+for (const folder of ['css','img','js','lib']) fs.cpSync(path.join(root, folder), path.join(output, folder), {recursive:true});
 // Copy every locale pack (zh_CN, en, ...); Chrome picks by browser UI + our ruxgetUiLanguage override.
 for (const locale of fs.readdirSync(path.join(root, '_locales'), {withFileTypes:true})) {
   if (!locale.isDirectory()) continue;

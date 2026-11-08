@@ -32,7 +32,7 @@ const longName='很长的下载文件名'+ 'UnbrokenFileName'.repeat(18)+'.mp4';
    const job={ok:true,id:'fixture',title:name,url,format:'mp4',height:1080,status:done?'complete':mode==='error'?'error':'downloading',stage:done?'已保存':mode==='error'?'下载失败':'正在下载画面和声音',progress:done?100:42.5,error:mode==='error'?'原站拒绝下载，请重新获取地址：'+url:'',file:'C:\\Users\\用户\\Downloads\\拾影\\'+name,verification:mode==='unverified'?{}:{width:1920,height:1080,audioActive:true,duration:59.8,bytes:8388608,fullDecode:true}};
    window.chrome={runtime:{sendMessage:async()=>job}};
   },{url:longURL,name:longName});
-  const cases=[['platform','shiying.html'],['media','shiying.html'],['downloading','shiying-task.html'],['complete','shiying-task.html'],['unverified','shiying-task.html'],['error','shiying-task.html'],['direct','downloader.html'],['hls','m3u8.html'],['dash','mpd.html']];
+  const cases=[['platform','shiying.html'],['media','shiying.html'],['downloading','shiying-task.html'],['complete','shiying-task.html'],['unverified','shiying-task.html'],['error','shiying-task.html']];  // 0.4.79: the old tool pages are gone; file-download-check, dash-download-check and hls-download-check cover the new ones at 360 px.
   for(const [fixture,file]of cases){
    const page=await context.newPage();await page.goto(origin+'/'+file+'?id=fixture&fixture='+fixture);
    if(file==='shiying-task.html')await page.waitForFunction(()=>document.body.dataset.status);
