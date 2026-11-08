@@ -46,7 +46,7 @@
    if(!await enabled(item.provider))throw new Error('请先启用这个网盘的 Ruxget 下载');
    const target={tabId:sender.tab.id,documentIds:[sender.documentId]};
    // 2026-11-09: drives rewritten from Ruxget's own specs use their own adapter file (spec 07); the rest keep the old one for now.
-   const ownAdapters={quark:['js/ruxget-netdisk-quark.js'],aliyun:['js/ruxget-netdisk-aliyun.js'],baidu:['js/ruxget-netdisk-baidu.js'],xunlei:['js/ruxget-netdisk-xunlei.js']};
+   const ownAdapters={quark:['js/ruxget-netdisk-quark.js'],aliyun:['js/ruxget-netdisk-aliyun.js'],baidu:['js/ruxget-netdisk-baidu.js'],xunlei:['js/ruxget-netdisk-xunlei.js'],uc:['js/ruxget-netdisk-quark.js']};
    await chrome.scripting.executeScript({target,world:'MAIN',files:ownAdapters[item.provider]||['lib/md5.min.js','js/shiying-netdisk-adapters.js']});
    const cache=(await chrome.storage.local.get('shiyingNetdiskBaiduSealed')).shiyingNetdiskBaiduSealed;let values={};
    if(item.provider==='baidu'&&cache?.expires>Date.now()){const opened=await chrome.runtime.sendNativeMessage('org.shiying.desktop',{action:'netdiskOpen',provider:'baidu',value:cache.sealed});if(opened?.ok)values.baidu_access_token=opened.value;}

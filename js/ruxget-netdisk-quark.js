@@ -1,12 +1,27 @@
 // Ruxget，2026-11-09，按功能说明书 07-网盘-夸克 从零编写。
 (function () {
   'use strict';
-  if (globalThis.ShiyingNetdiskPage) return;
+  var previous = globalThis.ShiyingNetdiskPage;
+  if (previous && previous.__ruxgetQuarkUc) return;
 
-  var API_HOST = 'https://drive-pc.quark.cn';
   var SORT_PATH = '/1/clouddrive/file/sort';
   var DOWNLOAD_PATH = '/1/clouddrive/file/download';
-  var COMMON_QUERY = 'pr=ucpro&fr=pc&uc_param_str=';
+  // 两家网盘结构相同，只有这些配置不同。
+  var PROVIDERS = {
+    quark: {
+      name: '夸克网盘',
+      apiHost: 'https://drive-pc.quark.cn',
+      query: 'pr=ucpro&fr=pc&uc_param_str=',
+      hostPattern: /(^|\.)(quark\.cn|aliyuncs\.com)$/
+    },
+    uc: {
+      name: 'UC 网盘',
+      apiHost: 'https://pc-api.uc.cn',
+      query: 'pr=UCBrowser&fr=pc',
+      hostPattern: /(^|\.)uc\.cn$/
+    }
+  };
+  var cfg = PROVIDERS.quark;
   var ROOT_FID = '0';
   var PAGE_SIZE = 50;
   var MAX_FILES = 100;
@@ -16,10 +31,10 @@
   var CALL_TIMEOUT_MS = 25000;
 
   var TEXT = {
-    share: '请先把分享的文件保存到自己的夸克网盘，再在网盘里用 Ruxget 下载',
+    share: '',
     nothingSelected: '请先勾选要下载的文件或文件夹',
     notFound: '在当前文件夹中找不到所选的项，请刷新页面后重试',
-    apiPrefix: '夸克网盘返回错误：',
+    apiPrefix: '',
     apiDefault: '请刷新页面并确认登录状态后重试',
     noAddress: '未能获取下载地址，请刷新页面并确认登录状态后重试',
     someNoAddress: function (n) { return '有 ' + n + ' 个文件未能获取下载地址'; },
@@ -27,10 +42,19 @@
     tooDeep: '超过 10 层的子文件夹未展开',
     tooManyCalls: '请求次数已达上限，部分文件夹未能完整展开',
     bridgeFailed: '与 Ruxget 的连接失败，请刷新页面后重试',
-    timeout: '等待夸克网盘响应超时，请稍后重试',
+    timeout: '',
     emptyFolderOnly: '所选文件夹中没有可下载的文件',
-    unexpected: '处理夸克网盘数据时出错，请刷新页面后重试'
+    unexpected: ''
   };
+
+  function applyProvider(key) {
+    cfg = PROVIDERS[key];
+    TEXT.share = '请先把分享的文件保存到自己的' + (key === 'uc' ? ' ' : '') + cfg.name + '，再在网盘里用 Ruxget 下载';
+    TEXT.apiPrefix = cfg.name + '返回错误：';
+    TEXT.timeout = '等待' + cfg.name + '响应超时，请稍后重试';
+    TEXT.unexpected = '处理' + cfg.name + '数据时出错，请刷新页面后重试';
+  }
+  applyProvider('quark');
 
   // 用于在流程中途携带中文说明结束 resolve 的错误类型。
   function Failure(message) { this.message = message; }
@@ -137,7 +161,7 @@
   // ---------- 列目录 ----------
 
   function sortUrl(pdirFid, page) {
-    return API_HOST + SORT_PATH + '?' + COMMON_QUERY +
+    return cfg.apiHost + SORT_PATH + '?' + cfg.query +
       '&pdir_fid=' + encodeURIComponent(pdirFid) +
       '&_page=' + page + '&_size=' + PAGE_SIZE +
       '&_fetch_total=1&_fetch_sub_dirs=0&_sort=file_type:asc,updated_at:desc';
@@ -260,7 +284,7 @@
       var u = new URL(url);
       if (u.protocol !== 'https:') return false;
       var host = u.hostname.toLowerCase();
-      return host === 'quark.cn' || /\.quark\.cn$/.test(host) || host === 'aliyuncs.com' || /\.aliyuncs\.com$/.test(host);
+      return cfg.hostPattern.test(host);
     } catch (e) {
       return false;
     }
@@ -273,7 +297,7 @@
       (function (batch) {
         chain = chain.then(function () {
           return bridge.call({
-            url: API_HOST + DOWNLOAD_PATH + '?' + COMMON_QUERY,
+            url: cfg.apiHost + DOWNLOAD_PATH + '?' + cfg.query,
             method: 'POST',
             body: JSON.stringify({ fids: batch }),
             headers: { 'content-type': 'application/json' }
@@ -375,13 +399,20 @@
       });
   }
 
-  globalThis.ShiyingNetdiskPage = {
+  var api = {
+    __ruxgetQuarkUc: true,
     resolve: function (intent, provider, values) {
+      if (provider !== 'quark' && provider !== 'uc') {
+        if (previous && typeof previous.resolve === 'function') return previous.resolve(intent, provider, values);
+        return Promise.resolve({ ok: false, error: '不支持的网盘' });
+      }
       try {
+        applyProvider(provider);
         return run(intent).catch(function () { return { ok: false, error: TEXT.unexpected }; });
       } catch (e) {
         return Promise.resolve({ ok: false, error: TEXT.unexpected });
       }
     }
   };
+  globalThis.ShiyingNetdiskPage = api;
 })();
