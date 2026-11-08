@@ -203,6 +203,9 @@ const mixedText=lang=>{const out=[];const keep=/^(Ruxget|FFmpeg|ffmpeg|Aria2|ari
   ['json',`json.html?url=${encodeURIComponent('https://media.fixture/data.json')}`],
   ['downloader','downloader.html'],
   ['downloader-file',`downloader.html?JSON=${encodeURIComponent(JSON.stringify({url:media+'file.bin',requestId:'91003',name:'file.bin',ext:'bin'}))}`],
+  ['dash',`dash-download.html?url=${encodeURIComponent(media+'manifest.mpd')}&title=Fixture`],
+  ['file-form','file-download.html'],
+  ['file',`file-download.html?task=${encodeURIComponent(JSON.stringify({url:media+'file.bin',filename:'file.bin',title:'Fixture'}))}`],
   ['preview','preview.html?tabId=TAB'],['popup','popup.html?tabId=TAB'],['options','options.html']];
  const toolRun=async(chromeLang,pref,expect)=>{
   const context=await chromium.launchPersistentContext(path.join(report,`profile-tools-${chromeLang}-${pref}`),{executablePath:exe,headless:true,locale:chromeLang,viewport:{width:1000,height:900},ignoreDefaultArgs:['--disable-extensions'],args:['--mute-audio','--autoplay-policy=user-gesture-required',`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,`--lang=${chromeLang}`,'--disable-background-networking','--host-resolver-rules=MAP * ~NOTFOUND']});
@@ -325,7 +328,7 @@ const mixedText=lang=>{const out=[];const keep=/^(Ruxget|FFmpeg|ffmpeg|Aria2|ari
     'm3u8':[['#count',null,/^共 2 个文件，总时长 /,/^2 segments, .* in total$/]],
     'mpd':[['#count',null,/^共 2 个文件，总时长 /,/^2 segments, .* in total$/],['#tips span',null,'初始化分段：','Initialization segment: '],['#info',null,/^视频：v1 /,/^Video: v1 /]],
     'popup':[['img.copy','title','复制','Copy'],['img.play','title','预览','Preview'],['img.download','title','下载','Download']]};
-   const cases=[...toolPages.map(([label,address])=>({label,address,reload:label!=='downloader-file',rendered:rendered[label]})),
+   const cases=[...toolPages.map(([label,address])=>({label,address,reload:!['downloader-file','dash','file-form','file'].includes(label) /* 0.4.75: Ruxget's own pages switch in place */,rendered:rendered[label]})),
     {label:'m3u8-downloading',address:m3u8,reload:false,run:async p=>{await p.locator('#mergeTs').click();await p.waitForTimeout(800);}},
     {label:'m3u8-ticked',address:m3u8,reload:false,run:async p=>{const box=p.locator('input[type=checkbox]:visible').first();await box.click();}},
     // The play button sits under 「查看切片」; the fixture segments are empty, so hls.js may hide it after a parsing error (shown again here).

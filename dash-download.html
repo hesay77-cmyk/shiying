@@ -1,0 +1,103 @@
+<!doctype html>
+<!-- Ruxget，2026-11-08，按功能说明书 02-DASH下载页 从零编写。 -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light only">
+<title>Ruxget · 视频下载</title>
+<link rel="stylesheet" href="css/dash-download.css">
+</head>
+<body>
+<header class="masthead">
+  <div class="masthead-inner">
+    <img class="logo" src="img/shiying.svg" width="42" height="42" alt="Ruxget">
+    <div class="heading">
+      <h1 id="pageName" data-i18n="pageName"></h1>
+      <p id="subtitle" class="subtitle"></p>
+    </div>
+    <button type="button" id="advancedToggle" class="ghost" hidden></button>
+  </div>
+</header>
+
+<main class="content">
+  <section id="formCard" class="card" hidden>
+    <form id="manualForm" novalidate>
+      <label class="field">
+        <span data-i18n="manifestField"></span>
+        <input id="manifestInput" type="url" autocomplete="off" spellcheck="false">
+      </label>
+      <label class="field">
+        <span data-i18n="sourceField"></span>
+        <input id="sourceInput" type="url" autocomplete="off" spellcheck="false">
+      </label>
+      <p id="formMessage" class="line error" hidden></p>
+      <div class="actions"><button type="submit" class="primary" data-i18n="readButton"></button></div>
+    </form>
+  </section>
+
+  <section id="mainCard" class="card" hidden>
+    <p id="loading" class="line muted" data-i18n="loading"></p>
+    <p id="blocked" class="line error" hidden></p>
+
+    <div id="chooser" hidden>
+      <p id="summary" class="line muted"></p>
+      <label class="field" id="videoField">
+        <span data-i18n="videoField"></span>
+        <select id="videoSelect"></select>
+      </label>
+      <label class="field" id="audioField">
+        <span data-i18n="audioField"></span>
+        <select id="audioSelect"></select>
+      </label>
+      <label class="field">
+        <span data-i18n="filenameField"></span>
+        <input id="filenameInput" type="text" autocomplete="off" spellcheck="false">
+      </label>
+      <p id="sizeWarning" class="line notice" hidden></p>
+      <div id="startArea" class="actions">
+        <button type="button" id="downloadButton" class="primary" data-i18n="download"></button>
+      </div>
+
+      <div id="progressArea" hidden>
+        <div class="progress-row">
+          <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="bar"><div id="barFill" class="bar-fill"></div></div>
+          <span id="percent" class="percent">0%</span>
+        </div>
+        <p id="stage" class="line stage"></p>
+        <p id="received" class="line muted"></p>
+        <p id="jobMessage" class="line error" hidden></p>
+        <div class="actions">
+          <button type="button" id="stopButton" class="secondary"></button>
+          <button type="button" id="retryFailedButton" class="primary" data-i18n="retryFailed" hidden></button>
+          <button type="button" id="showFileButton" class="primary" data-i18n="showFile" hidden></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="advancedCard" class="card" hidden>
+    <h2 data-i18n="advancedTitle"></h2>
+    <p class="label" data-i18n="manifestAddress"></p>
+    <p class="line"><a id="manifestLink" class="wrap-anywhere" target="_blank" rel="noreferrer noopener"></a></p>
+    <label class="field" id="videoListField">
+      <span data-i18n="videoSegments"></span>
+      <textarea id="videoList" rows="5" readonly spellcheck="false"></textarea>
+    </label>
+    <label class="field" id="audioListField">
+      <span data-i18n="audioSegments"></span>
+      <textarea id="audioList" rows="5" readonly spellcheck="false"></textarea>
+    </label>
+    <div class="actions">
+      <button type="button" id="copyButton" class="secondary" data-i18n="copyAll"></button>
+      <button type="button" id="videoOnlyButton" class="secondary" data-i18n="videoOnly"></button>
+      <button type="button" id="audioOnlyButton" class="secondary" data-i18n="audioOnly"></button>
+    </div>
+    <p id="advancedMessage" class="line muted" hidden></p>
+  </section>
+</main>
+
+<script src="lib/mpd-parser.min.js"></script>
+<script type="module" src="js/dash-download.js"></script>
+</body>
+</html>

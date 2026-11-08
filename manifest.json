@@ -105,8 +105,8 @@
     }
   ],
   "default_locale": "zh_CN",
-  "version": "0.4.74",
-  "version_name": "0.4.74",
+  "version": "0.4.75",
+  "version_name": "0.4.75",
   "optional_permissions": [
     "nativeMessaging",
     "downloads.open",

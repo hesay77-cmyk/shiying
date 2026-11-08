@@ -210,18 +210,23 @@ async function startDownload(data, tabId) {
         const requestHeaders = {...data.requestHeaders};
         if (data.cookie) requestHeaders.Cookie = data.cookie;
         const parameters = new URLSearchParams({url:data.url, title:data.title || '网页视频', filename:Shiying.filename(data), tabid:String(tabId), initiator:data.initiator || data.webUrl || '', requestHeaders:JSON.stringify(requestHeaders), autoClose:'0'});
-        // 分轨交给原有解析器选择音画轨；普通 HLS 直接启动本地合并。
-        if (kind === 'hls') parameters.set('autoDown', '1');
-        await chrome.tabs.create({url:chrome.runtime.getURL(`${kind === 'hls' ? 'm3u8' : 'mpd'}.html?${parameters}`), active:true});
+        // 0.4.75: DASH opens Ruxget's own page (pick the picture and sound, one merged MP4); HLS still merges in m3u8.html.
+        if (kind === 'dash') {
+            const dash = new URLSearchParams({url:data.url, title:data.title || '', filename:Shiying.filename({...data, ext:'mp4'}), requestHeaders:JSON.stringify(requestHeaders)});
+            await chrome.tabs.create({url:chrome.runtime.getURL(`dash-download.html?${dash}`), active:true});
+            return {};
+        }
+        parameters.set('autoDown', '1');
+        await chrome.tabs.create({url:chrome.runtime.getURL(`m3u8.html?${parameters}`), active:true});
         return {};
     }
     if (!['video','audio'].includes(kind)) throw new Error('这是视频切片，请在高级工具中处理');
     const {saveAs} = await chrome.storage.sync.get({saveAs:false});
     // 有特殊请求头的文件直接交给内置下载器，避免浏览器下载丢失来源头导致 403。
     if ((data.requestHeaders && Object.keys(data.requestHeaders).length) || data.cookie) {
-        const safeData = {...data, requestId:String(++playlistRule), downFileName:Shiying.filename(data), _size:data.size};
-        const parameters = new URLSearchParams({JSON:JSON.stringify(safeData), autoClose:'false'});
-        await chrome.tabs.create({url:chrome.runtime.getURL(`downloader.html?${parameters}`), active:true});
+        // 0.4.75: Ruxget's own file page (spec 01-文件下载页); it saves through Chrome and closes itself when done.
+        const task = {url:data.url, filename:Shiying.filename(data), title:data.title || '', headers:{...data.requestHeaders}, cookie:data.cookie || '', size:Number(data.size) || 0};
+        await chrome.tabs.create({url:chrome.runtime.getURL(`file-download.html?${new URLSearchParams({task:JSON.stringify(task)})}`), active:true});
         return {page:true};
     }
     // With takeover on, this plain file goes to the desktop like any other web download (0.4.64).

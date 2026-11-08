@@ -1,0 +1,159 @@
+/* Ruxget，2026-11-08，按功能说明书 01-文件下载页 从零编写。 */
+:root {
+  color-scheme: light;
+  --paper: #F4F0E4;
+  --paper-2: #EDE8D9;
+  --ink: #2A3520;
+  --ink-2: #6A6C55;
+  --rule: #E2DCC9;
+  --olive: #3E5A2C;
+  --olive-hover: #4C6B37;
+  --on-olive: #F7F4EA;
+  --tint: #E6EBD2;
+  --error: #A4502A;
+  --mark: #D6EB78;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Microsoft YaHei UI", "PingFang SC", sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+::selection { background: var(--mark); color: var(--ink); }
+
+[hidden] { display: none !important; }
+
+.masthead { border-bottom: 1px solid var(--rule); }
+.masthead-inner,
+.content {
+  max-width: 940px;
+  margin: 0 auto;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+.masthead-inner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-top: 18px;
+  padding-bottom: 18px;
+}
+.logo { flex: none; width: 42px; height: 42px; }
+.masthead-text { min-width: 0; }
+.masthead h1 {
+  margin: 0;
+  font-size: 23px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.subtitle {
+  margin: 2px 0 0;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+.content { padding-top: 20px; padding-bottom: 32px; }
+
+.card {
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 18px 20px;
+}
+
+.notice { margin: 0 0 12px; }
+.error, .status.error { color: var(--error); }
+
+.file-name {
+  margin: 0 0 12px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.progress-row { display: flex; align-items: center; gap: 12px; }
+.progress-track {
+  position: relative;
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--paper-2);
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  width: 0;
+  border-radius: 4px;
+  background: var(--olive);
+}
+.progress-track.indeterminate .progress-fill {
+  position: absolute;
+  width: 28%;
+  left: 0;
+  transition: none;
+  animation: shuttle 1.4s ease-in-out infinite alternate;
+}
+@keyframes shuttle {
+  from { left: 0; }
+  to { left: 72%; }
+}
+.percent {
+  flex: none;
+  min-width: 3em;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.secondary { margin: 8px 0 0; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.status { margin: 6px 0 0; min-height: 1.6em; overflow-wrap: anywhere; }
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.extra-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+
+.btn {
+  font: inherit;
+  border-radius: 8px;
+  padding: 6px 16px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.btn.primary { background: var(--olive); color: var(--on-olive); }
+.btn.primary:hover { background: var(--olive-hover); }
+.btn.secondary { background: var(--paper-2); color: var(--ink); border-color: var(--rule); }
+.btn.secondary:hover { background: var(--tint); }
+.btn:focus-visible { outline: 2px solid var(--olive); outline-offset: 2px; }
+
+.field { display: block; margin-bottom: 14px; }
+.field-label { display: block; margin-bottom: 4px; }
+.field input {
+  display: block;
+  width: 100%;
+  font: inherit;
+  color: var(--ink);
+  background: #FFFDF6;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 7px 10px;
+}
+.field input::placeholder { color: var(--ink-2); }
+.field input:focus { outline: 2px solid var(--olive); outline-offset: 0; border-color: var(--olive); }
+.field-error { display: block; margin-top: 4px; color: var(--error); }
+
+@media (max-width: 600px) {
+  .masthead-inner, .content { padding-left: 16px; padding-right: 16px; }
+  .masthead h1 { font-size: 19px; }
+  .card { padding: 16px; }
+}

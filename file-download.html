@@ -1,0 +1,62 @@
+<!doctype html>
+<!-- Ruxget，2026-11-08，按功能说明书 01-文件下载页 从零编写。 -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Ruxget</title>
+<link rel="stylesheet" href="css/file-download.css">
+</head>
+<body>
+<header class="masthead">
+  <div class="masthead-inner">
+    <img class="logo" src="img/shiying.svg" width="42" height="42" alt="Ruxget">
+    <div class="masthead-text">
+      <h1 id="pageName"></h1>
+      <p id="sourceTitle" class="subtitle"></p>
+    </div>
+  </div>
+</header>
+
+<main class="content">
+  <p id="taskError" class="notice error" hidden></p>
+
+  <form id="manualForm" class="card form-card" novalidate hidden>
+    <label class="field">
+      <span id="urlLabel" class="field-label"></span>
+      <input id="urlInput" type="url" autocomplete="off" spellcheck="false" required>
+      <span id="urlHint" class="field-error" hidden></span>
+    </label>
+    <label class="field">
+      <span id="refererLabel" class="field-label"></span>
+      <input id="refererInput" type="url" autocomplete="off" spellcheck="false">
+    </label>
+    <div class="actions">
+      <button id="formSubmit" type="submit" class="btn primary"></button>
+    </div>
+  </form>
+
+  <section id="taskCard" class="card task-card" hidden>
+    <p id="fileName" class="file-name"></p>
+    <div class="progress-row">
+      <div id="progressTrack" class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+        <div id="progressFill" class="progress-fill"></div>
+      </div>
+      <span id="progressPercent" class="percent"></span>
+    </div>
+    <p id="progressText" class="secondary"></p>
+    <p id="statusText" class="status" aria-live="polite"></p>
+    <div class="actions">
+      <button id="forceButton" type="button" class="btn secondary" hidden></button>
+      <button id="mainButton" type="button" class="btn primary"></button>
+    </div>
+  </section>
+
+  <div id="extraRow" class="extra-row" hidden>
+    <button id="folderButton" type="button" class="btn secondary"></button>
+  </div>
+</main>
+<script src="js/file-download.js"></script>
+</body>
+</html>
