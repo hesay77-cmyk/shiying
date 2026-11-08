@@ -49,7 +49,8 @@ button:active:not(:disabled),.download-button:active:not(:disabled){transform:sc
 main,.view-panel{background:transparent!important}
 #pageView main{padding-top:0}
 
-.platform-card{margin:16px!important;padding:16px!important;border-radius:16px!important;background:var(--card)!important;background-image:none!important;border:1px solid var(--edge)!important;box-shadow:var(--shadow-sm)!important}
+/* 0.4.81: main already keeps 16px from the panel's edges, so the cards and the link box line up with the tabs and the media list. */
+.platform-card{margin:16px 0!important;padding:16px!important;border-radius:16px!important;background:var(--card)!important;background-image:none!important;border:1px solid var(--edge)!important;box-shadow:var(--shadow-sm)!important}
 .platform-intro h2,#platformTitle{font-size:16px!important;line-height:24px!important;font-weight:500!important;color:var(--fg)!important}
 .platform-meta{margin-top:4px!important;font-size:12px!important;line-height:16px!important;color:var(--sub)!important}
 .format-switch{margin-top:16px!important;padding:4px!important;gap:4px!important;border-radius:12px!important;background:var(--raise)!important}
@@ -92,7 +93,7 @@ progress{accent-color:var(--olive)}
 progress::-webkit-progress-bar{background:var(--edge)!important;border-radius:9999px}
 progress::-webkit-progress-value{background:var(--olive)!important;border-radius:9999px}
 
-#platformForm{margin:0 16px 16px!important;padding-top:0!important;border-top:0!important}
+#platformForm{margin:0 0 16px!important;padding-top:0!important;border-top:0!important}.platform-card[hidden]+#platformForm{margin-top:12px!important}
 /* 0.4.72: what the paste box has to say stays under it until the link is edited or read (no toast). */
 .paste-note{margin:8px 4px 0;color:var(--sub);font-size:12px;line-height:16px;overflow-wrap:anywhere}
 .paste-note[data-tone=warn]{color:var(--warn)}
