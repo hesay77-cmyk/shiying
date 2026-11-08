@@ -62,7 +62,8 @@ const server=http.createServer((request,response)=>{
  await ready(page);await page.waitForTimeout(1200);check((await lastId())===before,'…and nothing starts until 下载 is clicked');
  await button(page,/^下载$/).click();
  let saved=await finished(before);let p=whole(saved[0],'a single TS playlist starts by itself and saves one MP4');check(p.mp4,'the TS segments are converted to MP4');
- await page.waitForFunction(()=>/下载完成/.test(document.body.innerText),null,{timeout:10000});check(!(await button(page,/^下载$/).isVisible().catch(()=>false)),'after 下载完成 there is no button that would download the same file again');await page.screenshot({path:path.join(report,'done.png'),fullPage:true});await page.close();
+ await page.waitForFunction(()=>/下载完成/.test(document.body.innerText),null,{timeout:10000});check(!(await button(page,/^下载$/).isVisible().catch(()=>false)),'after 下载完成 there is no button that would download the same file again');
+ {const bytes=fs.statSync(saved[0]).size,text=await page.locator('#received').innerText(),shown=bytes>=1048576?(bytes/1048576).toFixed(1)+' MB':(bytes/1024).toFixed(0)+' KB';check(text.endsWith(shown),'0.4.81: after saving, 已下载 shows the size of the written file ('+text+' for '+bytes+' bytes)');}await page.screenshot({path:path.join(report,'done.png'),fullPage:true});await page.close();
  // 2. Without autoStart nothing starts.
  page=await open('/plain/ts/index.m3u8');await ready(page);await page.waitForTimeout(1500);check(Object.keys(hits).filter(k=>k.startsWith('/plain/ts/')&&k.endsWith('.ts')).every(k=>hits[k]===1),'without autoStart the page waits for 下载');whole((await download(page))[0],'then 下载 saves it');await page.close();
  // 3. Master with two qualities.

@@ -19,7 +19,8 @@ const Shiying = (() => {
         if (!bytes) return window.RuxgetI18n ? RuxgetI18n.pick('大小待确认', 'Size unknown') : '大小待确认';
         const units = ['B','KB','MB','GB'];
         const power = Math.min(3, Math.floor(Math.log(bytes) / Math.log(1024)));
-        return `${(bytes / 1024 ** power).toFixed(power ? 1 : 0)} ${units[power]}`;
+        // 1 MB = 1024 × 1024 bytes everywhere in Ruxget; KB whole, MB one decimal, GB two (as on the download pages).
+        return `${(bytes / 1024 ** power).toFixed([0, 0, 1, 2][power])} ${units[power]}`;
     }
     function name(data) {
         // 2026-11-08 (spec 06 §3): a playlist found by 页面播放器探测 that has no address of its own.

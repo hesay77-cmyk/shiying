@@ -136,7 +136,8 @@
             job.gone = !!item && item.state === 'complete' && item.exists === false;
         }));
     }
-    const MB = 1024 * 1024, size = bytes => bytes >= 1024 * MB ? (bytes / 1024 / MB).toFixed(1) + ' GB' : bytes >= MB ? (bytes / MB).toFixed(bytes >= 100 * MB ? 0 : 1) + ' MB' : Math.max(1, Math.round(bytes / 1024)) + ' KB';
+    // The same sizes as the download pages (1 MB = 1024 × 1024 bytes; KB whole, MB one decimal, GB two).
+    const MB = 1024 * 1024, size = bytes => bytes >= 1024 * MB ? (bytes / 1024 / MB).toFixed(2) + ' GB' : bytes >= MB ? (bytes / MB).toFixed(1) + ' MB' : Math.max(1, Math.round(bytes / 1024)) + ' KB';
     function chromeMeta(job) {
         const item = job.item, percent = item.totalBytes > 0 ? Math.round(item.bytesReceived / item.totalBytes * 100) : 0;
         if (job.gone) return 'Chrome · ' + goneText();
