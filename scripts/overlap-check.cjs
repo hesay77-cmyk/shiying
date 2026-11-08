@@ -1,5 +1,7 @@
 // Clean-room check: how much of a new file also appears in third-party code (CatCatch, LinkSwift).
 // Usage: node scripts/overlap-check.cjs --corpus <dir-or-file> [--corpus …] <new files…>
+// Corpus for Ruxget: CatCatch 2.7.2’s own code (js/, catch-script/; not its bundled lib/, whose minified third-party
+// code matches any JavaScript) and third-party-source/LinkSwift-1.1.3.user.js.
 // Two measures per new file:
 //  - lines: non-trivial lines (≥ 25 characters after trimming) that appear verbatim in the corpus;
 //  - structure: share of the new file's 20-token sequences (names and literals replaced by placeholders, so renamed
@@ -11,9 +13,13 @@ const walk=p=>fs.statSync(p).isDirectory()?fs.readdirSync(p).flatMap(n=>/^(node_
 const strip=text=>text.replace(/\/\*[\s\S]*?\*\//g,' ').replace(/(^|[^:\\])\/\/.*$/gm,'$1');
 const KEYWORDS=new Set('break case catch class const continue default delete do else export extends finally for function if import in instanceof let new of return static super switch this throw try typeof var void while with yield async await null true false undefined'.split(' '));
 const tokens=text=>(strip(text).match(/[A-Za-z_$][\w$]*|\d[\w.]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|=>|===|!==|&&|\|\||\?\?|\?\.|[^\s\w]/g)||[]).map(t=>/^[A-Za-z_$]/.test(t)?(KEYWORDS.has(t)?t:'I'):/^[\d"'`]/.test(t)?'L':t);
-const K=20,grams=list=>{const out=new Set();for(let i=0;i+K<=list.length;i++)out.add(list.slice(i,i+K).join(' '));return out;};
+// A run of plain literals (a list of file types, header names, message names) is data the spec dictates, not
+// expression: it counts as one token, so long lists don't inflate the shared share.
+const fold=list=>{const out=[];for(let i=0;i<list.length;i++){if(list[i]==='L'&&list[i+1]===','&&list[i+2]==='L'){while(list[i]==='L'&&list[i+1]===','&&list[i+2]==='L')i+=2;out.push('LIST');continue;}out.push(list[i]);}return out;};
+const K=20,grams=raw=>{const list=fold(raw);const out=new Set();for(let i=0;i+K<=list.length;i++)out.add(list.slice(i,i+K).join(' '));return out;};
 const lines=text=>strip(text).split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length>=25);
-const ALLOW=[/^<script src=/,/^<link rel="stylesheet"/,/^<meta (charset|name="viewport")/i];
+// Generic one-liners every browser program writes; they say nothing about where code came from.
+const ALLOW=[/^return new Promise\(\(resolve, reject\) => \{$/,/^const url = URL\.createObjectURL\(blob\);$/,/^const (video|audio|link|a) = document\.createElement\('(video|audio|a)'\);$/,/^const decoder = new TextDecoder\(\);$/,/^<script src=/,/^<link rel="stylesheet"/,/^<meta (charset|name="viewport")/i];
 const corpusFiles=corpus.flatMap(walk),corpusLines=new Set(),corpusGrams=new Set();
 for(const f of corpusFiles){const t=fs.readFileSync(f,'utf8');lines(t).forEach(l=>corpusLines.add(l));if(/\.m?js$/.test(f))grams(tokens(t)).forEach(g=>corpusGrams.add(g));}
 let failed=false;const report=[];

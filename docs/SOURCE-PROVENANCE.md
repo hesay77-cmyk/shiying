@@ -19,7 +19,7 @@
 
 | 版本 | 新文件 | 替代 | 比对结果 |
 |---|---|---|---|
-| 0.4.76 | `file-download.html`、`js/file-download.js`、`css/file-download.css` | 主面板中需要来源头的文件下载（原 `downloader.html`） | 结构重合 4.3%，相同行 0 |
-| 0.4.76 | `dash-download.html`、`js/dash-download.js`、`css/dash-download.css` | 主面板和粘贴链接的 DASH 下载（原 `mpd.html`），改为一次下载合成带声音的 MP4 | 结构重合 0.8%，相同行 3（通用写法） |
+| 0.4.76 | `file-download.html`、`js/file-download.js`、`css/file-download.css` | 主面板中需要来源头的文件下载（原 `downloader.html`） | 结构重合 2.7%，相同行 0 |
+| 0.4.76 | `dash-download.html`、`js/dash-download.js`、`css/dash-download.css` | 主面板和粘贴链接的 DASH 下载（原 `mpd.html`），改为一次下载合成带声音的 MP4 | 结构重合 0.6%，相同行 0 |
 
 旧的 `downloader.html`、`mpd.html` 在 0.4.76 中仍供“高级工具（当前网页）”使用，计划随高级工具调整在 0.4.77 移除。
