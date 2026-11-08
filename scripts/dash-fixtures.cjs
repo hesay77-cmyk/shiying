@@ -19,6 +19,9 @@ function build(dir,ffmpeg=process.env.RUXGET_FFMPEG||'ffmpeg'){
  // Picture and sound in both MP4 and WebM; the WebM picture has the higher bitrate, and the types sit on the
  // AdaptationSet only (as on real sites), not on each Representation.
  const hoist=text=>text.replace(/(<AdaptationSet[^>]*?)>(\s*<Representation[^>]*?) mimeType="([^"]+)"/g,'$1 mimeType="$3">$2');
+ // A ladder of 2160p, 1440p, 1080p and 720p (2 s, low bitrates) for the default-quality rule.
+ const ladder=[[3840,2160,2500],[2560,1440,1800],[1920,1080,1200],[1280,720,600]];
+ run('ladder',['-f','lavfi','-i','testsrc=size=640x360:rate=25','-f','lavfi','-i','sine=frequency=440:sample_rate=48000','-t','2',...ladder.flatMap(()=>['-map','0:v']),'-map','1:a',...ladder.flatMap(([w,h,k],i)=>[`-s:v:${i}`,`${w}x${h}`,`-b:v:${i}`,`${k}k`]),'-c:v','libx264','-pix_fmt','yuv420p','-preset','ultrafast','-g','25','-keyint_min','25','-sc_threshold','0','-c:a','aac','-b:a','96k','-seg_duration','2','-use_template','1','-use_timeline','0','-adaptation_sets','id=0,streams=v id=1,streams=a']);
  run('mixed',['-f','lavfi','-i','testsrc=size=640x360:rate=25','-f','lavfi','-i','sine=frequency=440:sample_rate=48000','-t','6','-map','0:v','-map','0:v','-map','1:a','-map','1:a','-c:v:0','libx264','-pix_fmt','yuv420p','-b:v:0','600k','-c:v:1','libvpx-vp9','-b:v:1','900k','-deadline','realtime','-cpu-used','8','-g','25','-keyint_min','25','-c:a:0','aac','-b:a:0','96k','-c:a:1','libopus','-b:a:1','128k','-seg_duration','2','-dash_segment_type','auto','-use_template','1','-use_timeline','0','-adaptation_sets','id=0,streams=0 id=1,streams=1 id=2,streams=2 id=3,streams=3'],hoist);
  return dir;
 }

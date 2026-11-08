@@ -114,6 +114,13 @@ const server=http.createServer((request,response)=>{
  page=await open('/plain/master/master.m3u8',{autoStart:true});before=await lastId();saved=await finished(before);whole(saved[0],'a master playlist with autoStart starts by itself at the default 720p',{height:720});await page.close();
  // 15. Narrow width, no dialog.
  page=await open('/plain/master/master.m3u8');await ready(page);await page.setViewportSize({width:360,height:760});check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'the page fits 360 px without sideways scrolling');await page.screenshot({path:path.join(report,'narrow.png'),fullPage:true});await page.close();
+ // 19. (spec v3) The default quality is at most 1080p, also when it starts by itself; English says Video / Audio.
+ page=await open('/plain/ladder/master.m3u8');await ready(page);
+ const ladderPick=await page.locator('select').first().evaluate(s=>s.options[s.selectedIndex].text);check(/1920×1080/.test(ladderPick),'with 2160p, 1440p, 1080p and 720p listed, 1080p is chosen first: '+ladderPick);
+ await page.evaluate(()=>chrome.storage.local.set({ruxgetUiLanguage:'en'}));await page.waitForTimeout(1200);
+ {const text=await page.evaluate(()=>document.body.innerText);check(/Video/.test(text)&&!/Picture|Sound/.test(text),'the English page says Video, not Picture');}
+ await page.evaluate(()=>chrome.storage.local.set({ruxgetUiLanguage:'zh_CN'}));await page.close();
+ page=await open('/plain/ladder/master.m3u8',{autoStart:true});before=await lastId();saved=await finished(before);whole(saved[0],'a ladder master with autoStart downloads 1080p',{height:1080,seconds:2});await page.close();
  check(dialogs.length===0,'no dialog appeared at any point');
  fs.writeFileSync(path.join(report,'summary.json'),JSON.stringify({checks},null,1));console.log(`hls-download-check passed (${checks.length} checks). Report: ${report}`);
 }catch(error){console.error(error);process.exitCode=1;}finally{await context?.close().catch(()=>{});server.close();}})();

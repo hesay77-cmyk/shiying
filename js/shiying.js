@@ -41,7 +41,7 @@ async function probePage() {
 }
 function probeSoon() { clearTimeout(probeTimer); probeTimer = setTimeout(() => probePage().catch(() => {}), 700); }
 // 0.4.77: the 「显示全部请求」 rows: what each request is, its size, its address to copy, and a download where one works.
-function renderAllRequests(items, pick) {
+function renderAllRequests(items, pick, kindOfItem = Shiying.kind) {
     let box = $('#allRequests');
     if (!box) { box = document.createElement('div'); box.id = 'allRequests'; box.className = 'all-requests'; $('#fragmentNote').after(box); }
     box.hidden = !items.length;
@@ -49,7 +49,7 @@ function renderAllRequests(items, pick) {
     const counts = new Map();for (const data of items) counts.set(Shiying.name(data), (counts.get(Shiying.name(data)) || 0) + 1);
     const shown = data => { const name = Shiying.name(data); if (counts.get(name) < 2) return name; try { const parts = new URL(data.url).pathname.split('/').filter(Boolean); return parts.slice(-2).map(part => { try { return decodeURIComponent(part); } catch { return part; } }).join('/'); } catch { return name; } };
     box.replaceChildren(...items.map(data => {
-        const kind = Shiying.kind(data), row = document.createElement('div'), info = document.createElement('div'), title = document.createElement('div'), meta = document.createElement('div');
+        const kind = kindOfItem(data), row = document.createElement('div'), info = document.createElement('div'), title = document.createElement('div'), meta = document.createElement('div');
         row.className = 'request-row'; info.className = 'request-info'; title.className = 'request-name'; meta.className = 'request-meta';
         title.textContent = shown(data); title.title = data.url;
         const label = kind === 'fragment' ? pick('切片，随播放列表下载', 'Segment, downloads with its playlist') : pick('其他', 'Other');
@@ -71,9 +71,28 @@ function renderAllRequests(items, pick) {
         return row;
     }));
 }
+// 0.4.79: players that load a DASH or HLS playlist fetch its pieces as .m4v / .m4a / .mp4 / .ts files from folders under
+// the playlist's own folder. Those are segments of that playlist, not videos of their own, so they fold with the rest.
+function kindOf(item, playlists) {
+    const kind = Shiying.kind(item);
+    if (!['video', 'audio'].includes(kind) || !playlists.length) return kind;
+    const ext = String(item.ext || '').toLowerCase();
+    if (!['m4v', 'm4a', 'm4s', 'mp4', 'ts', 'aac', 'cmfv', 'cmfa'].includes(ext)) return kind;
+    try {
+        const url = new URL(item.url), folder = url.origin + url.pathname.slice(0, url.pathname.lastIndexOf('/') + 1);
+        // In a sub-folder of the playlist's folder: a piece. In the same folder: only when its name looks numbered.
+        const below = playlists.some(dir => folder !== dir.full && folder.startsWith(dir.full));
+        const numbered = playlists.some(dir => folder === dir.full) && /(^|[_.-])(\d+|init|seg(ment)?\d*|chunk\d*)\.(m4v|m4a|m4s|mp4|ts|aac|cmfv|cmfa)$/i.test(url.pathname);
+        return below || numbered ? 'fragment' : kind;
+    } catch { return kind; }
+}
+function playlistFolders() {
+    return media.filter(item => ['hls', 'dash'].includes(Shiying.kind(item))).map(item => { try { const url = new URL(item.url); return {full: url.origin + url.pathname.slice(0, url.pathname.lastIndexOf('/') + 1)}; } catch { return null; } }).filter(Boolean);
+}
 function render() {
+    const folders = playlistFolders(), kindOfItem = item => kindOf(item, folders);
     const search = $('#search').value.trim().toLowerCase();
-    const playable = media.filter(item => !['other', 'fragment'].includes(Shiying.kind(item)));
+    const playable = media.filter(item => !['other', 'fragment'].includes(kindOfItem(item)));
     const matching = playable.filter(item => (filter === 'all' || (filter === 'audio' ? Shiying.kind(item) === 'audio' : Shiying.kind(item) !== 'audio')) && `${Shiying.name(item)} ${item.ext || ''}`.toLowerCase().includes(search));
     // Main video first, then the rest; ads, previews and tiny clips fold under one line unless searching.
     const focus = typeof RuxgetFocus === 'undefined' ? new Map() : RuxgetFocus.classify(playable, pageElements, Shiying.kind);
@@ -101,10 +120,10 @@ function render() {
     // 0.4.71: nothing found on a web page: its link can be copied (the desktop app's 新建下载 fills it in).
     { const link = $('#copyPageLink'); if (link) { link.hidden = !!real || !/^https?:/i.test(currentSite?.url || ''); link.textContent = pick('复制这个网页的链接', 'Copy this page’s link'); } }
     $('#empty p').textContent = real ? pick('换一个类型，或清空搜索词再试试。','Try another type, or clear the search.') : restricted ? pick('请切换到视频页，或在上方粘贴视频链接。','Switch to a video page, or paste a video link above.') : pick('播放网页里的视频，或在上方粘贴视频链接。','Play the video on the page, or paste a video link above.');
-    const fragments = media.filter(item => Shiying.kind(item) === 'fragment').length;
+    const fragments = media.filter(item => kindOfItem(item) === 'fragment').length;
     // 0.4.77: everything the page loaded that the list above leaves out (segments, playlists the list folds, other
     // files) opens under 「显示全部请求」, in place of the old advanced popup's request list.
-    const others = media.filter(item => ['other', 'fragment'].includes(Shiying.kind(item)) && `${Shiying.name(item)} ${item.url}`.toLowerCase().includes(search));
+    const others = media.filter(item => ['other', 'fragment'].includes(kindOfItem(item)) && `${Shiying.name(item)} ${item.url}`.toLowerCase().includes(search));
     const note = $('#fragmentNote');
     note.hidden = !others.length;
     const noteText = document.createElement('span');
@@ -115,7 +134,7 @@ function render() {
     allToggle.setAttribute('aria-expanded', String(showAll));
     allToggle.addEventListener('click', () => { showAll = !showAll; render(); });
     note.replaceChildren(...(noteText.textContent ? [noteText, ' '] : []), allToggle);
-    renderAllRequests(showAll ? others : [], pick);
+    renderAllRequests(showAll ? others : [], pick, kindOfItem);
     const list = $('#mediaList');
     list.replaceChildren();
     const urls = new Set(media.map(item => item.url));
