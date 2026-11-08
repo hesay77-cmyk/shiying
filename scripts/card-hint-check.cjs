@@ -70,27 +70,10 @@ const VIDEO='https://www.bilibili.com/video/BV15z4y1U7HS/';
   p=await open();h=await hint(p);assert.match(h.text,/下载没成功？可以改用桌面版下载/);await p.close();
   check('failed download: the hint suggests the desktop app');
 
-  // Four finished downloads: no rating line yet; five: the rating link (GitHub for a build that is not the store's).
-  await job({status:'complete'});await state({ruxgetDoneCount:4});
+  // 0.4.81: only the Chrome Web Store build has a rating page; this build shows no rating line, even after 5 finished downloads.
+  await job({status:'complete'});await state({ruxgetDoneCount:5});
   p=await open();assert.equal((await hint(p)).visible,false);await p.close();
-  await state({ruxgetDoneCount:5});p=await open();h=await hint(p);
-  assert.match(h.text,/用着顺手的话，去 GitHub 给 Ruxget 点个 Star/);assert.equal(h.dialogs,0);
-  assert.equal(await p.locator('#cardHint a').getAttribute('href'),'https://github.com/hesay77-cmyk/shiying');
-  await p.screenshot({path:path.join(report,'hint-rate.png')});await p.close();
-  check('rating line appears only after 5 finished downloads, as a plain link');
-
-  // Shown in at most 5 popup openings in total.
-  for(let i=2;i<=5;i++){p=await open();assert.equal((await hint(p)).visible,true,'opening '+i);await p.close();}
-  p=await open();assert.equal((await hint(p)).visible,false);await p.close();
-  check('the rating line stops after 5 openings without any click');
-
-  // Clicked once: never again, even with openings left.
-  await state({ruxgetRate:{shown:1}});p=await open();
-  const [tab]=await Promise.all([browser.waitForEvent('page'),p.locator('#cardHint a').click()]);await tab.close().catch(()=>{});
-  await p.waitForFunction(()=>document.querySelector('#cardHint').hidden);await p.close();
-  assert.equal((await worker.evaluate(()=>chrome.storage.local.get('ruxgetRate'))).ruxgetRate.clicked,true);
-  p=await open();assert.equal((await hint(p)).visible,false);await p.close();
-  check('after the rating link is clicked it never shows again');
+  check('a build outside the store never shows a rating line');
 
   // A finished download counts toward the total.
   const before=(await worker.evaluate(()=>chrome.storage.local.get('ruxgetDoneCount'))).ruxgetDoneCount;

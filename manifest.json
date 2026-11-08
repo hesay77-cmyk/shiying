@@ -24,7 +24,7 @@
   "manifest_version": 3,
   "minimum_chrome_version": "116",
   "name": "__MSG_extName__",
-  "homepage_url": "https://github.com/hesay77-cmyk/shiying",
+  "homepage_url": "https://hidaydream.cloud/",
   "options_ui": {
     "page": "ruxget-settings.html",
     "open_in_tab": true

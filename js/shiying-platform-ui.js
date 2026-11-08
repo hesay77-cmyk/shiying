@@ -129,7 +129,7 @@ const ShiyingPlatformUI = (() => {
     let rateCounted=false,hintSerial=0;
     function rateLink(){
         if(chrome.runtime.id===CHROME_STORE)return {url:'https://chromewebstore.google.com/detail/'+CHROME_STORE+'/reviews',text:pick('用着顺手的话，去商店给 Ruxget 写个评价 ⭐','Enjoying Ruxget? A rating in the store helps ⭐')};
-        return {url:'https://github.com/hesay77-cmyk/shiying',text:pick('用着顺手的话，去 GitHub 给 Ruxget 点个 Star ⭐','Enjoying Ruxget? A star on GitHub helps ⭐')};
+        return null; // Builds outside the Chrome Web Store have no rating page; no line is shown.
     }
     function hintLine(text,action,label,onClick){
         const hint=$('#cardHint'),span=document.createElement('span');span.textContent=text;
@@ -144,8 +144,8 @@ const ShiyingPlatformUI = (() => {
         if(job?.status==='complete'){
             const {ruxgetDoneCount:done=0,ruxgetRate:rate={}}=await chrome.storage.local.get(['ruxgetDoneCount','ruxgetRate']);
             if(serial!==hintSerial)return;
-            if(done>=5&&!rate.clicked&&(rate.shown||0)<RATE_LIMIT){
-                const link=rateLink();
+            const link=done>=5&&!rate.clicked&&(rate.shown||0)<RATE_LIMIT?rateLink():null;
+                if(link){
                 if(!rateCounted){rateCounted=true;chrome.storage.local.set({ruxgetRate:{...rate,shown:(rate.shown||0)+1}});}
                 hintLine('', 'a', link.text, {url:link.url,handler:()=>chrome.storage.local.set({ruxgetRate:{...rate,clicked:true}}).then(()=>{hint.hidden=true;})});
                 return;
