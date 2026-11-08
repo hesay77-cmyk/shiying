@@ -35,6 +35,19 @@ public partial class MainWindow {
         pluginReady=false;sendPlugin=null;pluginView=null;interfaceReleased=true;hiddenSince=DateTime.MaxValue;thumbsSent.Clear();thumbsVersion=-1;
         Controls.Remove(view);try{view.Dispose();}catch(Exception){/* the WebView2 processes end with the controller */}
     }
+    // 0.4.76: a window opened from the tray after its interface was released waits (hidden) until the rebuilt page has
+    // drawn its tasks, at most 3 s, so no blank window flashes up first. A second click meanwhile changes nothing.
+    bool waitingToShow;DateTime waitStarted,readyAt=DateTime.MaxValue;System.Windows.Forms.Timer showTimer;
+    bool ShowWhenInterfaceDrawn(){
+        if(waitingToShow)return true;
+        bool rebuild=!preview&&interfaceReleased&&pluginView==null;EnsureInterface();if(!rebuild||pluginView==null)return false;
+        waitingToShow=true;waitStarted=DateTime.UtcNow;readyAt=DateTime.MaxValue;
+        if(showTimer==null){showTimer=new System.Windows.Forms.Timer{Interval=40};showTimer.Tick+=(s,e)=>{
+            if(IsDisposed||closingWindow){showTimer.Stop();waitingToShow=false;return;}
+            var now=DateTime.UtcNow;if(!(pluginReady&&now-readyAt>=TimeSpan.FromMilliseconds(150))&&now-waitStarted<TimeSpan.FromSeconds(3))return;
+            showTimer.Stop();waitingToShow=false;RestoreFromTray();};}
+        showTimer.Start();return true;
+    }
     // Before the window is shown again (or a confirmation needs it): the interface comes back as it was.
     internal void EnsureInterface(){
         if(pluginView!=null||!interfaceReleased||closingWindow||IsDisposed)return;
@@ -108,7 +121,7 @@ public partial class MainWindow {
     async void PluginMessage(string json){try{
         if(json.Length>3*1024*1024)throw new Exception("操作内容过长");var data=Util.Json().Deserialize<Dictionary<string,object>>(json);if(data==null)return;
         string command=Util.Str(data,"command"),id=Util.Str(data,"id");
-        if(command=="ready"){pluginReady=true;thumbsSent.Clear();thumbsVersion=-1;PushPluginState();var updated=Updater.TakeDoneNotice(manager.DataDirectory);if(updated!=null)PluginNotice(updated);if(editorToken.Length>0)PluginEditor(editorInput);return;}
+        if(command=="ready"){pluginReady=true;readyAt=DateTime.UtcNow;thumbsSent.Clear();thumbsVersion=-1;PushPluginState();var updated=Updater.TakeDoneNotice(manager.DataDirectory);if(updated!=null)PluginNotice(updated);if(editorToken.Length>0)PluginEditor(editorInput);return;}
         if(closingWindow)return;
         if(command=="cancelEditor"){if(Util.Str(data,"token")==editorToken){editorToken="";editorInput=null;playlistCatalog=null;if(playlistCancel!=null)playlistCancel.Cancel();}return;}
         if(command=="cancelBatch"){batchFolder="";return;}
