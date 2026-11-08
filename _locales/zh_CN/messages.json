@@ -432,12 +432,6 @@
   "netdiskNameAliyun": {
     "message": "阿里云盘"
   },
-  "netdiskNameMcloud": {
-    "message": "中国移动云盘"
-  },
-  "netdiskNameTcloud": {
-    "message": "天翼云盘"
-  },
   "netdiskNameXunlei": {
     "message": "迅雷云盘"
   },

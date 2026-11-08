@@ -432,12 +432,6 @@
   "netdiskNameAliyun": {
     "message": "Aliyun Drive"
   },
-  "netdiskNameMcloud": {
-    "message": "China Mobile Cloud"
-  },
-  "netdiskNameTcloud": {
-    "message": "Tianyi Cloud"
-  },
   "netdiskNameXunlei": {
     "message": "Xunlei Cloud"
   },

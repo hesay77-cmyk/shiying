@@ -5,7 +5,7 @@
  const tMsg=(k,fb)=>{if(window.RuxgetI18n){const v=RuxgetI18n.t(k);if(v&&v!==k)return v;}return fb;};
  const note=text=>{field.textContent=text;};
  const send=async value=>{const result=await chrome.runtime.sendMessage(value);if(!result?.ok)throw new Error(result?.error||tMsg('uiNetdiskIncomplete','网盘设置未完成'));return result;};
- const nameKey={baidu:'netdiskNameBaidu',aliyun:'netdiskNameAliyun',mcloud:'netdiskNameMcloud',tcloud:'netdiskNameTcloud',xunlei:'netdiskNameXunlei',quark:'netdiskNameQuark',uc:'netdiskNameUc',pan123:'netdiskNamePan123'};
+ const nameKey={baidu:'netdiskNameBaidu',aliyun:'netdiskNameAliyun',xunlei:'netdiskNameXunlei',quark:'netdiskNameQuark',uc:'netdiskNameUc',pan123:'netdiskNamePan123'};
  function providerLabel(){
   const item=ShiyingNetdisk.items[provider];
   const fallback=item?.name||provider||'';
