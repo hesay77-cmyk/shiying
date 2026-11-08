@@ -7,7 +7,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const OLD = `catCatch description confirm play screenshot loop volume downloader parser mpdParser download copy selectAll filter clear pause settings enable disable option suffix delete extension type alert flag result match address test preview operation about default loading segmentList downloadProgress requestHeaders audioOnly saveAs stopDownload start end resolution duration bitrate key close downloaded merging audio video exit saving saveFailed popup verifying blockUrl sort desc getTime fileSize title Script save contextMenus reverse`.split(/\s+/);
-const SKIP_DIRS = new Set(['.git', 'desktop', 'third-party-source', 'lib', 'node_modules', 'docs', '_locales', 'build', 'build-full', 'reports']);
+const SKIP_DIRS = new Set(['.git', 'desktop', 'third-party-source', 'lib', 'node_modules', 'docs', '_locales', 'build', 'build-full', 'reports', '.checks', 'release', 'dist', 'scripts']);
 const OWN_TEXT = new Set(['dash-download.html', 'hls-download.html', 'file-download.html', 'dash-download.js', 'hls-download.js', 'file-download.js']);
 const read = file => JSON.parse(fs.readFileSync(path.join(root, file), 'utf8').replace(/^﻿/, ''));
 const catalogs = {zh_CN: read('_locales/zh_CN/messages.json'), en: read('_locales/en/messages.json')};
