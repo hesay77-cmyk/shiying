@@ -1,0 +1,152 @@
+<!doctype html>
+<!-- Ruxget，2026-11-08，按功能说明书 04-HLS下载页 从零编写。 -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light only">
+<title>Ruxget · 视频下载</title>
+<link rel="stylesheet" href="css/hls-download.css">
+</head>
+<body>
+<header class="masthead">
+  <div class="masthead-inner">
+    <img class="logo" src="img/shiying.svg" width="42" height="42" alt="Ruxget">
+    <div class="heading">
+      <h1 id="pageName" data-i18n="pageName"></h1>
+      <p id="subtitle" class="subtitle"></p>
+    </div>
+    <button type="button" id="advancedToggle" class="ghost" aria-expanded="false" hidden></button>
+  </div>
+</header>
+
+<main class="content">
+  <section id="formCard" class="card" hidden>
+    <form id="manualForm" novalidate>
+      <label class="field">
+        <span data-i18n="playlistField"></span>
+        <input id="playlistInput" type="url" autocomplete="off" spellcheck="false">
+      </label>
+      <label class="field">
+        <span data-i18n="sourceField"></span>
+        <input id="sourceInput" type="url" autocomplete="off" spellcheck="false">
+      </label>
+      <p id="formMessage" class="line error" hidden></p>
+      <div class="actions"><button type="submit" class="primary" data-i18n="readButton"></button></div>
+    </form>
+  </section>
+
+  <section id="mainCard" class="card" hidden>
+    <p id="loading" class="line muted" data-i18n="loading"></p>
+    <p id="blocked" class="line error" hidden></p>
+
+    <div id="chooser" hidden>
+      <p id="summary" class="line muted"></p>
+      <label class="field" id="videoField" hidden>
+        <span data-i18n="videoField"></span>
+        <select id="videoSelect"></select>
+      </label>
+      <label class="field" id="audioField" hidden>
+        <span data-i18n="audioField"></span>
+        <select id="audioSelect"></select>
+      </label>
+      <label class="field">
+        <span data-i18n="filenameField"></span>
+        <input id="filenameInput" type="text" autocomplete="off" spellcheck="false">
+      </label>
+      <p id="selectMessage" class="line error" hidden></p>
+      <p id="sizeWarning" class="line notice" hidden></p>
+      <p id="comboNote" class="line notice" hidden></p>
+      <p id="permNote" class="line notice" hidden></p>
+      <div id="startArea" class="actions">
+        <button type="button" id="permButton" class="secondary" data-i18n="allowAccess" hidden></button>
+        <button type="button" id="downloadButton" class="primary"></button>
+      </div>
+
+      <div id="progressArea" hidden>
+        <div class="progress-row" id="progressRow">
+          <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="bar"><div id="barFill" class="bar-fill"></div></div>
+          <span id="percent" class="percent">0%</span>
+        </div>
+        <p id="stage" class="line stage"></p>
+        <p id="received" class="line muted"></p>
+        <p id="liveNote" class="line notice" hidden></p>
+        <p id="gapNote" class="line muted" hidden></p>
+        <p id="jobMessage" class="line error" hidden></p>
+        <p id="jobDetail" class="line muted" hidden></p>
+        <p id="jobPermNote" class="line notice" hidden></p>
+        <div class="actions">
+          <button type="button" id="jobPermButton" class="secondary" data-i18n="allowAccess" hidden></button>
+          <button type="button" id="stopButton" class="secondary"></button>
+          <button type="button" id="retryFailedButton" class="primary" data-i18n="retryFailed" hidden></button>
+          <button type="button" id="savePartialButton" class="secondary" data-i18n="savePartial" hidden></button>
+          <button type="button" id="showFileButton" class="primary" data-i18n="showFile" hidden></button>
+        </div>
+      </div>
+
+      <div id="previewBox" class="preview" hidden></div>
+    </div>
+  </section>
+
+  <section id="advancedCard" class="card" hidden>
+    <h2 data-i18n="advancedTitle"></h2>
+
+    <p class="label" data-i18n="playlistAddress"></p>
+    <p class="line"><a id="playlistLink" class="wrap-anywhere" target="_blank" rel="noreferrer noopener"></a></p>
+
+    <label class="field">
+      <span id="videoListLabel" data-i18n="segmentList"></span>
+      <textarea id="videoList" rows="5" readonly spellcheck="false"></textarea>
+    </label>
+    <label class="field" id="audioListField" hidden>
+      <span data-i18n="audioSegments"></span>
+      <textarea id="audioList" rows="4" readonly spellcheck="false"></textarea>
+    </label>
+    <div class="actions block-gap">
+      <button type="button" id="copyButton" class="secondary" data-i18n="copyAll"></button>
+    </div>
+
+    <div id="rangeGroup" class="group">
+      <p class="label" data-i18n="rangeTitle"></p>
+      <div class="pair">
+        <input id="rangeFrom" type="text" autocomplete="off" spellcheck="false">
+        <input id="rangeTo" type="text" autocomplete="off" spellcheck="false">
+      </div>
+      <p id="rangeMessage" class="line error small" hidden></p>
+    </div>
+
+    <div class="group">
+      <div class="actions">
+        <button type="button" id="audioOnlyButton" class="secondary" data-i18n="audioOnly"></button>
+      </div>
+    </div>
+
+    <div class="group">
+      <p class="label" data-i18n="customKey"></p>
+      <input id="customKey" name="key" type="text" autocomplete="off" spellcheck="false">
+      <input id="customIv" class="stacked" type="text" autocomplete="off" spellcheck="false">
+      <p id="keyMessage" class="line error small" hidden></p>
+    </div>
+
+    <label class="field group">
+      <span data-i18n="customHeaders"></span>
+      <textarea id="headersBox" rows="4" spellcheck="false"></textarea>
+    </label>
+
+    <label class="field group">
+      <span data-i18n="extraQuery"></span>
+      <input id="extraQuery" type="text" autocomplete="off" spellcheck="false">
+    </label>
+
+    <div class="actions">
+      <button type="button" id="commandButton" class="secondary" data-i18n="copyCommand"></button>
+      <button type="button" id="previewButton" class="secondary"></button>
+    </div>
+    <p id="advancedMessage" class="line muted top-gap" hidden></p>
+  </section>
+</main>
+
+<script src="lib/mux.min.js"></script>
+<script type="module" src="js/hls-download.js"></script>
+</body>
+</html>

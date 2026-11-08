@@ -209,15 +209,11 @@ async function startDownload(data, tabId) {
     if (['hls','dash'].includes(kind)) {
         const requestHeaders = {...data.requestHeaders};
         if (data.cookie) requestHeaders.Cookie = data.cookie;
-        const parameters = new URLSearchParams({url:data.url, title:data.title || '网页视频', filename:Shiying.filename(data), tabid:String(tabId), initiator:data.initiator || data.webUrl || '', requestHeaders:JSON.stringify(requestHeaders), autoClose:'0'});
-        // 0.4.76: DASH opens Ruxget's own page (pick the picture and sound, one merged MP4); HLS still merges in m3u8.html.
-        if (kind === 'dash') {
-            const dash = new URLSearchParams({url:data.url, title:data.title || '', filename:Shiying.filename({...data, ext:'mp4'}), requestHeaders:JSON.stringify(requestHeaders)});
-            await chrome.tabs.create({url:chrome.runtime.getURL(`dash-download.html?${dash}`), active:true});
-            return {};
-        }
-        parameters.set('autoDown', '1');
-        await chrome.tabs.create({url:chrome.runtime.getURL(`m3u8.html?${parameters}`), active:true});
+        // 0.4.78: both stream kinds open Ruxget's own pages. A video picked in the panel starts at once (autoStart);
+        // a pasted playlist waits on the page for the person to choose.
+        const page = new URLSearchParams({url:data.url, title:data.title || '', filename:Shiying.filename({...data, ext:'mp4'}), requestHeaders:JSON.stringify(requestHeaders)});
+        if (kind === 'hls' && !data.pasted) page.set('autoStart', '1');
+        await chrome.tabs.create({url:chrome.runtime.getURL(`${kind === 'hls' ? 'hls' : 'dash'}-download.html?${page}`), active:true});
         return {};
     }
     // 0.4.77: 「显示全部请求」 can download any listed file; a segment only makes sense with its playlist.

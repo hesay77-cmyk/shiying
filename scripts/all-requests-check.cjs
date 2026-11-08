@@ -38,7 +38,7 @@ const server=http.createServer((request,response)=>{const name=new URL(request.u
  await toggle.click();const rows=panel.locator('#allRequests .request-row');await rows.first().waitFor({state:'visible'});
  const texts=await rows.allInnerTexts();check(texts.some(t=>/seg-001/.test(t)&&/切片/.test(t)),'segments are listed and labelled 切片');
  check(texts.some(t=>/clip/.test(t)&&/其他/.test(t)&&/HLV/.test(t)),'other files are listed with their type');
- const segRow=rows.filter({hasText:'seg-001'});check(await segRow.getByRole('button',{name:'下载'}).isDisabled(),'a segment cannot be downloaded alone');
+ const segRow=rows.filter({hasText:'seg-001'});check(!(await segRow.getByRole('button',{name:'下载'}).isVisible())&&/随播放列表下载/.test(await segRow.innerText()),'a segment has no download of its own and says it goes with its playlist');
  await context.grantPermissions(['clipboard-read','clipboard-write'],{origin:`chrome-extension://${id}`}).catch(()=>{});
  await panel.evaluate(()=>{navigator.clipboard.writeText=async text=>{window.copied=text;};});await segRow.getByRole('button',{name:'复制地址'}).click();await panel.waitForTimeout(300);
  const clip=await panel.evaluate(()=>window.copied||'');check(clip===origin+'/seg-001.m4s','复制地址 copies the exact address');

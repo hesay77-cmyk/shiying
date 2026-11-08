@@ -45,11 +45,14 @@ function renderAllRequests(items, pick) {
     let box = $('#allRequests');
     if (!box) { box = document.createElement('div'); box.id = 'allRequests'; box.className = 'all-requests'; $('#fragmentNote').after(box); }
     box.hidden = !items.length;
+    // Players often load many pieces with the same file name from different folders: show the folder too then.
+    const counts = new Map();for (const data of items) counts.set(Shiying.name(data), (counts.get(Shiying.name(data)) || 0) + 1);
+    const shown = data => { const name = Shiying.name(data); if (counts.get(name) < 2) return name; try { const parts = new URL(data.url).pathname.split('/').filter(Boolean); return parts.slice(-2).map(part => { try { return decodeURIComponent(part); } catch { return part; } }).join('/'); } catch { return name; } };
     box.replaceChildren(...items.map(data => {
         const kind = Shiying.kind(data), row = document.createElement('div'), info = document.createElement('div'), title = document.createElement('div'), meta = document.createElement('div');
         row.className = 'request-row'; info.className = 'request-info'; title.className = 'request-name'; meta.className = 'request-meta';
-        title.textContent = Shiying.name(data); title.title = data.url;
-        const label = kind === 'fragment' ? pick('切片', 'Segment') : pick('其他', 'Other');
+        title.textContent = shown(data); title.title = data.url;
+        const label = kind === 'fragment' ? pick('切片，随播放列表下载', 'Segment, downloads with its playlist') : pick('其他', 'Other');
         meta.textContent = [label, (data.ext || '').toUpperCase(), data.size ? Shiying.size(Number(data.size)) : ''].filter(Boolean).join(' · ');
         info.append(title, meta);
         const copyButton = document.createElement('button'), down = document.createElement('button');
@@ -57,8 +60,8 @@ function renderAllRequests(items, pick) {
         copyButton.textContent = pick('复制地址', 'Copy address');
         copyButton.addEventListener('click', () => copy(data.url).catch(failure));
         down.textContent = pick('下载', 'Download');
-        down.disabled = kind === 'fragment' || !Shiying.validURL(data.url);
-        if (kind === 'fragment') down.title = pick('切片需要配合它的播放列表下载', 'A segment downloads together with its playlist');
+        down.hidden = kind === 'fragment';
+        down.disabled = !Shiying.validURL(data.url);
         down.addEventListener('click', async () => {
             down.disabled = true;
             try { const result = await message('shiyingDownload', {data}); if (!result.ok) throw new Error(result.error); notify(result.page ? '已在新标签页中打开下载页' : '已交给 Chrome 下载'); }
@@ -422,8 +425,8 @@ $('#linkDownloadForm').addEventListener('submit',async event=>{
     if(typeof ShiyingPlatformUI!=="undefined"&&ShiyingPlatformUI.stream?.($('#linkDownloadURL').value.trim(),referer)){$('#linkDownload').close();return;}
     if(referer){try{const payload=ShiyingNative.file($('#linkDownloadURL').value,referer);if(!payload.referer)throw new Error('来源网页需要是完整的 HTTP 或 HTTPS 地址');const link=new URL(payload.url);
         if(!await chrome.permissions.request({origins:[link.protocol+'//'+link.hostname+'/*']}).catch(()=>false))throw new Error('需要允许访问这个网站，才能带着来源网页下载。');
-        let name=link.pathname.split('/').pop()||'';try{name=decodeURIComponent(name);}catch{}const ext=(/.([a-z0-9]{1,8})$/i.exec(name)||[])[1]||'';
-        const result=await chrome.runtime.sendMessage({Message:'shiyingDownload',tabId,data:{url:payload.url,ext,title:name.replace(/.[a-z0-9]{1,8}$/i,'')||'下载文件',type:'',requestHeaders:{referer:payload.referer}}});
+        let name=link.pathname.split('/').pop()||'';try{name=decodeURIComponent(name);}catch{}const ext=(/\.([a-z0-9]{1,8})$/i.exec(name)||[])[1]||'';
+        const result=await chrome.runtime.sendMessage({Message:'shiyingDownload',tabId,data:{url:payload.url,ext,title:name.replace(/\.[a-z0-9]{1,8}$/i,'')||'下载文件',type:'',requestHeaders:{referer:payload.referer}}});
         if(!result?.ok)throw new Error(result?.error||'没有打开下载页，请重试');$('#linkDownload').close();notify('已在新标签页中打开下载页');}catch(error){linkDownloadFailure(error);}return;}
     try{const payload=ShiyingNative.file($('#linkDownloadURL').value);linkDownloadState(true);$('#linkDownloadError').hidden=true;await chrome.downloads.download({url:payload.url,saveAs:$('#saveAs').checked});$('#linkDownload').close();notify('已交给 Chrome 下载');}catch(error){linkDownloadFailure(error);}finally{linkDownloadState(false);}
 });

@@ -13,7 +13,8 @@
         const lang = value === 'zh_CN' ? 'zh' : value === 'en' ? 'en' : (chrome.i18n.getUILanguage() || '').toLowerCase().startsWith('zh') ? 'zh' : 'en';
         note.textContent = text[lang];
     };
-    const place = () => document.body.prepend(note);
+    // options.html has a fixed left sidebar: the line goes at the top of its content column instead of under it.
+    const place = () => (document.querySelector('.wrapper.options') || document.body).prepend(note);
     if (document.body) place(); else document.addEventListener('DOMContentLoaded', place, {once: true});
     apply('auto');
     chrome.storage.local.get('ruxgetUiLanguage').then(data => apply(data.ruxgetUiLanguage)).catch(() => {});
