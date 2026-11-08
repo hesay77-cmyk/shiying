@@ -166,7 +166,9 @@
         const current = job => !since || job.time >= since || (job.desktop ? job.state !== 'done' : !done(job));
         const jobs = [...browser, ...desktop, ...await chromeJobs(siteDownloads)].filter(current).sort((a, b) => b.time - a.time).slice(0, SHOWN);
         await markSiteGone(jobs.filter(job => !job.desktop && !job.chrome));
-        if (empty) { empty.hidden = jobs.length > 0; empty.textContent = pick('这次打开 Chrome 后还没有下载。下载的文件会出现在这里，双击即可打开；以前的下载在「全部下载记录」中。', 'Nothing downloaded since Chrome started. Files you download show up here; double-click one to open it. Earlier downloads are in “All downloads”.'); }
+        // 0.4.81: the empty note no longer promises “only since Chrome started”: what is listed depends on when Chrome
+        // last started and on downloads still running, so it says “recent” and points to the full history.
+        if (empty) { empty.hidden = jobs.length > 0; empty.textContent = pick('还没有最近的下载。下载的文件会显示在这里，双击即可打开；更早的下载在「全部下载记录」中。', 'No recent downloads. Files you download appear here; double-click one to open it. Older downloads are in “All downloads”.'); }
         box.setAttribute('aria-label', pick('已下载', 'Downloads'));
         if (folder) folder.textContent = pick('打开下载文件夹', 'Open downloads folder');
         if (history) history.textContent = pick('全部下载记录', 'All downloads');
