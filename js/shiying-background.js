@@ -209,10 +209,10 @@ async function startDownload(data, tabId) {
     if (['hls','dash'].includes(kind)) {
         const requestHeaders = {...data.requestHeaders};
         if (data.cookie) requestHeaders.Cookie = data.cookie;
-        // 0.4.78: both stream kinds open Ruxget's own pages. A video picked in the panel starts at once (autoStart);
-        // a pasted playlist waits on the page for the person to choose.
+        // 0.4.78: both stream kinds open Ruxget's own pages. 0.4.81: an HLS video picked in the panel no longer starts
+        // at once; like DASH and a pasted playlist, the page waits for the person to choose a quality (it preselects
+        // the best one up to 1080p).
         const page = new URLSearchParams({url:data.url, title:data.title || '', filename:Shiying.filename({...data, ext:'mp4'}), requestHeaders:JSON.stringify(requestHeaders)});
-        if (kind === 'hls' && !data.pasted) page.set('autoStart', '1');
         // 2026-11-08 (spec 06 §6): a playlist the page made itself is read from the probe's copy (textKey), and its
         // relative entries resolve against the page that made it.
         const text = /#ruxget-text:([0-9a-f]{16})$/.exec(data.url);
