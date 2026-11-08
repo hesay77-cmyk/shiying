@@ -66,6 +66,8 @@ const dyPage=page(`document.getElementById('player').__reactFiber$x={memoizedPro
   // 抖音: asks for its video servers once, then sends the page as Referer.
   const dy=await popupFor('https://www.douyin.com/video/7412345678901234567');
   await dy.waitForFunction(()=>!document.querySelector('#platformDownload').disabled,null,{timeout:30000});
+  // 0.4.80: the panel may lay the card out once more while it settles (页面播放器探测 joins the page view); wait for it.
+  await dy.waitForFunction(()=>document.querySelector('#platformTitle')?.innerText==='抖音样例',null,{timeout:5000}).catch(()=>{});
   assert.equal(await dy.locator('#platformTitle').innerText(),'抖音样例');
   await dy.evaluate(()=>{window.requested=[];chrome.permissions.request=async request=>{requested.push(request);return false;};});
   await dy.locator('label[for=formatVideo]').click();await dy.locator('#platformDownload').click();
