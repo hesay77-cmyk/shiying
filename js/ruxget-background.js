@@ -18,7 +18,7 @@ importScripts(
 // Titles follow Ruxget's own language setting (RuxgetOffer.menuTitles); rebuilding runs one after another.
 const RuxgetMenus = (() => {
     let queue = Promise.resolve();
-    const fallback = {uiActionTakeover:'大文件交给桌面版', uiActionDesktop:'安装或连接桌面版…', uiContextDownloadLink:'用 Ruxget 下载此链接'};
+    const fallback = {uiActionTakeover:'大文件交给桌面版', uiActionDesktop:'安装或连接桌面版…', uiContextDownloadLink:'用 Ruxget 桌面版下载此链接'};
     const build = () => new Promise(resolve => chrome.contextMenus.removeAll(() => {
         void chrome.runtime.lastError;
         chrome.contextMenus.create({id:'ruxget-action-takeover', type:'checkbox', checked:false, title:fallback.uiActionTakeover, contexts:['action']}, () => void chrome.runtime.lastError);

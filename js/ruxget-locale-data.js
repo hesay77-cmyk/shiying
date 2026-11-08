@@ -149,7 +149,7 @@ globalThis.RuxgetLocaleData={
 "netdiskNameQuark":{"message":"Quark Drive"},
 "netdiskNameUc":{"message":"UC Drive"},
 "netdiskNamePan123":{"message":"123 Cloud"},
-"uiNetdiskNoteOff":{"message":"When enabled, a \"Ruxget download\" button appears next to the drive toolbar. First use asks to read this drive login and connect the desktop app."},
+"uiNetdiskNoteOff":{"message":"When enabled, a \"Ruxget download\" button appears next to the drive toolbar. The first time, Chrome asks to let Ruxget use your login for this drive and connect the desktop app."},
 "uiNetdiskNoteOn":{"message":"Select files in the drive, then click \"Ruxget download\" beside the toolbar. The original download button still works."},
 "uiNetdiskSetupHint":{"message":"Install and connect the desktop app from \"Install & connect desktop\" below first."},
 "uiNetdiskNeedDesktop":{"message":"Install Ruxget desktop 0.4.28 or newer before enabling cloud-drive download"},

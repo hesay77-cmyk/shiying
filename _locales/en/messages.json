@@ -442,7 +442,7 @@
     "message": "123 Cloud"
   },
   "uiNetdiskNoteOff": {
-    "message": "When enabled, a \"Ruxget download\" button appears next to the drive toolbar. First use asks to read this drive login and connect the desktop app."
+    "message": "When enabled, a \"Ruxget download\" button appears next to the drive toolbar. The first time, Chrome asks to let Ruxget use your login for this drive and connect the desktop app."
   },
   "uiNetdiskNoteOn": {
     "message": "Select files in the drive, then click \"Ruxget download\" beside the toolbar. The original download button still works."
