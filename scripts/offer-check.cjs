@@ -308,7 +308,7 @@ const MB=1024*1024,DAY=86400000;
   check('a “不用了” to the 0.4.54 hint counts as the first time');
 
   // The toolbar icon's right-click entries.
-  assert.equal(await worker.evaluate(async()=>{try{await chrome.contextMenus.update('ruxget-action-takeover',{checked:false});await chrome.contextMenus.update('ruxget-action-desktop',{});await chrome.contextMenus.update('ruxget-action-advanced',{});await RuxgetOffer.menuTitles();return true;}catch(error){return error.message;}}),true);
+  assert.equal(await worker.evaluate(async()=>{try{await chrome.contextMenus.update('ruxget-action-takeover',{checked:false});await chrome.contextMenus.update('ruxget-action-desktop',{});await RuxgetOffer.menuTitles();return true;}catch(error){return error.message;}}),true);
   await worker.evaluate(()=>RuxgetOffer.fromMenu(true));
   assert.equal((await get('ruxgetTakeover')).enabled,true);
   await worker.evaluate(()=>RuxgetOffer.fromMenu(false));

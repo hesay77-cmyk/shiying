@@ -20,7 +20,7 @@ const root=path.resolve(__dirname,'..'),run=path.join(root,'.checks','access-'+D
   await popup.locator('#siteAccessNote',{hasText:'未获得此网站的访问权限，Ruxget 无法检测本页视频'}).waitFor();assert.equal(await popup.locator('#toast').isVisible(),false);
   const request=await popup.evaluate(()=>globalThis.testRequest);assert.deepEqual(request.origins,['http://127.0.0.1/*']);
   assert(!(await worker.evaluate(()=>chrome.permissions.getAll())).origins.some(origin=>origin.includes('127.0.0.1')));
-  assert.equal(await worker.evaluate(tabId=>(cacheData[tabId]||[]).length,tabId),0);
+  assert.equal(((await popup.evaluate(tabId=>chrome.runtime.sendMessage({Message:'getData',tabId}),tabId))||[]).length,0);
   const blocked=await popup.evaluate(url=>chrome.runtime.sendMessage({Message:'addMedia',href:url,url:url+'video.mp4',mime:'video/mp4'}),site.url());assert.equal(blocked.ok,false);
   const settings=await context.newPage();await settings.goto(`chrome-extension://${id}/shiying-help.html#site-access`);await settings.locator('#sitePermissionForm').waitFor();
   await settings.evaluate(()=>{chrome.permissions.request=async request=>{globalThis.testRequest=request;return false}});

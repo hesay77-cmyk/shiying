@@ -34,7 +34,7 @@ const mixedText=lang=>{const out=[];const keep=/^(Ruxget|FFmpeg|ffmpeg|Aria2|ari
  const results={};const record=async(name,page)=>{await page.waitForTimeout(300);const found=(await page.evaluate(collect)).filter(t=>!fixtureText.test(t));results[name]=found;await page.screenshot({path:path.join(report,name+'.png')});console.log((found.length?'FOUND ':'clean ')+name+(found.length?'\n   '+found.join('\n   '):''));};
  // A. Extension popup and pages.
  const extension=path.join(report,'extension');fs.mkdirSync(extension);
- for(const dir of ['js','css','img','lib','catch-script','_locales'])fs.cpSync(path.join(root,dir),path.join(extension,dir),{recursive:true});
+ for(const dir of ['js','css','img','lib','_locales'])fs.cpSync(path.join(root,dir),path.join(extension,dir),{recursive:true});
  for(const name of fs.readdirSync(root))if(name.endsWith('.html')||name==='manifest.json')fs.copyFileSync(path.join(root,name),path.join(extension,name));
  const browser=await chromium.launchPersistentContext(path.join(report,'profile'),{executablePath:exe,headless:true,locale:'en-US',viewport:{width:360,height:640},ignoreDefaultArgs:['--disable-extensions'],args:['--mute-audio','--autoplay-policy=user-gesture-required',`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--lang=en-US','--disable-background-networking','--host-resolver-rules=MAP * ~NOTFOUND']});
  try{
@@ -342,30 +342,7 @@ const mixedText=lang=>{const out=[];const keep=/^(Ruxget|FFmpeg|ffmpeg|Aria2|ari
     if(problems.length){results[name]=problems;console.log('FOUND '+name+'\n   '+problems.join('\n   '));}else console.log(`clean ${name} (${item.reload?'in place while visible, one reload each way once hidden':'in place, never reloaded'})`);
     await p.close();
    }
-   // 0.4.74 retest (js/m3u8.js): hls.js reports non-fatal errors it recovers from itself, such as bufferStalledError
-   // while the video plays on. They show no error box and stop nothing; a fatal error still shows 「设置请求头」, and
-   // that box follows a language switch like the rest of the page.
-   {
-    const name='tool-m3u8-hls-errors',problems=[],p=await context.newPage();p.on('pageerror',e=>problems.push('pageerror: '+e.message));
-    await p.goto(`chrome-extension://${id}/${m3u8}`);await p.waitForTimeout(1200);
-    const state=()=>p.evaluate(()=>({box:getComputedStyle(document.querySelector('#loading')).display!=='none',button:!!document.querySelector('#setRequestHeadersError'),stops:window.__stops}));
-    const fire=data=>p.evaluate(d=>{const handler=hls.listeners(Hls.Events.ERROR).find(h=>String(h).includes('setRequestHeadersError'));handler(Hls.Events.ERROR,{...d,error:new Error(d.message)});},data);
-    await p.evaluate(()=>{$('#loading').hide();$('#loading .optionBox').empty();const stop=hls.stopLoad.bind(hls);window.__stops=0;hls.stopLoad=()=>{window.__stops++;return stop();};});
-    await fire({type:'mediaError',details:'bufferStalledError',fatal:false,buffer:14.7,message:'Playback stalling at @0 due to low buffer'});await p.waitForTimeout(300);
-    let now=await state();
-    if(now.box||now.button)problems.push('non-fatal bufferStalledError showed the error box');
-    if(now.stops)problems.push(`non-fatal bufferStalledError stopped loading (${now.stops}×)`);
-    await fire({type:'mediaError',details:'bufferAppendError',fatal:true,message:'fixture'});await p.waitForTimeout(300);
-    now=await state();
-    if(!now.box||!now.button)problems.push('fatal bufferAppendError showed no error box');
-    await setLang('en');await p.waitForTimeout(1500);
-    const box=await p.evaluate(()=>document.querySelector('#loading .optionBox').textContent);
-    if(/[\u3400-\u9fff]/.test(box)||!/Set request headers/.test(box))problems.push('error box after switching to English: '+box);
-    await p.screenshot({path:path.join(report,name+'-en.png')});
-    await setLang('zh_CN');await p.waitForTimeout(1500);
-    await p.close();
-    if(problems.length){results[name]=problems;console.log('FOUND '+name+'\n   '+problems.join('\n   '));}else console.log(`clean ${name} (non-fatal ignored, fatal shows the box, box follows the switch)`);
-   }
+   // (0.4.79: the old m3u8 page and its hls.js error box are gone; hls-download-check covers the new page.)
    await setLang('zh_CN');
   }finally{await context.close();}
  };

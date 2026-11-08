@@ -15,7 +15,7 @@ const checks=[],check=(value,name)=>{assert(value,name);checks.push(name);};
  chrome.permissions.request=async()=>{choiceSpy.permissions++;return globalThis.choiceGranted!==false;};
  const originalCreate=chrome.contextMenus.create.bind(chrome.contextMenus);chrome.contextMenus.create=(properties,callback)=>originalCreate(properties,()=>{choiceSpy.menus.push(properties);if(chrome.runtime.lastError)choiceSpy.menuErrors.push(chrome.runtime.lastError.message);callback?.();});
  const originalClick=chrome.contextMenus.onClicked.addListener.bind(chrome.contextMenus.onClicked);chrome.contextMenus.onClicked.addListener=handler=>{globalThis.choiceMenuClick=handler;originalClick(handler);};
- importScripts('/js/background.js');`);
+ importScripts('/js/ruxget-background.js');`);
  const manifest=JSON.parse(fs.readFileSync(path.join(extension,'manifest.json'),'utf8'));manifest.background.service_worker='choice-bootstrap.js';fs.writeFileSync(path.join(extension,'manifest.json'),JSON.stringify(manifest));
  fs.mkdirSync(path.join(report,'profile','Default'),{recursive:true});fs.writeFileSync(path.join(report,'profile','Default','Preferences'),JSON.stringify({download:{default_directory:path.join(report,'files'),prompt_for_download:false}}));
  context=await chromium.launchPersistentContext(path.join(report,'profile'),{executablePath:'E:/ai/.tmp/shiying-browser/chromium-1234/chrome-win64/chrome.exe',channel:'chromium',headless:true,acceptDownloads:true,downloadsPath:path.join(report,'files'),ignoreDefaultArgs:['--disable-extensions'],args:['--mute-audio','--autoplay-policy=user-gesture-required',`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--disable-background-networking']});
