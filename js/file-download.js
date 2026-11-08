@@ -7,6 +7,7 @@
     const PAINT_INTERVAL = 100;
     const CLOSE_DELAY = 1000;
     const MAX_NAME = 180;
+    const SAVE_FOLDER = 'Ruxget';
 
     // ---- Texts -------------------------------------------------------------------------------------------------
     const TEXT = {
@@ -521,7 +522,9 @@
         }
         let id;
         try {
-            id = await chrome.downloads.download({url: objectUrl, filename: state.name, saveAs, conflictAction: 'uniquify'});
+            // Spec v4: without 另存为, files go to the Ruxget sub-folder of Chrome's download folder.
+            const filename = saveAs ? state.name : SAVE_FOLDER + '/' + state.name;
+            id = await chrome.downloads.download({url: objectUrl, filename, saveAs, conflictAction: 'uniquify'});
         } catch (error) {
             if (run !== runSeq) return;
             const reason = String((error && error.message) || error || '');

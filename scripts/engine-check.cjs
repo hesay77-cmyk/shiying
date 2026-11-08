@@ -94,6 +94,19 @@ const server=http.createServer((request,response)=>{
  await get('clip.mp4?keep=1');await settle();
  const cdp=await context.newCDPSession(site);await cdp.send('ServiceWorker.enable').catch(()=>{});await cdp.send('ServiceWorker.stopAllWorkers').catch(()=>{});await site.waitForTimeout(1500);
  check((await list()).some(i=>i.url.includes('keep=1')),'the list is still there after the background stops and wakes again');
+ // 16–17. (spec 05 v2) The badge counts what can be downloaded alone, not a player's pieces or variant playlists.
+ if(process.env.RUXGET_IMPL==='new'){
+  await site.goto(origin+'/badge.html');await site.waitForTimeout(800);
+  const add=(url,mime)=>panel.evaluate(({href,url,mime})=>chrome.runtime.sendMessage({Message:'addMedia',href,url,mime}),{href:origin+'/badge.html',url,mime});
+  await add(origin+'/dash/manifest.mpd','application/dash+xml');
+  for(let i=1;i<=15;i++){await add(origin+`/dash/v720/seg_${i}.m4v`,'video/mp4');await add(origin+`/dash/a128/seg_${i}.m4a`,'audio/mp4');}
+  await settle();check(await badge()==='1',`a DASH playlist with 30 pieces under its folder counts as 1 (badge ${await badge()})`);
+  await site.goto(origin+'/badge2.html');await site.waitForTimeout(800);
+  const add2=(url,mime)=>panel.evaluate(({href,url,mime})=>chrome.runtime.sendMessage({Message:'addMedia',href,url,mime}),{href:origin+'/badge2.html',url,mime});
+  await add2(origin+'/hls/master.m3u8','application/vnd.apple.mpegurl');await add2(origin+'/hls/720/index.m3u8','application/vnd.apple.mpegurl');await add2(origin+'/hls/1080/index.m3u8','application/vnd.apple.mpegurl');
+  await settle();check(await badge()==='1',`an HLS master with two variant playlists below it counts as 1 (badge ${await badge()})`);
+  await site.goto(origin+'/page.html');await site.waitForTimeout(500);
+ }
  // 10. Navigation and closing.
  await site.goto(origin+'/other.html');await site.waitForTimeout(800);const afterNav=await send({Message:'getData',tabId:tab});
  check(!Array.isArray(afterNav)||!afterNav.length,'navigating to another page clears the tab’s list');check(!(await badge()),'and its badge');

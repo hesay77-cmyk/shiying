@@ -25,7 +25,7 @@ async function quality(data, card) {
     const field = card.querySelector('.quality');
     const select = field.querySelector('select');
     field.hidden = false;
-    select.replaceChildren(new Option(RuxgetI18n.pick('自动选择 / 在下载页选择', 'Auto / choose on the download page'), data.url));
+    select.replaceChildren(new Option(RuxgetI18n.pick('自动（不超过 1080p，可在下载页改选）', 'Auto (up to 1080p; change it on the download page)'), data.url));
     for (const variant of result.variants) select.add(new Option(variant.label, variant.url));
     select.disabled = result.separateAudio || !result.variants.length;
     field.querySelector('.quality-note').textContent = result.separateAudio ? RuxgetI18n.pick('这个视频的声音是独立音轨，请在下载页一起选择。', 'The audio is a separate track; choose it on the download page.') : (result.variants.length ? RuxgetI18n.pick('选好清晰度后点击下载。', 'Pick a quality, then download.') : RuxgetI18n.pick('这是单一清晰度的视频流。', 'This stream has a single quality.'));
@@ -75,6 +75,7 @@ function renderAllRequests(items, pick, kindOfItem = Shiying.kind) {
 // the playlist's own folder. Those are segments of that playlist, not videos of their own, so they fold with the rest.
 function kindOf(item, playlists) {
     const kind = Shiying.kind(item);
+    if (kind === 'hls' && playlists.length) { try { const url = new URL(item.url), folder = url.origin + url.pathname.slice(0, url.pathname.lastIndexOf('/') + 1); if (playlists.some(dir => folder !== dir.full && folder.startsWith(dir.full))) return 'fragment'; } catch {} }
     if (!['video', 'audio'].includes(kind) || !playlists.length) return kind;
     const ext = String(item.ext || '').toLowerCase();
     if (!['m4v', 'm4a', 'm4s', 'mp4', 'ts', 'aac', 'cmfv', 'cmfa'].includes(ext)) return kind;
@@ -179,7 +180,9 @@ function render() {
         if (kind === 'audio') { icon.textContent = '♫'; icon.classList.add('audio'); }
         const status = card.querySelector('.item-status');
         const button = card.querySelector('.download-button');
-        button.textContent = kind === 'dash' ? pick('选择音轨', 'Pick tracks') : pick('下载', 'Download');
+        // 0.4.80: DASH opens the download page where quality and sound are picked; the button just says 下载.
+        button.textContent = pick('下载', 'Download');
+        { const label = card.querySelector('.quality label span'); if (label) label.textContent = pick('清晰度', 'Quality'); }
         button.disabled = !Shiying.validURL(data.url);
         if (button.disabled) status.textContent = pick('这个地址不能直接下载', 'This address can’t be downloaded directly');
         onClick(button, async () => {

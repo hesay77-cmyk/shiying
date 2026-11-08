@@ -34,6 +34,9 @@ const server=http.createServer((request,response)=>{
  fs.writeFileSync(path.join(report,'profile','Default','Preferences'),JSON.stringify({download:{default_directory:files,prompt_for_download:false}}));
  context=await chromium.launchPersistentContext(path.join(report,'profile'),{executablePath:process.env.SHIYING_CHROMIUM||'E:/ai/.tmp/shiying-browser/chromium-1234/chrome-win64/chrome.exe',headless:true,acceptDownloads:true,downloadsPath:files,ignoreDefaultArgs:['--disable-extensions'],args:['--lang=zh-CN','--mute-audio',`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--disable-background-networking']});
  await context.route('**/*',route=>{const u=route.request().url();return /^(chrome-extension|chrome|blob|data):/.test(u)||u.startsWith(origin)?route.continue():route.abort();});
+ // (spec v4) Record the file names extension pages hand to chrome.downloads.download.
+ await context.addInitScript(()=>{if(location.protocol!=='chrome-extension:'||!chrome.downloads?.download)return;const original=chrome.downloads.download.bind(chrome.downloads);
+  chrome.downloads.download=(options,...rest)=>{chrome.storage.session.get('savedNames').then(r=>chrome.storage.session.set({savedNames:[...(r.savedNames||[]),options?.filename||'']})).catch(()=>{});return original(options,...rest);};});
  const dialogs=[];context.on('page',p=>p.on('dialog',d=>{dialogs.push(d.message());d.dismiss().catch(()=>{});}));
  const worker=context.serviceWorkers()[0]||await context.waitForEvent('serviceworker');const id=new URL(worker.url()).hostname;
  const source=await context.newPage();await source.goto(origin+'/page.html');
@@ -110,6 +113,8 @@ const server=http.createServer((request,response)=>{
  await page.evaluate(()=>chrome.storage.local.set({ruxgetUiLanguage:'en'}));await page.waitForTimeout(1200);
  {const text=await page.evaluate(()=>document.body.innerText);check(/\bVideo\b/.test(text)&&/\bAudio\b/.test(text)&&!/Picture|Sound\b/.test(text),'the English page says Video and Audio');}
  await page.evaluate(()=>chrome.storage.local.set({ruxgetUiLanguage:'zh_CN'}));await page.close();
+ // (spec v4) Downloads go to the Ruxget sub-folder unless 另存为 is on.
+ {const names=await worker.evaluate(()=>chrome.storage.session.get('savedNames').then(r=>r.savedNames||[]));check(names.length>0&&names.every(n=>/^Ruxget\//.test(n)),'every save goes to the Ruxget folder: '+names.slice(0,3).join(', '));}
  check(dialogs.length===0,'no dialog appeared at any point');
  fs.writeFileSync(path.join(report,'summary.json'),JSON.stringify({checks},null,1));console.log(`dash-download-check passed (${checks.length} checks). Report: ${report}`);
 }catch(error){console.error(error);process.exitCode=1;}finally{await context?.close().catch(()=>{});server.close();}})();

@@ -37,6 +37,9 @@ let origin='';
  fs.writeFileSync(path.join(report,'profile','Default','Preferences'),JSON.stringify({download:{default_directory:files,prompt_for_download:false},intl:{selected_languages:'zh-CN'}}));
  context=await chromium.launchPersistentContext(path.join(report,'profile'),{executablePath:process.env.SHIYING_CHROMIUM||'E:/ai/.tmp/shiying-browser/chromium-1234/chrome-win64/chrome.exe',headless:true,acceptDownloads:true,downloadsPath:files,ignoreDefaultArgs:['--disable-extensions'],args:['--lang=zh-CN','--mute-audio',`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--disable-background-networking']});
  await context.route('**/*',route=>{const u=route.request().url();return u.startsWith(origin)||u.startsWith('chrome-extension:')||u.startsWith('chrome:')||u.startsWith('blob:')||u.startsWith('data:')?route.continue():route.abort();});
+ // (spec v4) Record the file names extension pages hand to chrome.downloads.download.
+ await context.addInitScript(()=>{if(location.protocol!=='chrome-extension:'||!chrome.downloads?.download)return;const original=chrome.downloads.download.bind(chrome.downloads);
+  chrome.downloads.download=(options,...rest)=>{chrome.storage.session.get('savedNames').then(r=>chrome.storage.session.set({savedNames:[...(r.savedNames||[]),options?.filename||'']})).catch(()=>{});return original(options,...rest);};});
  const dialogs=[],names=[];context.on('page',p=>{p.on('dialog',d=>{dialogs.push(d.message());d.dismiss().catch(()=>{});});p.on('download',d=>names.push(d.suggestedFilename()));});
  const worker=context.serviceWorkers()[0]||await context.waitForEvent('serviceworker');const id=new URL(worker.url()).hostname;
  const source=await context.newPage();await source.goto(origin+'/page.html');
@@ -104,6 +107,8 @@ let origin='';
   await page.setViewportSize({width:360,height:700});check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'the page fits 360 px without sideways scrolling');
   await page.screenshot({path:path.join(report,'form-360.png'),fullPage:true});await page.close();
  }
+ // (spec v4) Downloads go to the Ruxget sub-folder unless 另存为 is on.
+ {const names=await worker.evaluate(()=>chrome.storage.session.get('savedNames').then(r=>r.savedNames||[]));check(names.length>0&&names.every(n=>/^Ruxget\//.test(n)),'every save goes to the Ruxget folder: '+names.slice(0,3).join(', '));}
  check(dialogs.length===0,'no dialog appeared at any point');
  fs.writeFileSync(path.join(report,'summary.json'),JSON.stringify({impl:NEW?'new':'current',checks},null,1));
  console.log(`file-download-check passed (${checks.length} checks, ${NEW?'new':'current'} implementation). Report: ${report}`);

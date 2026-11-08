@@ -962,7 +962,7 @@ function saveBlob(current, blob, filename) {
       }
     };
     chrome.downloads.onChanged.addListener(listener);
-    chrome.downloads.download({ url, filename, saveAs: !!saveAsSetting, conflictAction: 'uniquify' }).then(newId => {
+    chrome.downloads.download({ url, filename: saveAsSetting ? filename : 'Ruxget/' + filename, saveAs: !!saveAsSetting, conflictAction: 'uniquify' }).then(newId => {
       id = newId;
       current.downloadId = newId;
       if (current.stopped) { chrome.downloads.cancel(newId).catch(() => {}); }

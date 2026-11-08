@@ -360,7 +360,7 @@
     "message": "用 Chrome 下载"
   },
   "uiUseRuxget": {
-    "message": "用 Ruxget 下载"
+    "message": "用 Ruxget 桌面版下载"
   },
   "uiLinkContextNote": {
     "message": "也可以右键网页中的下载链接，选择“用 Ruxget 桌面版下载此链接”。"

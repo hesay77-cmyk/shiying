@@ -234,7 +234,7 @@ async function startDownload(data, tabId) {
     // Not when the person asked Chrome to ask where to save each file.
     const takeable = !saveAs && typeof RuxgetTakeover !== 'undefined' && (await RuxgetTakeover.settings()).enabled;
     if (takeable) await RuxgetTakeover.markTakeable(data.url, Shiying.filename(data), data.webUrl || '').catch(() => {});
-    try { return {id:await chrome.downloads.download({url:data.url, filename:Shiying.filename(data), saveAs}), takeover:takeable}; }
+    try { return {id:await chrome.downloads.download({url:data.url, filename:(saveAs ? '' : 'Ruxget/') + Shiying.filename(data), saveAs}) /* 0.4.80: the same Ruxget folder as every other download */, takeover:takeable}; }
     catch (error) { if (takeable) await RuxgetTakeover.takeable([data.url]).catch(() => {}); throw error; }
 }
 chrome.runtime.onMessage.addListener((event, sender, respond) => {
