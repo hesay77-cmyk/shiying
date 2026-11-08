@@ -442,6 +442,23 @@ for (const button of document.querySelectorAll('[data-filter]')) onClick(button,
 initialize().catch(failure);
 
 // Manual choices only: no download hooks, timers, persistent default takeover or automatic desktop startup.
+// 0.4.81: a pasted link saved by Chrome goes into the same Ruxget folder as every other download. Chrome still picks
+// the name (from the server's Content-Disposition or the address); only the folder is added, for this one download.
+// The filename listener lives only until Chrome has asked about it, and lets every other download through untouched.
+function chromeIntoRuxget(url,saveAs){
+    if(saveAs)return chrome.downloads.download({url,saveAs:true});
+    let claimed=false;
+    const listener=(item,suggest)=>{
+        if(claimed||item.byExtensionId!==chrome.runtime.id||item.url!==url){suggest();return;}
+        claimed=true;setTimeout(stop,0);// removed only after answering: Chrome drops an answer whose listener is gone
+        const base=String(item.filename||'').split(/[\\/]/).filter(Boolean).pop();
+        if(base)suggest({filename:'Ruxget/'+base,conflictAction:'uniquify'});else suggest();
+    };
+    const stop=()=>{clearTimeout(timer);try{chrome.downloads.onDeterminingFilename.removeListener(listener);}catch{}};
+    const timer=setTimeout(stop,60000);
+    try{chrome.downloads.onDeterminingFilename.addListener(listener);}catch{}
+    return chrome.downloads.download({url,conflictAction:'uniquify'}).catch(error=>{stop();throw error;});
+}
 let linkDownloadBusy=false;
 function linkDownloadState(busy){linkDownloadBusy=busy;for(const id of ['linkUseChrome','linkUseDesktop','linkDownloadCancel','linkDownloadURL','linkDownloadReferer'])$('#'+id).disabled=busy;}
 function linkDownloadFailure(error){if(error.cancelled)return;$('#linkDownloadError').textContent=RuxgetText.tr(error.message||String(error));$('#linkDownloadError').hidden=false;}
@@ -459,7 +476,7 @@ $('#linkDownloadForm').addEventListener('submit',async event=>{
         let name=link.pathname.split('/').pop()||'';try{name=decodeURIComponent(name);}catch{}const ext=(/\.([a-z0-9]{1,8})$/i.exec(name)||[])[1]||'';
         const result=await chrome.runtime.sendMessage({Message:'shiyingDownload',tabId,data:{url:payload.url,ext,title:name.replace(/\.[a-z0-9]{1,8}$/i,'')||'下载文件',type:'',requestHeaders:{referer:payload.referer}}});
         if(!result?.ok)throw new Error(result?.error||'没有打开下载页，请重试');$('#linkDownload').close();notify('已在新标签页中打开下载页');}catch(error){linkDownloadFailure(error);}return;}
-    try{const payload=ShiyingNative.file($('#linkDownloadURL').value);linkDownloadState(true);$('#linkDownloadError').hidden=true;await chrome.downloads.download({url:payload.url,saveAs:$('#saveAs').checked});$('#linkDownload').close();notify('已交给 Chrome 下载');}catch(error){linkDownloadFailure(error);}finally{linkDownloadState(false);}
+    try{const payload=ShiyingNative.file($('#linkDownloadURL').value);linkDownloadState(true);$('#linkDownloadError').hidden=true;await chromeIntoRuxget(payload.url,$('#saveAs').checked);$('#linkDownload').close();notify('已交给 Chrome 下载');}catch(error){linkDownloadFailure(error);}finally{linkDownloadState(false);}
 });
 $('#linkUseDesktop').addEventListener('click',()=>{
     if(linkDownloadBusy||!$('#linkDownloadForm').reportValidity())return;
