@@ -68,7 +68,7 @@
     }
    }
    const requestId=message.intent.replaceAll('-','');let added=0,chunk=[];
-   const send=async()=>{if(!chunk.length)return;if(!await enabled(item.provider))throw new Error('这个网盘的 Ruxget 下载已关闭');const reply=await native({action:'netdisk',provider:item.provider,source:new URL(sender.url).origin+'/',requestId,files:chunk});added+=reply.count;chunk=[];};
+   const send=async()=>{if(!chunk.length)return;if(!await enabled(item.provider))throw new Error('这个网盘的 Ruxget 下载已关闭');const reply=await native({action:'netdisk',provider:item.provider,source:new URL(sender.url).origin+'/',requestId,files:chunk});added+=reply.count;chunk=[];if(typeof RuxgetDesktopTasks!=="undefined"&&Array.isArray(reply.jobs)){for(const job of reply.jobs)if(job&&job.id)await RuxgetDesktopTasks.remember(String(job.id),String(job.name||"")).catch(()=>{});RuxgetDesktopTasks.watch?.(60000)?.catch?.(()=>{});}};
    try{for(const file of files){if(new TextEncoder().encode(JSON.stringify({files:[...chunk,file]})).length>48000){await send();}if(new TextEncoder().encode(JSON.stringify(file)).length>48000)throw new Error('文件链接或登录信息过长');chunk.push(file);}await send();}catch(error){if(added>0)return {ok:true,count:added,warning:'部分文件未加入，请先查看下载任务后再重试'};throw error;}return {ok:true,count:added};
   }finally{intents.delete(message.intent);}
  }

@@ -64,7 +64,7 @@ public partial class Manager {
             job.Id=id;job.NetdiskProvider=provider;job.NetdiskFileKey=key;job.NetdiskCookie=Netdisk.Protect(cookie);job.NetdiskUrl=Netdisk.Protect(url);job.Url=new Uri(url).GetLeftPart(UriPartial.Path);job.NetdiskSize=declared;job.Transfer.Total=declared;proposed.Add(job);
         }
         if(proposed.Count>0)CanAdd(proposed.Count);jobs.AddRange(proposed);try{Save();}catch{foreach(var job in proposed)jobs.Remove(job);PublishSnapshot();throw;}
-        return new{ok=true,count=records.Length,added=proposed.Count,stage="queued",folder=Config.Folder,version=Util.Version};
+        return new{ok=true,count=records.Length,added=proposed.Count,stage="queued",folder=Config.Folder,version=Util.Version,jobs=proposed.Select(job=>new{id=job.Id,name=job.Title}).ToArray()};
     }}
     sealed class NetdiskResponse:IDisposable {
         public HttpWebRequest Request;public HttpWebResponse Response;public Action Release;
