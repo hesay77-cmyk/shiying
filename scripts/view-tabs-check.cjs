@@ -19,7 +19,7 @@ const checks=[];function check(name){checks.push(name);console.log('PASS '+name)
  const browser=await chromium.launchPersistentContext(path.join(report,'profile'),{executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true,acceptDownloads:true,downloadsPath:path.join(report,'downloads'),viewport:{width:380,height:700},ignoreDefaultArgs:['--disable-extensions'],args:['--mute-audio','--autoplay-policy=user-gesture-required',`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--no-proxy-server']});
  const errors=[];browser.on('page',p=>p.on('pageerror',e=>errors.push(e.message+' @ '+p.url())));
  try{
-  const worker=browser.serviceWorkers()[0]||await browser.waitForEvent('serviceworker'),id=new URL(worker.url()).hostname;
+  let worker=browser.serviceWorkers()[0]||await browser.waitForEvent('serviceworker');const id=new URL(worker.url()).hostname;
   await worker.evaluate(()=>chrome.storage.local.set({ruxgetUiLanguage:'zh_CN'}));
   const html=fs.readFileSync(path.join(root,'shiying.html'),'utf8');
   assert(html.indexOf('id="viewTabs"')<html.indexOf('id="pageView"')&&html.indexOf('id="pageView"')<html.indexOf('id="downloadsView"'));
@@ -65,7 +65,11 @@ const checks=[];function check(name){checks.push(name);console.log('PASS '+name)
   check('a site not yet allowed opens on 本页视频 with “允许此网站” in view');
   await popup.close();
   // What the detector keeps for this tab (popupAddData only reaches an open panel).
-  await worker.evaluate(({tabId,origin})=>{cacheData[tabId]=[{tabId,url:origin+'/clip.mp4',name:'clip.mp4',ext:'mp4',type:'video/mp4',size:1048576,title:'Plain page',webUrl:origin+'/',requestId:'r1',getTime:Date.now()}];},{tabId,origin});
+  // 0.4.79: the engine keeps its lists in chrome.storage.session (MediaData) and reads them when it starts; store one
+  // there and restart the worker, as Chrome does when it wakes the extension.
+  await worker.evaluate(({tabId,origin})=>chrome.storage.session.set({MediaData:{[tabId]:[{tabId,url:origin+'/clip.mp4',name:'clip.mp4',ext:'mp4',type:'video/mp4',size:1048576,title:'Plain page',webUrl:origin+'/',requestId:'r1',getTime:Date.now()}]}}),{tabId,origin});
+  {const cdp=await browser.newCDPSession(browser.pages()[0]);await cdp.send('ServiceWorker.enable').catch(()=>{});await cdp.send('ServiceWorker.stopAllWorkers').catch(()=>{});await cdp.detach().catch(()=>{});
+   const waking=browser.waitForEvent('serviceworker',{timeout:10000}).catch(()=>null);const wake=await browser.newPage();await wake.goto(`chrome-extension://${id}/shiying-help.html`);worker=(await waking)||browser.serviceWorkers()[0];await wake.close();}
   popup=await open();
   assert.equal(await view(popup),'page');
   check('a page with a video opens on 本页视频');

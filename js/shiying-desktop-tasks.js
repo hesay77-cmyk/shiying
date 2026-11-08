@@ -2,7 +2,8 @@
 // downloading, a "✓" for a few seconds when it finishes, and the tasks Chrome handed over in "最近下载".
 // Nothing here opens the desktop window or starts the app: "status" is answered from the app's saved list
 // when it isn't running. Only the service worker polls; pages read the last status from session storage.
-const RuxgetDesktopTasks={
+// var, not const: the engine (js/ruxget-engine.js) looks for it on globalThis (0.4.79).
+var RuxgetDesktopTasks={
     KNOWN:'ruxgetDesktopJobs',      // local: [{id,name,at}] tasks Chrome handed over, newest first
     STATUS:'ruxgetDesktopStatus',   // session: {at,running,active,jobs:[...]}
     LIMIT:20,

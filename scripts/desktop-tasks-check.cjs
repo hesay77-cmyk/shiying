@@ -9,7 +9,11 @@ const checks=[];function check(name){checks.push(name);console.log('PASS '+name)
 const A='aaaaaaaaaaaaaaaa',B='bbbbbbbbbbbbbbbb',C='cccccccccccccccc',MB=1024*1024;
 (async()=>{
  execFileSync(process.execPath,[path.join(__dirname,'package.cjs')],{stdio:'ignore'});
- const extension=path.join(root,'build');
+ // 0.4.79: a copy of the store build with access to a local test site, so the engine records real items there.
+ const extension=path.join(report,'extension');fs.cpSync(path.join(root,'build'),extension,{recursive:true});
+ {const manifest=JSON.parse(fs.readFileSync(path.join(extension,'manifest.json'),'utf8'));manifest.host_permissions=[...manifest.host_permissions,'http://127.0.0.1/*'];fs.writeFileSync(path.join(extension,'manifest.json'),JSON.stringify(manifest));}
+ const server=require('node:http').createServer((q,r)=>{r.writeHead(200,{'Content-Type':'text/html; charset=utf-8'});r.end('<!doctype html><title>Test page</title>');});
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const siteURL='http://127.0.0.1:'+server.address().port+'/page.html';
  const {chromium}=require(process.env.SHIYING_PLAYWRIGHT||'playwright');
  const browser=await chromium.launchPersistentContext(path.join(report,'profile'),{executablePath:process.env.SHIYING_CHROMIUM||undefined,headless:true,viewport:{width:380,height:640},ignoreDefaultArgs:['--disable-extensions'],args:['--mute-audio','--autoplay-policy=user-gesture-required',`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--no-proxy-server']});
  const errors=[];browser.on('page',p=>p.on('pageerror',e=>errors.push(e.message+' @ '+p.url())));
@@ -31,11 +35,13 @@ const A='aaaaaaaaaaaaaaaa',B='bbbbbbbbbbbbbbbb',C='cccccccccccccccc',MB=1024*102
   await worker.evaluate(()=>chrome.storage.local.set({ruxgetUiLanguage:'zh_CN'}));
   // Pages see the same stubbed desktop (they ask the worker, and "show" goes straight to the desktop).
   await browser.addInitScript(()=>{if(location.protocol!=='chrome-extension:')return;chrome.permissions.contains=async()=>true;globalThis.shown=0;chrome.runtime.sendNativeMessage=async(host,message)=>{if(message?.action==='show')globalThis.shown++;return {ok:true};};});
-  const site=await browser.newPage();await site.goto('about:blank');
-  const tabId=await worker.evaluate(async()=>(await chrome.tabs.query({})).find(tab=>tab.url==='about:blank').id);
+  const site=await browser.newPage();await site.goto(siteURL);
+  const tabId=await worker.evaluate(async()=>(await chrome.tabs.query({})).find(tab=>tab.url.startsWith('http://127.0.0.1')).id);
   const badge=tab=>worker.evaluate(tab=>chrome.action.getBadgeText(tab===undefined?{}:{tabId:tab}),tab);
   // The sniffer's own count on this tab before anything is handed over.
-  await worker.evaluate(tab=>{cacheData[tab]=[{},{}];SetIcon({number:2,tabId:tab});},tabId);
+  {const page=await browser.newPage();await page.goto(`chrome-extension://${id}/shiying-help.html`);
+   for(const name of ['one.mp4','two.mp4'])await page.evaluate(({href,url})=>chrome.runtime.sendMessage({Message:'addMedia',href,url,mime:'video/mp4'}),{href:siteURL,url:siteURL.replace('page.html',name)});
+   await page.close();for(let i=0;i<40&&await badge(tabId)!=='2';i++)await site.waitForTimeout(100);}
   assert.equal(await badge(tabId),'2');
 
   // Two handed-over tasks: one downloading, one finished.
@@ -43,7 +49,7 @@ const A='aaaaaaaaaaaaaaaa',B='bbbbbbbbbbbbbbbb',C='cccccccccccccccc',MB=1024*102
   await worker.evaluate(async({A,B})=>{await RuxgetDesktopTasks.remember(B,'安装包.zip');await RuxgetDesktopTasks.remember(A,'系统镜像.iso');},{A,B});
   for(let i=0;i<40&&await badge(tabId)!=='↓1';i++)await site.waitForTimeout(100);
   assert.equal(await badge(tabId),'↓1');assert.equal(await badge(),'↓1');
-  await worker.evaluate(tab=>SetIcon({number:3,tabId:tab}),tabId);assert.equal(await badge(tabId),'↓1');
+  await worker.evaluate(tab=>RuxgetEngine.updateBadge(tab),tabId);assert.equal(await badge(tabId),'↓1');
   check('while the desktop downloads, the icon shows ↓1 on every tab, over the media count');
   const statusCalls=await worker.evaluate(()=>calls.filter(call=>call.action==='status'));
   assert(statusCalls.length>=1&&statusCalls.every(call=>!('chromeFolder' in call)));
@@ -135,5 +141,5 @@ const A='aaaaaaaaaaaaaaaa',B='bbbbbbbbbbbbbbbb',C='cccccccccccccccc',MB=1024*102
   check('no page errors');
   fs.writeFileSync(path.join(report,'summary.json'),JSON.stringify({ok:true,checks},null,2));
   console.log('DESKTOP TASK CHECKS PASSED '+report);
- }finally{await browser.close();}
+ }finally{await browser.close();server.close();}
 })().catch(error=>{console.error('FAIL',error);process.exit(1);});
