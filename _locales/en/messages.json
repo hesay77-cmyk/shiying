@@ -484,7 +484,7 @@
     "message": "Hide this button"
   },
   "uiNetdiskAdded": {
-    "message": "Added $1 file(s) to Ruxget"
+    "message": "Added $1 file(s) to Ruxget. You can find them under “Downloads” in Ruxget."
   },
   "uiNetdiskNoResponse": {
     "message": "Ruxget did not respond. Try again."

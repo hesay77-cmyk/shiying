@@ -484,7 +484,7 @@
     "message": "隐藏此按钮"
   },
   "uiNetdiskAdded": {
-    "message": "已将 $1 个文件加入 Ruxget"
+    "message": "已将 $1 个文件加入 Ruxget，可在 Ruxget 的“已下载”里查看"
   },
   "uiNetdiskNoResponse": {
     "message": "Ruxget 暂时没有响应，请重试"
