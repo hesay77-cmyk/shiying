@@ -19,6 +19,7 @@ const server=http.createServer((request,response)=>{
  if(mode==='guarded'&&!(request.headers.referer||'').startsWith(origin+'/page.html')){response.writeHead(403,base);return response.end();}
  if(mode==='flaky'&&/chunk-stream0-00002/.test(file)&&hits[url.pathname]<=2){response.writeHead(500,base);return response.end();}
  if(mode==='missing'&&/chunk-stream0-00002/.test(file)){response.writeHead(404,base);return response.end();}
+ if(mode==='crosshost'&&file==='manifest.mpd'){const text=fs.readFileSync(path.join(media,set,file),'utf8').replace(/(<Period[^>]*>)/,'$1<BaseURL>'+origin.replace('127.0.0.1','localhost')+'/plain/'+set+'/</BaseURL>');response.writeHead(200,{...base,'Content-Type':'application/dash+xml'});return response.end(text);}
  const local=path.join(media,set||'',file);if(!set||!file||!local.startsWith(media)||!fs.existsSync(local)){response.writeHead(404,base);return response.end();}
  const data=fs.readFileSync(local),range=/bytes=(\d+)-(\d*)/.exec(request.headers.range||'');
  const type=file.endsWith('.mpd')?'application/dash+xml':file.endsWith('.mp4')?'video/mp4':'video/iso.segment';
@@ -82,6 +83,26 @@ const server=http.createServer((request,response)=>{
  start=await lastId();await page.getByRole('button',{name:/只下载声音/}).click();const audio=await finished(start,1);p=probe(audio[0]);check(p.audio===1&&p.video===0&&/\.m4a$/i.test(audio[0])||p.audio===1&&p.video===0,'只下载声音 saves the sound alone');
  // 12. Narrow screen and English.
  await page.setViewportSize({width:360,height:760});check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'the page fits 360 px without sideways scrolling');await page.screenshot({path:path.join(report,'narrow.png'),fullPage:true});await page.close();
+ // 13. (spec v2) MP4 and WebM tracks mixed, types only on the AdaptationSet: the default is the pair that makes one MP4.
+ page=await open('/plain/mixed/manifest.mpd');await ready(page);
+ const options=await page.locator('select').evaluateAll(list=>list.map(s=>[...s.options].map(o=>o.text)));
+ const picks=await page.locator('select').evaluateAll(list=>list.map(s=>s.options[s.selectedIndex].text));
+ check(/H.264/.test(options[0].join())&&/VP9/.test(options[0].join())&&/AAC/.test(options[1].join())&&/Opus/.test(options[1].join()),'track lists name the formats: '+options.flat().join(' / '));
+ check(/H.264/.test(picks[0])&&/AAC/.test(picks[1]),'the default pair is H.264 + AAC (mergeable), even with a sharper-rate VP9 / Opus listed');
+ check(/约 .*(KB|MB|GB)/.test(options[0][0]),'picture options show an estimated size');
+ merged((await download(page))[0],0,'the default mixed pair saves one MP4');
+ const vp9=await page.locator('select').first().evaluate(s=>[...s.options].findIndex(o=>/VP9/.test(o.text)));
+ await page.locator('select').first().selectOption({index:vp9});
+ await page.waitForFunction(()=>/不能合成一个 MP4/.test(document.body.innerText),null,{timeout:5000});
+ const separate=page.getByRole('button',{name:/分别下载画面和声音/});check(await separate.isVisible(),'choosing VP9 says before downloading that the pair is saved as two files');
+ start=await lastId();await separate.click();const two=await finished(start,2);
+ const kinds=two.map(f=>spawnSync(ffmpeg,['-hide_banner','-i',f],{encoding:'utf8'}).stderr).map(s=>/Input #0, (?:matroska,webm|webm)/.test(s)?'webm':/Input #0, mov,mp4/.test(s)?'mp4':'?');
+ check(two.length===2&&kinds.includes('webm'),'the separate files are saved in their real containers: '+kinds.join(', '));await page.close();
+ // 14. (spec v2) Segments on a site the extension may not reach yet.
+ page=await open('/crosshost/template/manifest.mpd');
+ await page.waitForFunction(()=>/需要允许访问/.test(document.body.innerText),null,{timeout:15000});
+ check(await page.getByRole('button',{name:/允许访问/}).isVisible()&&await page.getByRole('button',{name:/^下载$/}).isDisabled().catch(()=>true),'segments on another site: a note, an 允许访问 button, and 下载 waits');
+ await page.close();
  check(dialogs.length===0,'no dialog appeared at any point');
  fs.writeFileSync(path.join(report,'summary.json'),JSON.stringify({checks},null,1));console.log(`dash-download-check passed (${checks.length} checks). Report: ${report}`);
 }catch(error){console.error(error);process.exitCode=1;}finally{await context?.close().catch(()=>{});server.close();}})();

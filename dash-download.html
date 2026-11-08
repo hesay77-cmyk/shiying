@@ -55,8 +55,11 @@
         <input id="filenameInput" type="text" autocomplete="off" spellcheck="false">
       </label>
       <p id="sizeWarning" class="line notice" hidden></p>
+      <p id="comboNote" class="line notice" hidden></p>
+      <p id="permNote" class="line notice" hidden></p>
       <div id="startArea" class="actions">
-        <button type="button" id="downloadButton" class="primary" data-i18n="download"></button>
+        <button type="button" id="permButton" class="secondary" data-i18n="allowAccess" hidden></button>
+        <button type="button" id="downloadButton" class="primary"></button>
       </div>
 
       <div id="progressArea" hidden>
@@ -67,7 +70,10 @@
         <p id="stage" class="line stage"></p>
         <p id="received" class="line muted"></p>
         <p id="jobMessage" class="line error" hidden></p>
+        <p id="jobDetail" class="line muted" hidden></p>
+        <p id="jobPermNote" class="line notice" hidden></p>
         <div class="actions">
+          <button type="button" id="jobPermButton" class="secondary" data-i18n="allowAccess" hidden></button>
           <button type="button" id="stopButton" class="secondary"></button>
           <button type="button" id="retryFailedButton" class="primary" data-i18n="retryFailed" hidden></button>
           <button type="button" id="showFileButton" class="primary" data-i18n="showFile" hidden></button>

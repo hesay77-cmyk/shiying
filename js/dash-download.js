@@ -39,7 +39,17 @@ const TEXT = {
     failedSegments: '有 {0} 个分段没有下载成功。',
     mergeFailed: '合成 MP4 失败。可以在高级选项中分别下载画面和声音。',
     outOfMemory: '视频太大，浏览器无法处理。建议选择较低清晰度，或用 Ruxget 桌面版下载。',
-    saveFailed: '保存失败：{0}',
+    saveFailed: '保存失败，请检查下载文件夹是否可写，或在 Chrome 设置中换一个下载位置。',
+    saveCode: '（{0}）',
+    readFailedNoSource: '无法读取视频信息（{0}）。这个链接可能需要登录，或已经过期。',
+    summaryWhole: '总时长 {0}',
+    sizeAbout: '约 {0}',
+    downloadSeparate: '分别下载画面和声音',
+    comboSeparate: '这个组合不能合成一个 MP4，下载后会分别保存画面和声音。',
+    mergeFailedSeparate: '合成 MP4 失败，已分别保存画面和声音。',
+    needAccess: '视频分段存放在另一个网站（{0}），需要允许访问后才能下载。',
+    allowAccess: '允许访问',
+    listSep: '、',
     separateSaved: '这个视频的格式不能在浏览器中合成，已分别保存画面和声音。',
     advancedTitle: '高级选项',
     manifestAddress: '清单地址',
@@ -92,7 +102,17 @@ const TEXT = {
     failedSegments: '{0} segments could not be downloaded.',
     mergeFailed: 'Building the MP4 failed. You can download the picture and sound separately in the advanced options.',
     outOfMemory: 'The video is too large for the browser. Choose a lower quality, or use Ruxget Desktop.',
-    saveFailed: 'Saving failed: {0}',
+    saveFailed: 'Saving failed. Check that the download folder is writable, or choose another download location in Chrome settings.',
+    saveCode: '({0})',
+    readFailedNoSource: 'Could not read the video information ({0}). The link may need a sign-in, or it has expired.',
+    summaryWhole: 'Total length {0}',
+    sizeAbout: 'about {0}',
+    downloadSeparate: 'Download picture and sound separately',
+    comboSeparate: 'This combination cannot be combined into one MP4. The picture and sound will be saved as separate files.',
+    mergeFailedSeparate: 'Building the MP4 failed. The picture and sound were saved as separate files.',
+    needAccess: 'The video segments are stored on another site ({0}). Allow access to download them.',
+    allowAccess: 'Allow access',
+    listSep: ', ',
     separateSaved: 'This video’s format cannot be combined in the browser. The picture and sound were saved as separate files.',
     advancedTitle: 'Advanced options',
     manifestAddress: 'Manifest address',
@@ -300,13 +320,59 @@ function segmentList(playlist) {
   return list.filter(s => s.url);
 }
 
-function trackFrom(playlist, kind, index, groupLanguage, groupName) {
+// Container and codec facts for a track. mimeType and codecs may sit on the Representation or only on its
+// AdaptationSet (spec v2 R1), so they are read from the manifest XML, Representation first.
+const MP4_CODECS = /^(avc1|avc3|hvc1|hev1|av01|mp4a|ec-3|ac-3)/i;
+const WEBM_CODECS = /^(vp8|vp9|vp09|vorbis)/i;
+function containerOf(mime, codecs, segments) {
+  if (/webm/i.test(mime)) return 'webm';
+  if (/mp4/i.test(mime)) return 'mp4';
+  const c = codecs.split(',')[0].trim();
+  if (MP4_CODECS.test(c)) return 'mp4';
+  const media = segments.find(s => !s.init) || segments[0];
+  const ext = media ? (/\.([a-z0-9]+)(?:[?#]|$)/i.exec(new URL(media.url, location.href).pathname) || [])[1] : '';
+  if (/^webm$/i.test(ext || '')) return 'webm';
+  if (/^(mp4|m4s|m4a|m4v)$/i.test(ext || '')) return 'mp4';
+  if (WEBM_CODECS.test(c)) return 'webm';
+  return 'unknown';
+}
+
+function formatOf(codecs) {
+  const c = codecs.split(',')[0].trim().toLowerCase();
+  if (/^(avc1|avc3)/.test(c)) return 'H.264';
+  if (/^(hvc1|hev1)/.test(c)) return 'HEVC';
+  if (/^av01/.test(c)) return 'AV1';
+  if (/^(vp09|vp9)/.test(c)) return 'VP9';
+  if (/^vp8/.test(c)) return 'VP8';
+  if (/^mp4a/.test(c)) return 'AAC';
+  if (/^opus/.test(c)) return 'Opus';
+  if (/^vorbis/.test(c)) return 'Vorbis';
+  if (/^ac-3/.test(c)) return 'AC-3';
+  if (/^ec-3/.test(c)) return 'E-AC-3';
+  return '';
+}
+
+function representationInfo(root) {
+  const map = new Map();
+  for (const rep of root.getElementsByTagNameNS('*', 'Representation')) {
+    const id = rep.getAttribute('id');
+    if (id == null || map.has(id)) continue;
+    const set = rep.parentElement && rep.parentElement.localName === 'AdaptationSet' ? rep.parentElement : null;
+    const pick = name => rep.getAttribute(name) || (set && set.getAttribute(name)) || '';
+    map.set(id, { mime: pick('mimeType'), codecs: pick('codecs'), contentType: pick('contentType'), lang: pick('lang') });
+  }
+  return map;
+}
+
+function trackFrom(playlist, kind, index, groupLanguage, groupName, info) {
   const a = playlist.attributes || {};
   const segments = segmentList(playlist);
-  const codecs = String(a.CODECS || '');
-  const mime = String(a.mimeType || (kind === 'video' ? 'video/mp4' : 'audio/mp4'));
+  const xml = (info && info.get(String(a.NAME ?? a.id ?? ''))) || {};
+  const codecs = String(xml.codecs || a.CODECS || '');
+  const mime = String(xml.mime || a.mimeType || '');
+  const container = containerOf(mime, codecs, segments);
   return {
-    kind, index, segments, codecs, mime,
+    kind, index, segments, codecs, mime, container, format: formatOf(codecs),
     bandwidth: Number(a.BANDWIDTH) || 0,
     width: a.RESOLUTION ? Number(a.RESOLUTION.width) || 0 : 0,
     height: a.RESOLUTION ? Number(a.RESOLUTION.height) || 0 : 0,
@@ -320,7 +386,7 @@ function trackFrom(playlist, kind, index, groupLanguage, groupName) {
 const VIDEO_CODECS = /^(avc1|avc3|hvc1|hev1|av01)/i;
 const AUDIO_CODECS = /^(mp4a|ec-3|ac-3|opus)/i;
 function canMerge(track) {
-  if (!/mp4/i.test(track.mime)) return false;
+  if (track.container !== 'mp4') return false;
   const c = track.codecs.split(',')[0].trim();
   if (!c) return true;
   return track.kind === 'video' ? VIDEO_CODECS.test(c) : AUDIO_CODECS.test(c);
@@ -337,24 +403,31 @@ function parseManifest(text, url) {
   let parsed;
   try { parsed = window.mpdParser.parse(text, { manifestUri: url }); } catch (e) { console.warn(e); throw new Blocked('badManifest'); }
 
+  const info = representationInfo(root);
   const videos = [], audios = [], seen = new Set();
-  const isAudio = p => {
+  const facts = p => {
     const a = p.attributes || {};
-    return /^audio\//i.test(a.mimeType || '') || a.contentType === 'audio' || (!a.RESOLUTION && AUDIO_CODECS.test(String(a.CODECS || '')));
+    const xml = info.get(String(a.NAME ?? a.id ?? '')) || {};
+    return { mime: xml.mime || a.mimeType || '', contentType: xml.contentType || a.contentType || '', codecs: xml.codecs || a.CODECS || '' };
   };
+  const isAudio = p => {
+    const f = facts(p);
+    return /^audio\//i.test(f.mime) || f.contentType === 'audio' || (!(p.attributes || {}).RESOLUTION && /^(mp4a|ec-3|ac-3|opus|vorbis)/i.test(f.codecs));
+  };
+  const isText = p => { const f = facts(p); return /^(text\/|application\/(ttml|mp4))/i.test(f.mime) && !/^(audio|video)/i.test(f.mime) || f.contentType === 'text'; };
   for (const p of parsed.playlists || []) {
     if (seen.has(p)) continue; seen.add(p);
     const a = p.attributes || {};
-    if (/^text\//i.test(a.mimeType || '') || a.contentType === 'text') continue;
-    if (isAudio(p)) audios.push(trackFrom(p, 'audio', audios.length, a.lang, a.NAME));
-    else videos.push(trackFrom(p, 'video', videos.length));
+    if (isText(p)) continue;
+    if (isAudio(p)) audios.push(trackFrom(p, 'audio', audios.length, a.lang, a.NAME, info));
+    else videos.push(trackFrom(p, 'video', videos.length, '', '', info));
   }
   const groups = (parsed.mediaGroups && parsed.mediaGroups.AUDIO) || {};
   for (const group of Object.values(groups)) {
     for (const [label, entry] of Object.entries(group || {})) {
       for (const p of (entry && entry.playlists) || []) {
         if (seen.has(p)) continue; seen.add(p);
-        audios.push(trackFrom(p, 'audio', audios.length, entry.language, label));
+        audios.push(trackFrom(p, 'audio', audios.length, entry.language, label, info));
       }
     }
   }
@@ -379,6 +452,27 @@ function parseManifest(text, url) {
 
 /* ------------------------------------------------------------------ 界面：读取 */
 
+const hasSource = () => Object.keys(params.headers).some(k => /^referr?er$/i.test(k) && params.headers[k]);
+
+// A finished, stopped or failed download makes way for a new choice.
+function resetFinishedJob() {
+  if (!job || job.state === 'running' || job.state === 'failedSegments') return;
+  if (job.state !== 'done') { job.stopped = true; job.controller.abort(); job.release(); }
+  job = null;
+  finishedTitle = false;
+  progressText = null;
+  renderTitle();
+  showJobMessage(null);
+  $('progressArea').hidden = true;
+  $('startArea').hidden = false;
+}
+
+// Header rules for origins that just became reachable.
+function allowOriginsAgain() {
+  const urls = [...manifest.videos, ...manifest.audios].flatMap(tr => tr.segments.map(s => s.url));
+  allowOrigins(urls);
+}
+
 function showBlocked(key, ...args) {
   $('loading').hidden = true;
   $('chooser').hidden = true;
@@ -400,11 +494,11 @@ async function loadManifest(url) {
   try {
     response = await fetch(url, { credentials: 'include', cache: 'no-store' });
   } catch (_) {
-    return showBlocked('readFailed', () => t('networkError'));
+    return showBlocked(hasSource() ? 'readFailed' : 'readFailedNoSource', () => t('networkError'));
   }
-  if (!response.ok) return showBlocked('readFailed', response.status);
+  if (!response.ok) return showBlocked(hasSource() ? 'readFailed' : 'readFailedNoSource', response.status);
   let text;
-  try { text = await response.text(); } catch (_) { return showBlocked('readFailed', () => t('networkError')); }
+  try { text = await response.text(); } catch (_) { return showBlocked(hasSource() ? 'readFailed' : 'readFailedNoSource', () => t('networkError')); }
   try {
     manifest = parseManifest(text, response.url || url);
   } catch (e) {
@@ -416,10 +510,19 @@ async function loadManifest(url) {
   showChooser(url);
 }
 
+// Defaults prefer tracks that can go into one MP4 (spec v2 R2). Lists are already sorted best first.
+function defaultVideoIndex() {
+  const i = manifest.videos.findIndex(canMerge);
+  return i >= 0 ? i : 0;
+}
+
 function defaultAudioIndex() {
   const want = lang === 'zh' ? 'zh' : 'en';
-  const i = manifest.audios.findIndex(a => baseLanguage(a.language || a.name) === want);
-  return i >= 0 ? i : 0;
+  const all = manifest.audios.map((a, i) => ({ a, i }));
+  const same = all.filter(x => baseLanguage(x.a.language || x.a.name) === want);
+  const pool = same.length ? same : all;
+  const best = pool.find(x => canMerge(x.a)) || pool[0];
+  return best ? best.i : 0;
 }
 
 function showChooser(url) {
@@ -433,33 +536,111 @@ function showChooser(url) {
   $('videoOnlyButton').hidden = !manifest.videos.length;
   $('audioOnlyButton').hidden = !manifest.audios.length;
   renderOptions();
-  $('videoSelect').selectedIndex = 0;
+  $('videoSelect').selectedIndex = manifest.videos.length ? defaultVideoIndex() : -1;
   $('audioSelect').selectedIndex = manifest.audios.length ? defaultAudioIndex() : -1;
+  renderOptions();
   const base = params.filename || params.title || '';
   $('filenameInput').value = cleanName(base, 'mp4');
   const link = $('manifestLink');
   link.href = url; link.textContent = url;
   $('advancedToggle').hidden = false;
+  selectionChanged();
+}
+
+// Everything that depends on the current picture / sound choice.
+function selectionChanged() {
   renderSummary();
   renderLists();
+  renderCombo();
+  checkPermissions();
+}
+
+function selectionMergeable() {
+  const { video, audio } = selectedTracks();
+  const list = [video, audio].filter(Boolean);
+  return list.length > 0 && list.every(canMerge);
+}
+
+function renderCombo() {
+  const { video, audio } = selectedTracks();
+  const separate = !!(video && audio) && !selectionMergeable();
+  $('comboNote').hidden = !separate;
+  if (separate) say($('comboNote'), 'comboSeparate'); else say($('comboNote'), null);
+  say($('downloadButton'), separate ? 'downloadSeparate' : 'download');
+}
+
+/* Segments on sites the extension may not reach (spec v2 R4). */
+const permission = { missing: [], hosts: [] };
+
+function originPatterns(urls) {
+  const out = new Map();
+  for (const u of urls) {
+    try { const x = new URL(u); if (/^https?:$/.test(x.protocol)) out.set(`${x.protocol}//${x.hostname}/*`, x.hostname); } catch (_) { /* skip */ }
+  }
+  return out;
+}
+
+async function missingPatterns(urls) {
+  const missing = [];
+  for (const [pattern, host] of originPatterns(urls)) {
+    let ok = false;
+    try { ok = await chrome.permissions.contains({ origins: [pattern] }); } catch (_) { ok = false; }
+    if (!ok) missing.push({ pattern, host });
+  }
+  return missing;
+}
+
+let permissionCheck = 0;
+async function checkPermissions() {
+  const { video, audio } = selectedTracks();
+  const urls = [video, audio].filter(Boolean).flatMap(tr => tr.segments.map(s => s.url));
+  const ticket = ++permissionCheck;
+  const missing = await missingPatterns(urls);
+  if (ticket !== permissionCheck) return;
+  permission.missing = missing.map(m => m.pattern);
+  permission.hosts = [...new Set(missing.map(m => m.host))];
+  renderPermission();
+}
+
+function renderPermission() {
+  const need = permission.missing.length > 0;
+  $('permNote').hidden = !need;
+  $('permButton').hidden = !need;
+  if (need) say($('permNote'), 'needAccess', () => permission.hosts.join(t('listSep'))); else say($('permNote'), null);
+  const busy = job && job.state === 'running';
+  $('downloadButton').disabled = need;
+  for (const id of ['videoOnlyButton', 'audioOnlyButton']) $(id).disabled = need || !!busy;
+}
+
+// Must be called straight from the click so Chrome accepts the request.
+function requestAccess(patterns, after) {
+  if (!patterns.length) return;
+  let pending;
+  try { pending = chrome.permissions.request({ origins: patterns }); } catch (e) { console.warn(e); return; }
+  Promise.resolve(pending).then(granted => { if (granted) after(); }, e => console.warn(e));
 }
 
 function renderOptions() {
   const vs = $('videoSelect'), as = $('audioSelect');
   const keepV = vs.selectedIndex, keepA = as.selectedIndex;
+  const chosenAudio = manifest.audios[keepA] || null;
   vs.replaceChildren(...manifest.videos.map((v, i) => {
     const parts = [];
     if (v.width && v.height) parts.push(`${v.width}×${v.height}`);
     else parts.push(v.name || t('trackFallback', i + 1));
+    if (v.format) parts.push(v.format);
     if (v.bandwidth) parts.push(formatRate(v.bandwidth));
     const fps = formatFps(v.fps);
     if (fps) parts.push(fps);
+    const size = estimate(v) + estimate(chosenAudio);
+    if (size > 0) parts.push(t('sizeAbout', formatSize(size)));
     return new Option(parts.join(' · '), String(i));
   }));
   as.replaceChildren(...manifest.audios.map((a, i) => {
     // mpd-parser names an unlabeled, language-less group "main"; that is not a real name.
-    const name = a.name && !(a.name === 'main' && !a.language) ? a.name : '';
+    const name = a.name && !(a.name === 'main' && !a.language) && !/^\d+$/.test(a.name) ? a.name : '';
     const parts = [languageName(a.language) || name || t('soundFallback', i + 1)];
+    if (a.format) parts.push(a.format);
     if (a.bandwidth) parts.push(formatRate(a.bandwidth, true));
     return new Option(parts.join(' · '), String(i));
   }));
@@ -476,9 +657,21 @@ function selectedTracks() {
 const mediaCount = tr => (tr ? tr.segments.filter(s => !s.init).length : 0);
 const estimate = tr => (tr ? (tr.bandwidth * (manifest.duration || tr.duration)) / 8 : 0);
 
+// A track that is one complete file (no segment list, or byte ranges of a single address).
+const isWholeFile = tr => !!tr && new Set(tr.segments.map(s => s.url)).size === 1;
+
+function formatSize(bytes) {
+  const mb = bytes / 1024 ** 2;
+  if (mb < 1) return '1 MB';
+  if (bytes >= 1024 ** 3) return (bytes / 1024 ** 3).toFixed(1) + ' GB';
+  return Math.round(mb) + ' MB';
+}
+
 function renderSummary() {
   const { video, audio } = selectedTracks();
-  say($('summary'), 'summary', mediaCount(video) + mediaCount(audio), formatClock(manifest.duration));
+  const segmented = [video, audio].filter(tr => tr && !isWholeFile(tr));
+  if (segmented.length) say($('summary'), 'summary', segmented.reduce((s, tr) => s + mediaCount(tr), 0), formatClock(manifest.duration));
+  else say($('summary'), 'summaryWhole', formatClock(manifest.duration));
   const big = estimate(video) + estimate(audio) > 2 * 1024 ** 3;
   $('sizeWarning').hidden = !big;
   if (big) say($('sizeWarning'), 'tooLarge');
@@ -517,8 +710,21 @@ const RETRY_DELAYS = [500, 1000, 1500];
 const PARALLEL = 6;
 
 function trackFileExt(track) {
-  if (/webm/i.test(track.mime)) return 'webm';
+  if (track.container === 'webm') return 'webm';
   return track.kind === 'audio' ? 'm4a' : 'mp4';
+}
+
+// After failed segments: offer access when network errors hit sites without permission (spec v2 R4).
+async function offerJobAccess(current) {
+  const urls = current.tracks.flatMap(x => [...x.netFailed].map(i => x.track.segments[i].url));
+  if (!urls.length) return;
+  const missing = await missingPatterns(urls);
+  if (job !== current || current.state !== 'failedSegments' || !missing.length) return;
+  current.missing = missing.map(m => m.pattern);
+  const note = $('jobPermNote');
+  note.hidden = false;
+  say(note, 'needAccess', [...new Set(missing.map(m => m.host))].join(t('listSep')));
+  $('jobPermButton').hidden = false;
 }
 
 class Job {
@@ -526,8 +732,8 @@ class Job {
     const { video, audio } = selectedTracks();
     this.mode = mode; // 'both' | 'video' | 'audio'
     this.tracks = [];
-    if (video && mode !== 'audio') this.tracks.push({ track: video, parts: new Array(video.segments.length), failed: new Set(), done: 0 });
-    if (audio && mode !== 'video') this.tracks.push({ track: audio, parts: new Array(audio.segments.length), failed: new Set(), done: 0 });
+    if (video && mode !== 'audio') this.tracks.push({ track: video, parts: new Array(video.segments.length), failed: new Set(), netFailed: new Set(), done: 0 });
+    if (audio && mode !== 'video') this.tracks.push({ track: audio, parts: new Array(audio.segments.length), failed: new Set(), netFailed: new Set(), done: 0 });
     this.controller = new AbortController();
     this.bytes = 0;
     this.stopped = false;
@@ -559,6 +765,7 @@ class Job {
             if (this.stopped) return;
             entry.parts[i] = buffer;
             entry.failed.delete(i);
+            entry.netFailed.delete(i);
             entry.done++;
             this.bytes += buffer.byteLength;
             updateProgress();
@@ -566,7 +773,7 @@ class Job {
           } catch (e) {
             if (this.stopped || signal.aborted) return;
             if (isOutOfMemory(e)) throw e;
-            if (attempt >= RETRY_DELAYS.length) { entry.failed.add(i); break; }
+            if (attempt >= RETRY_DELAYS.length) { entry.failed.add(i); if (e instanceof TypeError) entry.netFailed.add(i); else entry.netFailed.delete(i); break; }
             await sleep(RETRY_DELAYS[attempt++]);
             if (this.stopped) return;
           }
@@ -589,6 +796,7 @@ function failedCount() {
 
 function lockInputs(locked) {
   for (const id of ['videoSelect', 'audioSelect', 'filenameInput', 'videoOnlyButton', 'audioOnlyButton']) $(id).disabled = locked;
+  if (!locked) renderPermission();
 }
 
 function setStage(key) { say($('stage'), key); }
@@ -613,6 +821,8 @@ function renderTitle() {
 
 function showJobMessage(key, ...args) {
   const el = $('jobMessage');
+  $('jobDetail').hidden = true; say($('jobDetail'), null);
+  $('jobPermNote').hidden = true; $('jobPermButton').hidden = true;
   if (!key) { el.hidden = true; say(el, null); return; }
   el.hidden = false;
   el.classList.toggle('error', key !== 'separateSaved');
@@ -631,6 +841,7 @@ function setButtons(state) {
 async function startJob(mode) {
   if (job && !job.stopped && job.state === 'running') return;
   if (job) { job.stopped = true; job.controller.abort(); job.release(); }
+  if (permission.missing.length) return;
   const current = new Job(mode);
   if (!current.tracks.length) return;
   job = current;
@@ -662,6 +873,7 @@ async function runDownloads(current, onlyFailed) {
       showJobMessage('failedSegments', failed);
       setButtons('failedSegments');
       lockInputs(false);
+      offerJobAccess(current);
       return;
     }
     await finishJob(current);
@@ -758,26 +970,35 @@ async function finishJob(current) {
   updateProgress(95);
   await sleep(0);
   const files = [];
-  const ext = current.mode === 'audio' ? 'm4a' : 'mp4';
   const mergeable = current.tracks.every(x => canMerge(x.track));
+  let mergeFallback = false;
+
+  // Raw tracks, each in its real container (spec v2 R3).
+  const separateFiles = () => {
+    const separate = current.tracks.length > 1;
+    const stem = cleanName(current.baseName, 'x').replace(/\.x$/, '');
+    return current.tracks.map(x => {
+      const base = stem + (separate ? t(x.track.kind === 'video' ? 'suffixVideo' : 'suffixAudio') : '');
+      const type = x.track.mime || (x.track.container === 'webm' ? x.track.kind + '/webm' : x.track.kind + '/mp4');
+      return { blob: new Blob(x.parts, { type }), name: cleanName(base, trackFileExt(x.track)) };
+    });
+  };
 
   if (mergeable) {
-    let blob;
+    let blob = null;
     try {
       blob = await buildMp4(current.tracks.map(x => ({ kind: x.track.kind, parts: x.parts })), manifest.duration);
     } catch (e) {
       if (current.stopped) return;
       console.error(e);
-      return failJob(current, isOutOfMemory(e) ? 'outOfMemory' : 'mergeFailed');
+      if (isOutOfMemory(e)) return failJob(current, 'outOfMemory');
+      // Keep what was downloaded: save the tracks as they are (spec v2 R2).
+      mergeFallback = current.tracks.length > 1;
     }
-    files.push({ blob, name: cleanName(current.baseName, ext) });
+    if (blob) files.push({ blob, name: cleanName(current.baseName, current.mode === 'audio' ? 'm4a' : 'mp4') });
+    else files.push(...separateFiles());
   } else {
-    const separate = current.tracks.length > 1;
-    for (const x of current.tracks) {
-      const tExt = current.mode === 'both' ? trackFileExt(x.track) : (/webm/i.test(x.track.mime) ? 'webm' : ext);
-      const base = cleanName(current.baseName, 'x').replace(/\.x$/, '') + (separate ? t(x.track.kind === 'video' ? 'suffixVideo' : 'suffixAudio') : '');
-      files.push({ blob: new Blob(x.parts, { type: x.track.mime }), name: cleanName(base, tExt) });
-    }
+    files.push(...separateFiles());
   }
   if (current.stopped) return;
   for (const x of current.tracks) x.parts = [];
@@ -792,7 +1013,11 @@ async function finishJob(current) {
     }
   } catch (e) {
     if (current.stopped) return;
-    return failJob(current, 'saveFailed', e.message || t('unknownError'));
+    failJob(current, 'saveFailed');
+    const detail = $('jobDetail');
+    detail.hidden = false;
+    say(detail, 'saveCode', e.message || t('unknownError'));
+    return;
   }
   if (current.stopped) return;
   current.state = 'done';
@@ -803,8 +1028,10 @@ async function finishJob(current) {
   updateProgress(100);
   finishedTitle = true;
   renderTitle();
-  if (!mergeable && current.tracks.length > 1) showJobMessage('separateSaved');
+  if (mergeFallback) showJobMessage('mergeFailedSeparate');
+  else if (!mergeable && current.tracks.length > 1) showJobMessage('separateSaved');
   setButtons('done');
+  lockInputs(false);
 }
 
 /* ------------------------------------------------------------------ MP4 合成 */
@@ -1074,7 +1301,7 @@ function bindEvents() {
     $('advancedToggle').textContent = t(advancedOpen ? 'hideAdvanced' : 'showAdvanced');
     $('advancedToggle').setAttribute('aria-expanded', String(advancedOpen));
   });
-  const changed = () => { renderSummary(); renderLists(); };
+  const changed = () => { resetFinishedJob(); renderOptions(); selectionChanged(); };
   $('videoSelect').addEventListener('change', changed);
   $('audioSelect').addEventListener('change', changed);
   $('downloadButton').addEventListener('click', () => startJob('both'));
@@ -1082,6 +1309,9 @@ function bindEvents() {
   $('audioOnlyButton').addEventListener('click', () => startJob('audio'));
   $('stopButton').addEventListener('click', stopJob);
   $('retryFailedButton').addEventListener('click', retryFailed);
+  $('permButton').addEventListener('click', () => requestAccess(permission.missing.slice(), () => { allowOriginsAgain(); checkPermissions(); }));
+  $('jobPermButton').addEventListener('click', () => requestAccess((job && job.missing) || [], () => { allowOriginsAgain(); $('jobPermNote').hidden = true; $('jobPermButton').hidden = true; }));
+  $('filenameInput').addEventListener('input', resetFinishedJob);
   $('showFileButton').addEventListener('click', () => { if (job && job.savedId != null) chrome.downloads.show(job.savedId); });
   $('copyButton').addEventListener('click', async () => {
     const text = [$('videoList').value, $('audioList').value].filter(Boolean).join('\n');

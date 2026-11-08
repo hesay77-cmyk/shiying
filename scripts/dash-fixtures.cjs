@@ -16,6 +16,10 @@ function build(dir,ffmpeg=process.env.RUXGET_FFMPEG||'ffmpeg'){
  const protect=text=>text.replace(/(<AdaptationSet[^>]*contentType="video"[^>]*>)/,'$1\n<ContentProtection schemeIdUri="urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"><cenc:pssh xmlns:cenc="urn:mpeg:cenc:2013">AAAAQ3Bzc2gAAAAA7e+LqXnWSs6jyCfc1R0h7QAAACMIARIQ1o3Kj1Ykyle1Uh0tUMkQ0yIKcnV4Z2V0LXRlc3Q=</cenc:pssh></ContentProtection>');
  run('drm',[...video,...two,...enc,'-use_template','1','-use_timeline','0'],protect);
  run('live',[...video,...two,...enc,'-use_template','1','-use_timeline','0'],text=>text.replace('type="static"','type="dynamic" availabilityStartTime="2026-01-01T00:00:00Z"'));
+ // Picture and sound in both MP4 and WebM; the WebM picture has the higher bitrate, and the types sit on the
+ // AdaptationSet only (as on real sites), not on each Representation.
+ const hoist=text=>text.replace(/(<AdaptationSet[^>]*?)>(\s*<Representation[^>]*?) mimeType="([^"]+)"/g,'$1 mimeType="$3">$2');
+ run('mixed',['-f','lavfi','-i','testsrc=size=640x360:rate=25','-f','lavfi','-i','sine=frequency=440:sample_rate=48000','-t','6','-map','0:v','-map','0:v','-map','1:a','-map','1:a','-c:v:0','libx264','-pix_fmt','yuv420p','-b:v:0','600k','-c:v:1','libvpx-vp9','-b:v:1','900k','-deadline','realtime','-cpu-used','8','-g','25','-keyint_min','25','-c:a:0','aac','-b:a:0','96k','-c:a:1','libopus','-b:a:1','128k','-seg_duration','2','-dash_segment_type','auto','-use_template','1','-use_timeline','0','-adaptation_sets','id=0,streams=0 id=1,streams=1 id=2,streams=2 id=3,streams=3'],hoist);
  return dir;
 }
 module.exports={build};

@@ -245,7 +245,9 @@ const ShiyingPlatformUI = (() => {
         let link;try{link=new URL(url);}catch{return false;}
         const kind=/^https?:$/.test(link.protocol)?streamKind(link):'';if(!kind)return false;
         pasteNote('');
-        let name=link.pathname.split('/').pop()||'';try{name=decodeURIComponent(name);}catch{}name=name.replace(/\.(m3u8?|mpd)$/i,'')||pick('网页视频','Web video');
+        let name=link.pathname.split('/').pop()||'';try{name=decodeURIComponent(name);}catch{}name=name.replace(/\.(m3u8?|mpd)$/i,'');
+        // 0.4.76: playlist files are often just "manifest", "dash" or "index"; those make poor file names.
+        if(!name||/^(manifest|dash|index|master|playlist|stream|video|main|output|out|media)$/i.test(name))name=pick('网页视频','Web video');
         chrome.permissions.request({origins:[link.protocol+'//'+link.hostname+'/*']}).catch(()=>false).then(async granted=>{
             if(!granted){pasteNote(()=>pick('需要允许访问这个网站，才能读取这个播放列表。','Allow access to this site to read the playlist.'));return;}
             const result=await chrome.runtime.sendMessage({Message:'shiyingDownload',tabId:currentTab?.id,data:{url:link.href,ext:kind,title:name,webUrl:link.href}});
