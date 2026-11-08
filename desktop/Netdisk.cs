@@ -19,7 +19,7 @@ static class Netdisk {
         {"baidu",new[]{"pan.baidu.com","yun.baidu.com"}},{"aliyun",new[]{"www.alipan.com","www.aliyundrive.com"}},
         {"mcloud",new[]{"yun.139.com","caiyun.139.com"}},{"tcloud",new[]{"cloud.189.cn"}},{"xunlei",new[]{"pan.xunlei.com"}},
         {"quark",new[]{"pan.quark.cn"}},{"uc",new[]{"drive.uc.cn"}},
-        {"pan123",new[]{"www.123pan.com","www.123pan.cn","www.123684.com","www.123865.com","www.123952.com","www.123912.com"}}};
+        {"pan123",new[]{"yun.123pan.cn","www.123pan.com","www.123pan.cn","www.123684.com","www.123865.com","www.123952.com","www.123912.com"}}};
     internal static readonly Dictionary<string,string[]> Domains=new Dictionary<string,string[]>{
         {"baidu",new[]{"baidu.com","baidupcs.com","baidupcs.cn"}},{"aliyun",new[]{"alipan.com","aliyundrive.com","aliyundrive.net","aliyuncs.com","alicdn.com"}},
         {"mcloud",new[]{"139.com","cmecloud.cn","139cloud.com","cmcc-cs.cn"}},{"tcloud",new[]{"189.cn","ctyun.cn","ctyunxs.cn","21cn.com","cloud189.cn"}},
