@@ -57,7 +57,7 @@ const server=http.createServer((request,response)=>{const name=new URL(request.u
  check(done&&fs.readFileSync(done).equals(body),'the file that needs its source page is saved whole');
  // The old advanced pages carry the quiet retirement line.
  for(const name of ['popup.html','options.html']){const p=await context.newPage();await p.goto(`chrome-extension://${id}/${name}?tabId=${tab}`);await p.locator('.ruxget-retire-note').waitFor({state:'attached',timeout:5000});
-  check(/下个版本移除/.test(await p.locator('.ruxget-retire-note').innerText()),name+' says quietly that some tools go away next version');await p.screenshot({path:path.join(report,name+'.png')});await p.close();}
+  check(/后续版本中移除/.test(await p.locator('.ruxget-retire-note').innerText()),name+' says quietly that some tools go away in a later version');await p.screenshot({path:path.join(report,name+'.png')});await p.close();}
  check(dialogs.length===0,'no dialog appeared');
  fs.writeFileSync(path.join(report,'summary.json'),JSON.stringify({checks},null,1));console.log(`all-requests-check passed (${checks.length} checks). Report: ${report}`);
 }catch(error){console.error(error);process.exitCode=1;}finally{await context?.close().catch(()=>{});server.close();}})();
