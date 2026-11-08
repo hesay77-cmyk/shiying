@@ -107,7 +107,7 @@
     '没有读到播放列表，请确认列表可公开访问': 'Couldn’t read the playlist. Make sure it’s public.',
     '没读到完整视频时长，请重新读取': 'Couldn’t read the full video length. Read it again.',
     '画面没有完整解码，请重新下载': 'The video didn’t decode fully. Please download again.',
-    '目前支持已发布的视频，直播请使用高级工具': 'Published videos are supported. For live streams, use the advanced tools.',
+    '目前只支持已发布的视频，暂不支持直播': 'Only published videos are supported for now, not live streams.',
     '视频信息已过期，请重新读取': 'The video information has expired. Read it again.',
     '视频清单过大，请使用下载页解析': 'The video manifest is too large. Use the download page to parse it.',
     '视频清晰度或时长不符合选择，请重新下载': 'The video’s quality or length doesn’t match your choice. Please download again.',
@@ -135,7 +135,10 @@
     
     '这个视频地址无法直接读取': 'This video link can’t be read directly',
     '这个视频文件太大，请选择较低清晰度': 'This video is too large. Choose a lower quality.',
-    '这是视频切片，请在高级工具中处理': 'This is a video segment. Use the advanced tools.',
+    '这是视频切片，请下载它所属的播放列表': 'This is a video segment. Download the playlist it belongs to.',
+    '已在新标签页中打开下载页': 'The download page opened in a new tab.',
+    '来源网页需要是完整的 HTTP 或 HTTPS 地址': 'The source page must be a full HTTP or HTTPS address.',
+    '需要允许访问这个网站，才能带着来源网页下载。': 'Allow access to this site to download with its source page.',
     '音视频轨没有完整下载，请重新读取': 'The audio/video tracks didn’t fully download. Read the video again.',
     // Bridge, floating button and progress page
     '视频读取失败，请重试': 'Couldn’t read the video. Try again.',

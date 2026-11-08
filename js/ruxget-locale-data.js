@@ -527,7 +527,10 @@ globalThis.RuxgetLocaleData={
 "folderPathExample":{"message":"e.g. D:\\downloads or /home/user/downloads"},
 "mainNavigation":{"message":"Main navigation"},
 "sourceCode":{"message":"Source code"},
-"m3u8OrMpd":{"message":"M3U8 or MPD"}
+"m3u8OrMpd":{"message":"M3U8 or MPD"},
+"uiLinkRefererMore":{"message":"More"},
+"uiLinkRefererLabel":{"message":"Source page (optional)"},
+"uiLinkRefererHint":{"message":"Some sites need the address of the page that plays this file"}
 },
 "zh_CN":{
 "extName":{"message":"Ruxget 下载器 · 网页视频 MP4/MP3 与大文件"},
@@ -1055,6 +1058,9 @@ globalThis.RuxgetLocaleData={
 "folderPathExample":{"message":"例如 D:\\downloads 或 /home/user/downloads"},
 "mainNavigation":{"message":"主导航"},
 "sourceCode":{"message":"源代码"},
-"m3u8OrMpd":{"message":"M3U8 或 MPD"}
+"m3u8OrMpd":{"message":"M3U8 或 MPD"},
+"uiLinkRefererMore":{"message":"更多"},
+"uiLinkRefererLabel":{"message":"来源网页（可选）"},
+"uiLinkRefererHint":{"message":"部分网站需要填写播放这个文件的网页地址"}
 }
 };

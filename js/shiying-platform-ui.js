@@ -241,7 +241,7 @@ const ShiyingPlatformUI = (() => {
     // stream page instead (m3u8.html merges the segments in the browser; mpd.html picks the tracks), after access to
     // that one site. Called in the click, so Chrome can ask for the site.
     const streamKind=link=>{const name=link.pathname.toLowerCase();return /\.m3u8$/.test(name)?'m3u8':/\.mpd$/.test(name)?'mpd':'';};
-    function openStream(url){
+    function openStream(url,referer=''){
         let link;try{link=new URL(url);}catch{return false;}
         const kind=/^https?:$/.test(link.protocol)?streamKind(link):'';if(!kind)return false;
         pasteNote('');
@@ -250,7 +250,8 @@ const ShiyingPlatformUI = (() => {
         if(!name||/^(manifest|dash|index|master|playlist|stream|video|main|output|out|media)$/i.test(name))name=pick('网页视频','Web video');
         chrome.permissions.request({origins:[link.protocol+'//'+link.hostname+'/*']}).catch(()=>false).then(async granted=>{
             if(!granted){pasteNote(()=>pick('需要允许访问这个网站，才能读取这个播放列表。','Allow access to this site to read the playlist.'));return;}
-            const result=await chrome.runtime.sendMessage({Message:'shiyingDownload',tabId:currentTab?.id,data:{url:link.href,ext:kind,title:name,webUrl:link.href}});
+            const source=/^https?:///i.test(referer)?referer:'';
+            const result=await chrome.runtime.sendMessage({Message:'shiyingDownload',tabId:currentTab?.id,data:{url:link.href,ext:kind,title:name,webUrl:source||link.href,...(source?{requestHeaders:{referer:source}}:{})}});
             if(!result?.ok)throw new Error(result?.error||'没有打开下载页，请重试');
             pasteNote(()=>kind==='m3u8'?pick('这是分段视频的播放列表，已在新标签页中下载并合并，完成后由 Chrome 保存。','This is a streaming playlist. It is downloading and merging in a new tab; Chrome saves the file when it is done.'):pick('这是音画分轨的播放列表，已在新标签页中打开，选好画面和声音后下载。','This is a DASH playlist with separate tracks. It opened in a new tab; pick the video and audio there, then download.'),'info');
         }).catch(error=>pasteNote(error.message||String(error)));

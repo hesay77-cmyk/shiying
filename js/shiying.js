@@ -31,7 +31,7 @@ async function quality(data, card) {
     field.querySelector('.quality-note').textContent = result.separateAudio ? RuxgetI18n.pick('这个视频的声音是独立音轨，请在下载页一起选择。', 'The audio is a separate track; choose it on the download page.') : (result.variants.length ? RuxgetI18n.pick('选好清晰度后点击下载。', 'Pick a quality, then download.') : RuxgetI18n.pick('这是单一清晰度的视频流。', 'This stream has a single quality.'));
 }
 // The page's own players, read when the list loads: they tell the main video apart from ads and previews.
-let pageElements = [], showMinor = false, probeTimer = 0;
+let pageElements = [], showMinor = false, showAll = false, probeTimer = 0;
 async function probePage() {
     if (typeof RuxgetFocus === 'undefined' || !tabId) return;
     const probed = tabId;
@@ -40,6 +40,34 @@ async function probePage() {
     pageElements = found; render();
 }
 function probeSoon() { clearTimeout(probeTimer); probeTimer = setTimeout(() => probePage().catch(() => {}), 700); }
+// 0.4.77: the 「显示全部请求」 rows: what each request is, its size, its address to copy, and a download where one works.
+function renderAllRequests(items, pick) {
+    let box = $('#allRequests');
+    if (!box) { box = document.createElement('div'); box.id = 'allRequests'; box.className = 'all-requests'; $('#fragmentNote').after(box); }
+    box.hidden = !items.length;
+    box.replaceChildren(...items.map(data => {
+        const kind = Shiying.kind(data), row = document.createElement('div'), info = document.createElement('div'), title = document.createElement('div'), meta = document.createElement('div');
+        row.className = 'request-row'; info.className = 'request-info'; title.className = 'request-name'; meta.className = 'request-meta';
+        title.textContent = Shiying.name(data); title.title = data.url;
+        const label = kind === 'fragment' ? pick('切片', 'Segment') : pick('其他', 'Other');
+        meta.textContent = [label, (data.ext || '').toUpperCase(), data.size ? Shiying.size(Number(data.size)) : ''].filter(Boolean).join(' · ');
+        info.append(title, meta);
+        const copyButton = document.createElement('button'), down = document.createElement('button');
+        copyButton.type = down.type = 'button'; copyButton.className = down.className = 'text-button';
+        copyButton.textContent = pick('复制地址', 'Copy address');
+        copyButton.addEventListener('click', () => copy(data.url).catch(failure));
+        down.textContent = pick('下载', 'Download');
+        down.disabled = kind === 'fragment' || !Shiying.validURL(data.url);
+        if (kind === 'fragment') down.title = pick('切片需要配合它的播放列表下载', 'A segment downloads together with its playlist');
+        down.addEventListener('click', async () => {
+            down.disabled = true;
+            try { const result = await message('shiyingDownload', {data}); if (!result.ok) throw new Error(result.error); notify(result.page ? '已在新标签页中打开下载页' : '已交给 Chrome 下载'); }
+            catch (error) { failure(error); } finally { down.disabled = false; }
+        });
+        row.append(info, copyButton, down);
+        return row;
+    }));
+}
 function render() {
     const search = $('#search').value.trim().toLowerCase();
     const playable = media.filter(item => !['other', 'fragment'].includes(Shiying.kind(item)));
@@ -71,8 +99,20 @@ function render() {
     { const link = $('#copyPageLink'); if (link) { link.hidden = !!real || !/^https?:/i.test(currentSite?.url || ''); link.textContent = pick('复制这个网页的链接', 'Copy this page’s link'); } }
     $('#empty p').textContent = real ? pick('换一个类型，或清空搜索词再试试。','Try another type, or clear the search.') : restricted ? pick('请切换到视频页，或在上方粘贴视频链接。','Switch to a video page, or paste a video link above.') : pick('播放网页里的视频，或在上方粘贴视频链接。','Play the video on the page, or paste a video link above.');
     const fragments = media.filter(item => Shiying.kind(item) === 'fragment').length;
-    $('#fragmentNote').hidden = !fragments;
-    $('#fragmentNote').textContent = pick(`另有 ${fragments} 个音视频分段（播放器自动加载的片段），已折叠，一般无需单独下载。`, `${fragments} more media segments (pieces the player loads by itself) are folded; there is usually no need to download them.`);
+    // 0.4.77: everything the page loaded that the list above leaves out (segments, playlists the list folds, other
+    // files) opens under 「显示全部请求」, in place of the old advanced popup's request list.
+    const others = media.filter(item => ['other', 'fragment'].includes(Shiying.kind(item)) && `${Shiying.name(item)} ${item.url}`.toLowerCase().includes(search));
+    const note = $('#fragmentNote');
+    note.hidden = !others.length;
+    const noteText = document.createElement('span');
+    noteText.textContent = fragments ? pick(`另有 ${fragments} 个音视频分段（播放器自动加载的片段），已折叠，一般无需单独下载。`, `${fragments} more media segments (pieces the player loads by itself) are folded; there is usually no need to download them.`) : '';
+    const allToggle = document.createElement('button');
+    allToggle.type = 'button'; allToggle.className = 'hint-link'; allToggle.id = 'allRequestsToggle';
+    allToggle.textContent = showAll ? pick('收起全部请求', 'Hide all requests') : pick(`显示全部请求（${others.length}）`, `Show all requests (${others.length})`);
+    allToggle.setAttribute('aria-expanded', String(showAll));
+    allToggle.addEventListener('click', () => { showAll = !showAll; render(); });
+    note.replaceChildren(...(noteText.textContent ? [noteText, ' '] : []), allToggle);
+    renderAllRequests(showAll ? others : [], pick);
     const list = $('#mediaList');
     list.replaceChildren();
     const urls = new Set(media.map(item => item.url));
@@ -116,7 +156,7 @@ function render() {
         const button = card.querySelector('.download-button');
         button.textContent = kind === 'dash' ? pick('选择音轨', 'Pick tracks') : pick('下载', 'Download');
         button.disabled = !Shiying.validURL(data.url);
-        if (button.disabled) status.textContent = pick('需要高级工具处理', 'Needs Advanced tools');
+        if (button.disabled) status.textContent = pick('这个地址不能直接下载', 'This address can’t be downloaded directly');
         onClick(button, async () => {
             button.disabled = true;
             try {
@@ -211,7 +251,7 @@ async function initialize() {
     if (!tab) throw new Error('没有找到当前网页');
     tabId = tab.id;
     currentSite = tab;
-    pageElements = []; showMinor = false;
+    pageElements = []; showMinor = false; showAll = false;
     $('#pageTitle').textContent = tab.title || (window.RuxgetI18n ? RuxgetI18n.pick('当前网页', 'This page') : '当前网页');
     // Side panel: the netdisk card follows the page too.
     document.dispatchEvent(new CustomEvent('ruxget-page-changed', {detail: tab}));
@@ -369,19 +409,27 @@ initialize().catch(failure);
 
 // Manual choices only: no download hooks, timers, persistent default takeover or automatic desktop startup.
 let linkDownloadBusy=false;
-function linkDownloadState(busy){linkDownloadBusy=busy;for(const id of ['linkUseChrome','linkUseDesktop','linkDownloadCancel','linkDownloadURL'])$('#'+id).disabled=busy;}
+function linkDownloadState(busy){linkDownloadBusy=busy;for(const id of ['linkUseChrome','linkUseDesktop','linkDownloadCancel','linkDownloadURL','linkDownloadReferer'])$('#'+id).disabled=busy;}
 function linkDownloadFailure(error){if(error.cancelled)return;$('#linkDownloadError').textContent=RuxgetText.tr(error.message||String(error));$('#linkDownloadError').hidden=false;}
 $('#ordinaryDownload').addEventListener('click',()=>{$('.menu').open=false;$('#linkDownloadError').hidden=true;$('#linkDownload').showModal();$('#linkDownloadURL').focus();});
 $('#linkDownloadCancel').addEventListener('click',()=>{if(!linkDownloadBusy)$('#linkDownload').close();});
 $('#linkDownload').addEventListener('cancel',event=>{if(linkDownloadBusy)event.preventDefault();});
 $('#linkDownloadForm').addEventListener('submit',async event=>{
     event.preventDefault();if(linkDownloadBusy)return;
-    if(typeof ShiyingPlatformUI!=="undefined"&&ShiyingPlatformUI.stream?.($('#linkDownloadURL').value.trim())){$('#linkDownload').close();return;}
+    // 0.4.77: an optional source page (Referer) for sites that refuse a bare request; it takes the link through
+    // Ruxget's own download pages, which send it along (replaces the old advanced tools' manual downloader).
+    const referer=$('#linkDownloadReferer').value.trim();
+    if(typeof ShiyingPlatformUI!=="undefined"&&ShiyingPlatformUI.stream?.($('#linkDownloadURL').value.trim(),referer)){$('#linkDownload').close();return;}
+    if(referer){try{const payload=ShiyingNative.file($('#linkDownloadURL').value,referer);if(!payload.referer)throw new Error('来源网页需要是完整的 HTTP 或 HTTPS 地址');const link=new URL(payload.url);
+        if(!await chrome.permissions.request({origins:[link.protocol+'//'+link.hostname+'/*']}).catch(()=>false))throw new Error('需要允许访问这个网站，才能带着来源网页下载。');
+        let name=link.pathname.split('/').pop()||'';try{name=decodeURIComponent(name);}catch{}const ext=(/.([a-z0-9]{1,8})$/i.exec(name)||[])[1]||'';
+        const result=await chrome.runtime.sendMessage({Message:'shiyingDownload',tabId,data:{url:payload.url,ext,title:name.replace(/.[a-z0-9]{1,8}$/i,'')||'下载文件',type:'',requestHeaders:{referer:payload.referer}}});
+        if(!result?.ok)throw new Error(result?.error||'没有打开下载页，请重试');$('#linkDownload').close();notify('已在新标签页中打开下载页');}catch(error){linkDownloadFailure(error);}return;}
     try{const payload=ShiyingNative.file($('#linkDownloadURL').value);linkDownloadState(true);$('#linkDownloadError').hidden=true;await chrome.downloads.download({url:payload.url,saveAs:$('#saveAs').checked});$('#linkDownload').close();notify('已交给 Chrome 下载');}catch(error){linkDownloadFailure(error);}finally{linkDownloadState(false);}
 });
 $('#linkUseDesktop').addEventListener('click',()=>{
     if(linkDownloadBusy||!$('#linkDownloadForm').reportValidity())return;
-    let payload;try{payload=ShiyingNative.file($('#linkDownloadURL').value,currentSite?.url);}catch(error){linkDownloadFailure(error);return;}
+    let payload;try{payload=ShiyingNative.file($('#linkDownloadURL').value,$('#linkDownloadReferer').value.trim()||currentSite?.url);}catch(error){linkDownloadFailure(error);return;}
     linkDownloadState(true);$('#linkDownloadError').hidden=true;
     ShiyingDesktop.send(()=>payload).then(reply=>{$('#linkDownload').close();notify(reply?.stage==='started'?pick('已交给桌面版，在「已下载」里看进度', 'Sent to Ruxget Desktop; follow it in Downloads'):'已发送链接，请在 Ruxget 桌面版确认下载');}).catch(linkDownloadFailure).finally(()=>linkDownloadState(false));
 });

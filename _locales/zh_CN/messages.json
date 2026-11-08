@@ -1610,5 +1610,14 @@
   },
   "m3u8OrMpd": {
     "message": "M3U8 或 MPD"
+  },
+  "uiLinkRefererMore": {
+    "message": "更多"
+  },
+  "uiLinkRefererLabel": {
+    "message": "来源网页（可选）"
+  },
+  "uiLinkRefererHint": {
+    "message": "部分网站需要填写播放这个文件的网页地址"
   }
 }

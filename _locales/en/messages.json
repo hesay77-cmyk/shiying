@@ -1615,5 +1615,14 @@
   },
   "m3u8OrMpd": {
     "message": "M3U8 or MPD"
+  },
+  "uiLinkRefererMore": {
+    "message": "More"
+  },
+  "uiLinkRefererLabel": {
+    "message": "Source page (optional)"
+  },
+  "uiLinkRefererHint": {
+    "message": "Some sites need the address of the page that plays this file"
   }
 }

@@ -220,7 +220,8 @@ async function startDownload(data, tabId) {
         await chrome.tabs.create({url:chrome.runtime.getURL(`m3u8.html?${parameters}`), active:true});
         return {};
     }
-    if (!['video','audio'].includes(kind)) throw new Error('这是视频切片，请在高级工具中处理');
+    // 0.4.77: 「显示全部请求」 can download any listed file; a segment only makes sense with its playlist.
+    if (kind === 'fragment') throw new Error('这是视频切片，请下载它所属的播放列表');
     const {saveAs} = await chrome.storage.sync.get({saveAs:false});
     // 有特殊请求头的文件直接交给内置下载器，避免浏览器下载丢失来源头导致 403。
     if ((data.requestHeaders && Object.keys(data.requestHeaders).length) || data.cookie) {

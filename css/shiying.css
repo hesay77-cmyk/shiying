@@ -247,3 +247,6 @@ body:not([data-decided]) .view-panel{visibility:hidden}
 .view-tabs{margin-top:8px}
 /* 0.4.74: the task buttons stay one word each (no "打开" or "删除文件" broken over two lines); if a narrow column cannot hold them all, whole buttons move to a second row. */
 .job-actions{flex-wrap:wrap;row-gap:2px}.job-actions .text-button{white-space:nowrap}
+/* 0.4.77: 「显示全部请求」 under the list: quiet rows, name and type on the left, two text buttons on the right. */
+.all-requests{margin-top:8px;max-height:240px;overflow:auto;scrollbar-width:thin;scrollbar-color:var(--line) transparent}.all-requests[hidden]{display:none}.request-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)}.request-info{flex:1;min-width:0}.request-name{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:12.5px;color:var(--ink)}.request-meta{font-size:11.5px;color:var(--muted)}.request-row .text-button{flex:none;font-size:12px}.request-row .text-button:disabled{opacity:.45;cursor:default}
+.link-referer{margin:8px 0 0;font-size:12px;color:var(--muted)}.link-referer summary{cursor:pointer;width:max-content}.link-referer label{display:block;margin:6px 0 4px}.link-referer input{width:100%}
