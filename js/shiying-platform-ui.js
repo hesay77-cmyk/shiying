@@ -247,8 +247,12 @@ const ShiyingPlatformUI = (() => {
         pasteNote('');
         let name=link.pathname.split('/').pop()||'';try{name=decodeURIComponent(name);}catch{}name=name.replace(/\.(m3u8?|mpd)$/i,'');
         // 0.4.76: playlist files are often just "manifest", "dash" or "index"; those make poor file names.
-        if(!name||/^(manifest|dash|index|master|playlist|stream|video|main|output|out|media)$/i.test(name))name=pick('网页视频','Web video');
-        chrome.permissions.request({origins:[link.protocol+'//'+link.hostname+'/*']}).catch(()=>false).then(async granted=>{
+        // 0.4.78: the nearest folder with a real name is used first (…/img_bipbop_adv_example_fmp4/master.m3u8).
+        const generic=value=>!value||/^(manifest|dash|index|master|playlist|stream|video|main|output|out|media|hls|v\d+|\d+)$/i.test(value);
+        if(generic(name)){const folders=link.pathname.split('/').slice(0,-1).reverse().map(part=>{try{return decodeURIComponent(part);}catch{return part;}});name=folders.find(part=>!generic(part)&&/[\p{L}]/u.test(part))||pick('网页视频','Web video');}
+        // 0.4.78: one permission prompt at a time; clicking 读取 again while Chrome is asking does nothing.
+        if(openStream.asking)return true;openStream.asking=true;
+        chrome.permissions.request({origins:[link.protocol+'//'+link.hostname+'/*']}).catch(()=>false).finally(()=>{openStream.asking=false;}).then(async granted=>{
             if(!granted){pasteNote(()=>pick('需要允许访问这个网站，才能读取这个播放列表。','Allow access to this site to read the playlist.'));return;}
             const source=typeof referer==='string'&&/^https?:\/\//i.test(referer)?referer:'';
             const result=await chrome.runtime.sendMessage({Message:'shiyingDownload',tabId:currentTab?.id,data:{url:link.href,ext:kind,title:name,pasted:true,webUrl:source||link.href,...(source?{requestHeaders:{referer:source}}:{})}});

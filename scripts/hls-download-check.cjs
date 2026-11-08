@@ -101,6 +101,17 @@ const server=http.createServer((request,response)=>{
  page=await open('/plain/ts/index.m3u8');await ready(page);await button(page,/显示高级选项/).click();before=await lastId();await button(page,/只下载声音/).click();saved=await finished(before);p=probe(saved[0]);check(p.audio===1&&p.video===0,'只下载声音 keeps only the sound');await page.close();
  // 14. Not a playlist.
  page=await open('/notlist/x/index.m3u8');await page.waitForFunction(()=>/不是视频播放列表/.test(document.body.innerText),null,{timeout:15000});check(true,'a page that is not a playlist says so');await page.close();
+ // 16. (spec v2) A time range with separate picture and sound: one MP4, both tracks cut to the range, starting at 0.
+ page=await open('/plain/fmp4audio/master.m3u8');await ready(page);await button(page,/显示高级选项/).click();
+ await page.locator('input[placeholder*="从"], input[aria-label*="从"]').first().fill('0:02');await page.locator('input[placeholder*="到"], input[aria-label*="到"]').first().fill('0:04');
+ saved=await download(page);p=probe(saved[0]);const start=+(spawnSync(ffmpeg,['-hide_banner','-i',saved[0]],{encoding:'utf8'}).stderr.match(/start: ([\d.]+)/)||[])[1];
+ check(p.video===1&&p.audio===1&&Math.abs(p.seconds-2)<=1&&start<0.2&&p.clean,`a 0:02–0:04 range with separate sound saves one MP4 starting at 0 (${p.seconds}s, start ${start})`);
+ // 18. (spec v2) After 下载完成, changing only the range brings 下载 back.
+ await page.waitForFunction(()=>/下载完成/.test(document.body.innerText),null,{timeout:10000});
+ await page.locator('input[placeholder*="到"], input[aria-label*="到"]').first().fill('0:05');await page.locator('input[placeholder*="到"], input[aria-label*="到"]').first().blur();
+ check(await button(page,/^下载$/).isVisible({timeout:3000}).catch(()=>false)||await button(page,/^下载$/).waitFor({state:'visible',timeout:3000}).then(()=>true,()=>false),'after 下载完成, changing the range brings 下载 back');await page.close();
+ // 17. (spec v2) A master playlist with autoStart starts by itself with the default quality.
+ page=await open('/plain/master/master.m3u8',{autoStart:true});before=await lastId();saved=await finished(before);whole(saved[0],'a master playlist with autoStart starts by itself at the default 720p',{height:720});await page.close();
  // 15. Narrow width, no dialog.
  page=await open('/plain/master/master.m3u8');await ready(page);await page.setViewportSize({width:360,height:760});check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'the page fits 360 px without sideways scrolling');await page.screenshot({path:path.join(report,'narrow.png'),fullPage:true});await page.close();
  check(dialogs.length===0,'no dialog appeared at any point');
