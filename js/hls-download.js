@@ -92,6 +92,7 @@ const TEXT = {
     closePreview: '关闭预览',
     previewFailed: '无法预览这个视频。',
     soundFallback: '声音 {0}',
+    soundOnlyVariant: '仅声音',
     trackFallback: '清晰度 {0}',
     suffixVideo: '-画面',
     suffixAudio: '-声音',
@@ -188,6 +189,7 @@ const TEXT = {
     closePreview: 'Close preview',
     previewFailed: 'This video cannot be previewed.',
     soundFallback: 'Sound {0}',
+    soundOnlyVariant: 'Sound only',
     trackFallback: 'Quality {0}',
     suffixVideo: '-video',
     suffixAudio: '-audio',
@@ -505,7 +507,8 @@ function parseMaster(lines, url) {
   }
   if (isProtected) throw new Blocked('drm');
   if (!variants.length) throw new Blocked('emptyPlaylist');
-  variants.sort((x, y) => (y.width * y.height - x.width * x.height) || (y.bandwidth - x.bandwidth));
+  // Sound-only qualities go last and are never the default (spec v2 R5).
+  variants.sort((x, y) => (isSoundOnlyVariant(x) - isSoundOnlyVariant(y)) || (y.width * y.height - x.width * x.height) || (y.bandwidth - x.bandwidth));
   return { master: true, url, variants, groups };
 }
 
@@ -562,7 +565,8 @@ function parseMedia(lines, url) {
       r = { start, end: start + range.length - 1 };
       lastEnd.set(surl, r.end + 1);
     }
-    segments.push({ url: surl, duration: duration || 0, seq: sequence + segments.length, range: r, key, map, discontinuity });
+    const start = segments.length ? segments[segments.length - 1].start + segments[segments.length - 1].duration : 0;
+    segments.push({ url: surl, duration: duration || 0, start, seq: sequence + segments.length, range: r, key, map, discontinuity });
     duration = null; range = null; discontinuity = false;
   }
   const live = !ended && type !== 'VOD';
@@ -709,12 +713,22 @@ function showChooser(url) {
   link.href = url; link.textContent = url;
   $('advancedToggle').hidden = false;
   selectionChanged().then(() => {
-    if (params.autoStart && !info.master && !isLive() && !permission.missing.length && !job) startJob('normal');
+    if (params.autoStart && !isLive() && !permission.missing.length && !job) startJob('normal');
   });
 }
 
+// A quality without a picture: no resolution and only sound codecs (spec v2 R5).
+const isSoundOnlyVariant = v => !v.width && !v.height && !!v.codecs && !videoFormat(v.codecs) && wantsAudio(v.codecs);
+
 function variantLabel(v, i, duration) {
   const parts = [];
+  if (isSoundOnlyVariant(v)) {
+    parts.push(t('soundOnlyVariant'));
+    const r = v.average || v.bandwidth;
+    if (r) parts.push(formatRate(r));
+    if (r && duration > 0 && !liveList()) parts.push(t('sizeAbout', formatSize(r * duration / 8)));
+    return parts.join(' · ');
+  }
   if (v.width && v.height) parts.push(`${v.width}×${v.height}`);
   const fmt = videoFormat(v.codecs);
   if (fmt) parts.push(fmt);
@@ -723,9 +737,12 @@ function variantLabel(v, i, duration) {
   const fps = formatFps(v.fps);
   if (fps) parts.push(fps);
   if (!parts.length) parts.push(t('trackFallback', i + 1));
-  if (rate && duration > 0) parts.push(t('sizeAbout', formatSize(rate * duration / 8)));
+  if (rate && duration > 0 && !liveList()) parts.push(t('sizeAbout', formatSize(rate * duration / 8)));
   return parts.join(' · ');
 }
+
+// A live stream shows no size estimates (spec v2 R5).
+const liveList = () => !!(info && info.variants.some(v => v.playlist && v.playlist.live));
 
 function videoFormat(codecs) {
   for (const c of String(codecs).split(',').map(x => x.trim().toLowerCase())) {
@@ -942,7 +959,9 @@ function parseRangeValue(text) {
   return { time: seconds + (m[4] ? Number(m[4]) : 0) };
 }
 
-// Returns [first, last] segment indexes (0-based, both included) or null when the input is invalid.
+// Returns { first, last } segment indexes (0-based, both included) and the chosen time span { from, to } in
+// playlist seconds (a typed time is kept exactly; a segment number stands for that segment's edges), or null when
+// the input is invalid. typed is true when either box is filled.
 function rangeIndexes(pl) {
   const n = pl.segments.length;
   const from = parseRangeValue($('rangeFrom').value), to = parseRangeValue($('rangeTo').value);
@@ -963,7 +982,11 @@ function rangeIndexes(pl) {
   if (to.index != null) { if (to.index < 1 || to.index > n) return null; last = to.index - 1; }
   else if (to.time != null) last = byTime(to.time, true);
   if (first > last) return null;
-  return [first, last];
+  const end = i => starts[i] + pl.segments[i].duration;
+  let fromT = from.time != null ? Math.max(starts[first], Math.min(from.time, end(first))) : starts[first];
+  let toT = to.time != null ? Math.max(starts[last], Math.min(to.time, end(last))) : end(last);
+  if (toT - fromT < 0.05) return null;
+  return { first, last, from: fromT, to: toT, typed: !from.empty || !to.empty };
 }
 
 function validateRange() {
@@ -1179,7 +1202,7 @@ function itemsFor(segments) {
       items.push({ url: s.map.url, range: s.map.range, key: s.map.key, ivSeq: s.seq, init: true, duration: 0 });
     }
     if (s.map) lastMap = s.map;
-    items.push({ url: s.url, range: s.range, key: s.key, ivSeq: s.seq, seq: s.seq, duration: s.duration });
+    items.push({ url: s.url, range: s.range, key: s.key, ivSeq: s.seq, seq: s.seq, duration: s.duration, start: s.start });
   }
   return items;
 }
@@ -1263,6 +1286,8 @@ function updateProgress(forced) {
   if (!job) return;
   if (job.live) { updateLive(); return; }
   const pct = Math.max(0, Math.min(100, Math.floor(forced ?? job.percent)));
+  // A full bar is drawn at once, without the easing that would leave it short of 100% (spec v2 R4).
+  $('barFill').style.transition = pct >= 100 ? 'none' : '';
   $('barFill').style.width = pct + '%';
   $('bar').setAttribute('aria-valuenow', String(pct));
   $('percent').textContent = pct + '%';
@@ -1347,13 +1372,11 @@ async function startJob(mode) {
   const specs = selectionSources(mode);
   if (!specs.length) return;
   // The range is given in segments of the picture playlist; the separate sound follows by time.
-  const [first, last] = rangeIndexes(variant.playlist);
-  const starts = [];
-  let acc = 0;
-  for (const s of variant.playlist.segments) { starts.push(acc); acc += s.duration; }
-  const from = starts[first], to = starts[last] + variant.playlist.segments[last].duration;
-  const whole = first === 0 && last === variant.playlist.segments.length - 1;
+  const { first, last, from, to, typed } = rangeIndexes(variant.playlist);
+  const whole = first === 0 && last === variant.playlist.segments.length - 1 && !typed;
   current.expected = to - from;
+  // A range keeps only that time span in every track (spec v2 R1).
+  current.window = typed ? { from, to } : null;
   for (const spec of specs) {
     let segs;
     if (spec.playlist === variant.playlist) segs = variant.playlist.segments.slice(first, last + 1);
@@ -1706,9 +1729,16 @@ const presentParts = src => src.parts.filter(Boolean);
 function tracksOf(src) {
   const parts = presentParts(src);
   if (!parts.length) throw new Error('no data');
-  if (src.container === 'fmp4') return readTracks(parts);
-  if (src.container === 'ts' || src.container === 'aac') return transmux(parts);
-  throw new Error('cannot convert ' + src.container);
+  let tracks;
+  if (src.container === 'fmp4') tracks = readTracks(parts);
+  else if (src.container === 'ts' || src.container === 'aac') tracks = transmux(parts);
+  else throw new Error('cannot convert ' + src.container);
+  // Where this playlist's first downloaded segment sits on the playlist timeline. Separate playlists are lined up
+  // by this, not by their own timestamps, which may start anywhere (an fMP4 segment at 0:30 may say 0:40).
+  const firstMedia = src.items.findIndex((it, i) => !it.init && src.parts[i]);
+  const anchor = firstMedia >= 0 ? Number(src.items[firstMedia].start) || 0 : 0;
+  for (const tr of tracks) { tr.anchor = anchor; tr.group = src; tr.fmp4 = src.container === 'fmp4'; }
+  return tracks;
 }
 
 function transmux(parts) {
@@ -1787,7 +1817,7 @@ async function finishJob(current, partial, reason) {
     try {
       const tracks = pickTracks(current);
       audioFile = !tracks.some(tr => tr.handler === 'vide');
-      blob = await buildMp4(tracks, current.expected);
+      blob = await buildMp4(tracks, current.expected, current.window || null);
     } catch (e) {
       if (current.stopped) return;
       console.error(e);
@@ -1928,23 +1958,65 @@ function runLength(values) {
 }
 
 // A regular (non-fragmented) MP4 with moov in front and samples interleaved about once a second.
-async function buildMp4(tracks, expectedDuration) {
+// Times are worked out on the playlist timeline (seconds): every track carries the playlist position of its first
+// downloaded segment (anchor) and, with others from the same playlist, its own earliest timestamp, so tracks from
+// one playlist keep their mutual offset and tracks from separate playlists are lined up by the playlist.
+// With a window { from, to } (a download range) every track is cut to that span and the file starts at 0.
+async function buildMp4(tracks, expectedDuration, window) {
   const MOVIE_TS = 1000;
+  const EPS = 0.001;
+  const groupStart = new Map();
   for (const tr of tracks) {
+    // fMP4 maps its timestamps to presentation time through the edit list of the initialization segment.
+    tr.smt = tr.fmp4 && tr.sourceMediaTime != null ? tr.sourceMediaTime : 0;
+    tr.abs = x => (x.cts - tr.smt) / tr.timescale;
+    let minAbs = Infinity;
+    for (const x of tr.samples) minAbs = Math.min(minAbs, tr.abs(x));
+    // Priming samples before the edit list start are not shown.
+    if (tr.smt && tr.samples[0].dts === 0) minAbs = Math.max(0, minAbs);
+    tr.startAbs = minAbs;
+    const key = tr.group || tr;
+    groupStart.set(key, Math.min(groupStart.has(key) ? groupStart.get(key) : Infinity, minAbs));
+  }
+  for (const tr of tracks) {
+    tr.srcMin = groupStart.get(tr.group || tr);
+    tr.anchor = Number(tr.anchor) || 0;
+    tr.P = x => tr.anchor + tr.abs(x) - tr.srcMin;
+    tr.startP = tr.anchor + tr.startAbs - tr.srcMin;
+    tr.endP = tr.samples.reduce((m, x) => Math.max(m, tr.P(x) + x.duration / tr.timescale), -Infinity);
+  }
+  const W0 = window ? window.from : Math.min(...tracks.map(tr => tr.startP));
+  const W1 = window ? window.to : Math.max(...tracks.map(tr => tr.endP));
+
+  for (const tr of tracks) {
+    if (window) {
+      const list = tr.samples;
+      let lastIdx = -1;
+      list.forEach((x, i) => { if (tr.P(x) < W1 - EPS) lastIdx = i; });
+      let firstIdx;
+      if (tr.handler === 'vide') {
+        // Pictures start at the last key frame at or before the range start; the edit list hides the rest.
+        firstIdx = 0;
+        list.forEach((x, i) => { if (x.sync && i <= lastIdx && tr.P(x) <= W0 + EPS) firstIdx = i; });
+      } else {
+        firstIdx = list.findIndex(x => tr.P(x) + x.duration / tr.timescale > W0 + EPS);
+      }
+      if (firstIdx < 0 || lastIdx < firstIdx) throw new Error('nothing in range');
+      tr.samples = list.slice(firstIdx, lastIdx + 1);
+    }
     const dts0 = tr.samples[0].dts;
     tr.dts0 = dts0;
-    tr.mediaDuration = tr.samples.reduce((s, x) => s + x.duration, 0);
-    const minCts = tr.samples.reduce((m, x) => Math.min(m, x.cts), Infinity);
-    if (dts0 === 0 && tr.sourceMediaTime != null) tr.mediaTime = tr.sourceMediaTime;
-    else tr.mediaTime = Math.max(0, minCts - dts0);
-    tr.startSeconds = dts0 > 0 ? dts0 / tr.timescale : 0;
-  }
-  const earliest = Math.min(...tracks.map(tr => tr.startSeconds));
-  for (const tr of tracks) {
-    tr.delayMs = Math.round((tr.startSeconds - earliest) * MOVIE_TS);
+    tr.mediaDuration = tr.samples.reduce((sum, x) => sum + x.duration, 0);
+    const firstP = tr.samples.reduce((m, x) => Math.min(m, tr.P(x)), Infinity);
+    const lastEnd = tr.samples.reduce((m, x) => Math.max(m, tr.P(x) + x.duration / tr.timescale), -Infinity);
+    const startP = Math.max(W0, tr.startP, firstP);
+    const endP = Math.min(W1, lastEnd);
+    if (!(endP > startP)) throw new Error('empty track');
+    tr.delayMs = Math.round((startP - W0) * MOVIE_TS);
     if (tr.delayMs < 2) tr.delayMs = 0;
-    const endCts = tr.samples.reduce((m, x) => Math.max(m, x.cts + x.duration), 0) - tr.dts0;
-    tr.presentMs = Math.max(0, Math.round((Math.max(endCts, tr.mediaDuration) - tr.mediaTime) / tr.timescale * MOVIE_TS));
+    const startCts = (startP - tr.anchor + tr.srcMin) * tr.timescale + tr.smt;
+    tr.mediaTime = Math.max(0, Math.round(startCts) - dts0);
+    tr.presentMs = Math.max(1, Math.round((endP - startP) * MOVIE_TS));
     tr.totalMs = tr.delayMs + tr.presentMs;
     tr.chunks = [];
     let chunk = null;
@@ -2121,8 +2193,8 @@ function bindEvents() {
   $('copyButton').addEventListener('click', () => copyText([$('videoList').value, $('audioListField').hidden ? '' : $('audioList').value].filter(Boolean).join('\n'), 'copied'));
   $('commandButton').addEventListener('click', () => copyText(commandText(), 'commandCopied'));
   $('previewButton').addEventListener('click', togglePreview);
-  $('rangeFrom').addEventListener('input', validateRange);
-  $('rangeTo').addEventListener('input', validateRange);
+  // Changing the range after a finished download brings 下载 back (spec v2 R3).
+  for (const id of ['rangeFrom', 'rangeTo']) $(id).addEventListener('input', () => { resetFinishedJob(); validateRange(); });
   $('customKey').addEventListener('input', customKeyState);
   $('customIv').addEventListener('input', customKeyState);
   $('headersBox').addEventListener('change', headersChanged);
