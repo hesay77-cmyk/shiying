@@ -55,6 +55,7 @@
    if(!await enabled(item.provider))throw new Error('这个网盘的 Ruxget 下载已关闭');
    if(!Array.isArray(result.files)||!result.files.length||result.files.length>100)throw new Error('一次请选择 1–100 个文件');
    const files=result.files.map((file,index)=>{C.file(item.provider,file.url);if(typeof file.title!=='string'||!file.title||file.title.length>512||typeof file.key!=='string'||file.key.length>256||/[\x00-\x1f\x7f]/.test(file.key))throw new Error('网盘文件名或标识无效');if(file.size!==undefined&&file.size!==null&&(!Number.isSafeInteger(Number(file.size))||Number(file.size)<0))throw new Error('网盘文件大小无效');for(const [key,value]of Object.entries(file.headers||{}))if(!['User-Agent','Referer','Cookie'].includes(key)||typeof value!=='string'||value.length>(key==='User-Agent'?512:16384)||/[\r\n\x00]/.test(value)||key==='Referer'&&value!==new URL(sender.url).origin+'/')throw new Error('文件请求头无效');return {...file,index};});
+   if(item.provider==='baidu')for(const file of files){const cookie=(await chrome.cookies.getAll({url:file.url})).map(c=>c.name+'='+c.value).join('; ');if(cookie.length>16384)throw new Error('网盘登录信息过长，请重新登录');if(cookie)file.headers.Cookie=cookie;}
    if(item.provider==='quark'||item.provider==='uc'){
     const cookies=await chrome.cookies.getAll({url:sender.url});
     for(const file of files){

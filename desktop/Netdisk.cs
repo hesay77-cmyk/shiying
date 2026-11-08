@@ -72,7 +72,7 @@ public partial class Manager {
     }
     NetdiskResponse OpenNetdisk(Download job,string range,bool metadata){
         Uri original=Netdisk.Url(job.NetdiskProvider,Netdisk.Source(job),NetdiskLocalOnly),current=original;var jar=new CookieContainer(512,128,8192);
-        bool cookieAllowed=NetdiskLocalOnly||job.NetdiskProvider=="quark"&&(original.Host=="quark.cn"||original.Host.EndsWith(".quark.cn"))||job.NetdiskProvider=="uc"&&(original.Host=="uc.cn"||original.Host.EndsWith(".uc.cn"));
+        bool cookieAllowed=NetdiskLocalOnly||job.NetdiskProvider=="quark"&&(original.Host=="quark.cn"||original.Host.EndsWith(".quark.cn"))||job.NetdiskProvider=="uc"&&(original.Host=="uc.cn"||original.Host.EndsWith(".uc.cn"))||job.NetdiskProvider=="baidu"&&original.Host.EndsWith(".baidu.com");
         if(cookieAllowed)foreach(string pair in Netdisk.Cookie(job).Split(';')){int equal=pair.IndexOf('=');if(equal<1)continue;string name=pair.Substring(0,equal).Trim(),value=pair.Substring(equal+1).Trim();if(name.Length>0)jar.Add(original,new Cookie(name,value));}
         for(int hop=0;hop<8;hop++){
             if(closing)throw new OperationCanceledException();Netdisk.Url(job.NetdiskProvider,current.AbsoluteUri,NetdiskLocalOnly);
