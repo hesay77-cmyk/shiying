@@ -157,7 +157,7 @@ public partial class MainWindow {
         if(command=="copy"){var job=manager.Snapshot().FirstOrDefault(item=>item.Id==id);if(job!=null&&!preview){Clipboard.SetText(job.Url);PluginNotice("已复制下载链接");}return;}
         if(command=="choose"){var job=manager.Snapshot().FirstOrDefault(item=>item.Id==id);if(job==null||!TorrentInfo.IsBt(job)||!job.HasMetadata)throw new Exception("正在获取种子文件列表，请稍后再试");if(!new[]{"等待选文件","已暂停","失败","已完成"}.Contains(job.Status))throw new Exception("请先暂停任务，再调整下载文件");PluginSend(new{type="bt",job=PluginJob(job)});return;}
         if(command=="components"){var lines=await Task.Run(()=>manager.Components.Specs.Select(spec=>spec.name+" · "+spec.version+" · "+(manager.Components.Ready(spec.name)?"已就绪":spec.bundled?"需要修复安装":"首次使用时自动准备")).ToArray());PluginSend(new{type="info",title="视频组件",lines=lines.Concat(new[]{"准备过程可暂停和继续；校验通过后才会使用组件。"}),action=new{label="网络设置",command="settings"}});return;}
-        if(command=="about"){PluginSend(new{type="info",title="关于 Ruxget",lines=new[]{"版本 "+Util.Version,"免费开源，无广告。"}});return;}
+        if(command=="about"){PluginSend(new{type="info",title="关于 Ruxget",lines=new[]{"版本 "+Util.Version,"免费，无广告。"}});return;}
         if(command=="connection"){PluginSend(new{type="info",title="连接 Chrome 插件",lines=new[]{"安装时会自动登记配套插件连接。回到 Chrome 的 Ruxget 插件，点击“检查连接”即可。","如果移动了便携版或更换了插件，可点击下方修复连接。"},action=new{label="修复连接",command="repair"}});return;}
         if(command=="repair"){if(preview)return;BrowserBridge.RegisterKnown();PluginNotice("已修复连接，回到 Chrome 插件检查即可。","info");return;}
         if(command=="settings"){PluginSend(new{type="info",title="下载设置",lines=new[]{"请从右上角菜单打开“下载设置”。"}});return;}

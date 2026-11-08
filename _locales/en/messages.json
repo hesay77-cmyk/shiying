@@ -3,7 +3,7 @@
     "message": "Ruxget Downloader · Videos, MP3 and large files"
   },
   "extDescription": {
-    "message": "Free, open-source downloader, no ads: save web videos as MP4/MP3 and send large files, cloud drives and BT to the desktop app."
+    "message": "Free downloader, no ads: save web videos as MP4/MP3 and send large files, cloud drives and BT to the desktop app."
   },
   "rxAppName": {
     "message": "Ruxget"
@@ -147,7 +147,7 @@
     "message": "Ruxget lists videos it finds here.<br>If one is already playing, refresh the page and try again."
   },
   "uiFreeOpen": {
-    "message": "Free & open source, no ads"
+    "message": "Free, no ads"
   },
   "uiCopyAllLinks": {
     "message": "Copy all links"

@@ -111,7 +111,7 @@ public class SetupWindow:Form {
         message.Text=SetupText.L("已有的下载记录和组件会保留。","Your existing downloads and components are kept.");message.ForeColor=Muted;message.Font=new Font(Font.FontFamily,9f);message.TextAlign=ContentAlignment.TopCenter;
         progress.Visible=false;
         install.Text=SetupText.L("安装并连接","Install and connect");install.Font=new Font(Font.FontFamily,10.5f,FontStyle.Bold);
-        footer.Text=SetupText.L("版本 ","Version ")+Util.Version+SetupText.L(" · 免费开源，无广告"," · Free and open source, no ads");footer.ForeColor=Color.FromArgb(138,136,117);footer.Font=new Font(Font.FontFamily,8.5f);footer.TextAlign=ContentAlignment.TopCenter;
+        footer.Text=SetupText.L("版本 ","Version ")+Util.Version+SetupText.L(" · 免费，无广告"," · Free, no ads");footer.ForeColor=Color.FromArgb(138,136,117);footer.Font=new Font(Font.FontFamily,8.5f);footer.TextAlign=ContentAlignment.TopCenter;
         foreach(var label in new[]{brand,closeBox,heading,subtitle,message,caption,tag,path,footer})label.BackColor=Color.Transparent;
         Controls.AddRange(new Control[]{brand,closeBox,heading,subtitle,location,shortcuts,launch,message,progress,install,footer});
         AcceptButton=install;Arrange();

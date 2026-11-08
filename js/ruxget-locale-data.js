@@ -3,7 +3,7 @@
 globalThis.RuxgetLocaleData={
 "en":{
 "extName":{"message":"Ruxget Downloader · Videos, MP3 and large files"},
-"extDescription":{"message":"Free, open-source downloader, no ads: save web videos as MP4/MP3 and send large files, cloud drives and BT to the desktop app."},
+"extDescription":{"message":"Free downloader, no ads: save web videos as MP4/MP3 and send large files, cloud drives and BT to the desktop app."},
 "rxAppName":{"message":"Ruxget"},
 "rxDownloadProgress":{"message":"Download progress"},
 "rxAudio":{"message":"Audio"},
@@ -51,7 +51,7 @@ globalThis.RuxgetLocaleData={
 "uiSearchPlaceholder":{"message":"Search name or format"},
 "uiEmptyTitle":{"message":"Play a video on the page first"},
 "uiEmptyBody":{"message":"Ruxget lists videos it finds here.<br>If one is already playing, refresh the page and try again."},
-"uiFreeOpen":{"message":"Free & open source, no ads"},
+"uiFreeOpen":{"message":"Free, no ads"},
 "uiCopyAllLinks":{"message":"Copy all links"},
 "uiLinkHowTitle":{"message":"How do you want to download this link?"},
 "uiCancel":{"message":"Cancel"},
@@ -208,7 +208,7 @@ globalThis.RuxgetLocaleData={
 },
 "zh_CN":{
 "extName":{"message":"Ruxget 下载器 · 网页视频 MP4/MP3 与大文件"},
-"extDescription":{"message":"免费开源、无广告、不打扰的下载器：B站、抖音、快手、小红书视频一键存为 MP4/MP3，B站还能下载字幕；大文件、网盘和 BT 可交给配套桌面版，断点续传。"},
+"extDescription":{"message":"免费、无广告、不打扰的下载器：B站、抖音、快手、小红书视频一键存为 MP4/MP3，B站还能下载字幕；大文件、网盘和 BT 可交给配套桌面版，断点续传。"},
 "rxAppName":{"message":"Ruxget"},
 "rxDownloadProgress":{"message":"下载进度"},
 "rxAudio":{"message":"音频"},
@@ -256,7 +256,7 @@ globalThis.RuxgetLocaleData={
 "uiSearchPlaceholder":{"message":"搜索名称或格式"},
 "uiEmptyTitle":{"message":"先播放一下网页里的视频"},
 "uiEmptyBody":{"message":"Ruxget 会在这里列出找到的视频。<br>如果已经在播放，刷新网页后再试一次。"},
-"uiFreeOpen":{"message":"免费开源，无广告"},
+"uiFreeOpen":{"message":"免费，无广告"},
 "uiCopyAllLinks":{"message":"复制全部链接"},
 "uiLinkHowTitle":{"message":"这个链接，怎么下？"},
 "uiCancel":{"message":"取消"},
