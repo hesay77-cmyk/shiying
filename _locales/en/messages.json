@@ -219,7 +219,7 @@
     "message": "Follow browser"
   },
   "languageHint": {
-    "message": "Applies to Ruxget popup, options, and status text. Reload the popup after switching if needed."
+    "message": "Applies to the Ruxget panel, settings and status messages. If the panel doesn’t change, open it again."
   },
   "uiPauseDetection": {
     "message": "Pause detection"
@@ -288,7 +288,7 @@
     "message": "Choose video quality"
   },
   "uiChooseAfterRead": {
-    "message": "Choose after reading succeeds"
+    "message": "Choose once the video is read"
   },
   "uiAudioOnlySection": {
     "message": "Download audio only"
@@ -309,7 +309,7 @@
     "message": "Read"
   },
   "uiSiteAccessNote": {
-    "message": "First time: allow this site and media sources detected on the page."
+    "message": "To get started, allow this site and the media sources found on this page."
   },
   "uiAllowSite": {
     "message": "Allow this site"
@@ -342,13 +342,13 @@
     "message": "Copy all links"
   },
   "uiLinkHowTitle": {
-    "message": "How should this link download?"
+    "message": "How do you want to download this link?"
   },
   "uiCancel": {
     "message": "Cancel"
   },
   "uiLinkHowNote": {
-    "message": "Clicks still use Chrome by default. Choose desktop only when you want Ruxget."
+    "message": "Links you click on web pages still download in Chrome. Ruxget Desktop opens only when you choose it."
   },
   "uiPasteHttp": {
     "message": "Paste an HTTP / HTTPS download link"
@@ -387,7 +387,7 @@
     "message": "Video and audio, saved locally."
   },
   "uiHelpIntroBody": {
-    "message": "Tap “Download video” or “Download MP3” to save inside Chrome. For large files, torrents, or downloads that continue after you close the browser, install the desktop app and choose “Hand downloads to the desktop app” in settings (the gear at the top right)."
+    "message": "Click “Download video” or “Download MP3” to save in Chrome. For large files, torrents, or downloads that keep going after you close the browser, install the desktop app and choose “Hand downloads to the desktop app” in settings (the gear at the top right)."
   },
   "uiHelpDesktopLink": {
     "message": "Desktop install guide and connection check"
@@ -448,16 +448,16 @@
     "message": "Select files in the drive, then click \"Ruxget download\" beside the toolbar. The original download button still works."
   },
   "uiNetdiskSetupHint": {
-    "message": "Install and connect the desktop app from \"Install & connect desktop\" below first."
+    "message": "First install and connect the desktop app with “Install & connect desktop app” below."
   },
   "uiNetdiskNeedDesktop": {
-    "message": "Install Ruxget desktop 0.4.28 or newer before enabling cloud-drive download"
+    "message": "Install Ruxget Desktop 0.4.28 or later before turning on cloud-drive downloads"
   },
   "uiNetdiskDenied": {
-    "message": "Permission denied; the drive own download still works"
+    "message": "Not allowed. The drive’s own download button still works."
   },
   "uiNetdiskIncomplete": {
-    "message": "Cloud-drive setup incomplete"
+    "message": "Cloud-drive setup isn’t finished"
   },
   "uiNetdiskBtn": {
     "message": "Ruxget download"
@@ -466,7 +466,7 @@
     "message": "Reading…"
   },
   "uiNetdiskBtnTitle": {
-    "message": "Download the selected files to the folder remembered by Ruxget"
+    "message": "Download the selected files to the folder Ruxget remembers"
   },
   "uiNetdiskBtnOptions": {
     "message": "Ruxget download options"

@@ -243,7 +243,7 @@ const ShiyingPlatformUI = (() => {
             $('#platformNote').textContent = '';
             live('#platformError',()=>RuxgetText.tr(error.message));
             $('#platformError').hidden = false;
-            qualityPlaceholder(()=>pick('读取成功后选择','Choose after reading'));
+            qualityPlaceholder(()=>pick('读取成功后选择','Choose once the video is read'));
         } finally {if (serial === generation){$('#platformRead').disabled = false;updateActions();}}
         if (serial !== generation) return;
         const urls = [source?.url, catalog?.url].filter(Boolean);
