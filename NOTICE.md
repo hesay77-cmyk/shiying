@@ -47,3 +47,5 @@ Ruxget（原名拾影）是 CatCatch 的独立开源改版，非猫抓官方产�
 - **图标**：img/ 下部分 SVG 图标的图形路径取自 Google Material Symbols（https://github.com/google/material-design-icons），Apache License 2.0。
 - **lib/m3u8-decrypt.js**：源自 hls.js 的 aes-decryptor（Apache License 2.0），已修改，文件头有说明；许可见 lib/LICENSES。
 - **Windows 桌面版随附程序**：aria2 1.37.0（GPL-2.0-or-later，附 OpenSSL 例外）随安装包分发，许可文本随程序安装在 licenses 文件夹。对应源码可从 https://github.com/aria2/aria2/releases/tag/release-1.37.0 获取；自本版本起三年内，任何人都可以通过 https://github.com/hesay77-cmyk/shiying/issues 向我们索取与所分发程序对应的完整源码，我们免费提供。FFmpeg、yt-dlp、Node.js 不随安装包分发，由桌面版首次使用时从各自官方地址下载，各自的许可文本同样保存在 licenses 文件夹。
+
+0.4.81：网盘下载的页面适配改为 Ruxget 自写（夸克/UC、阿里云盘、百度网盘、迅雷云盘、123 云盘），不再包含 LinkSwift 代码和 js-md5；天翼云盘、中国移动云盘不再支持。

@@ -260,9 +260,6 @@
   "uiNetdiskDisable": {
     "message": "关闭此网盘"
   },
-  "uiBaiduAuth": {
-    "message": "百度授权"
-  },
   "uiDesktopSetup": {
     "message": "安装与连接桌面版"
   },
@@ -449,18 +446,6 @@
   },
   "uiNetdiskNoteOn": {
     "message": "在网盘中勾选文件，再点工具栏旁的“Ruxget 下载”。原下载按钮照常使用。"
-  },
-  "uiNetdiskNoteBaiduNeedAuth": {
-    "message": "百度下载需先点下方“百度授权”。桌面版用 token、不传百度 Cookie，公开分享页也一样。"
-  },
-  "uiNetdiskNoteBaiduReady": {
-    "message": "百度授权已保存。在网盘中勾选文件，再点“Ruxget 下载”。"
-  },
-  "uiNetdiskAuth": {
-    "message": "百度授权"
-  },
-  "uiNetdiskReauth": {
-    "message": "重新授权"
   },
   "uiNetdiskSetupHint": {
     "message": "请先通过下方“安装与连接桌面版”完成安装。"

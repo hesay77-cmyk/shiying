@@ -1,6 +1,6 @@
 // Netdisk handoff stays within Native Messaging. The user's active downloads are never reconfigured.
 (()=>{
- const C=ShiyingNetdisk,intents=new Map(),authBusy=new Set();let ruleSerial=1690000000;
+ const C=ShiyingNetdisk,intents=new Map();let ruleSerial=1690000000;
  const errorText=error=>String(error?.message||'网盘下载失败，请重试').replace(/https?:\/\/\S+/g,'[地址]').slice(0,220);
  const trusted=sender=>sender.id===chrome.runtime.id&&sender.url?.startsWith(chrome.runtime.getURL(''));
  async function flags(){return (await chrome.storage.local.get('shiyingNetdisks')).shiyingNetdisks||{};}
@@ -46,10 +46,10 @@
    if(!await enabled(item.provider))throw new Error('请先启用这个网盘的 Ruxget 下载');
    const target={tabId:sender.tab.id,documentIds:[sender.documentId]};
    // 2026-11-09: drives rewritten from Ruxget's own specs use their own adapter file (spec 07); the rest keep the old one for now.
-   const ownAdapters={quark:['js/ruxget-netdisk-quark.js'],aliyun:['js/ruxget-netdisk-aliyun.js'],baidu:['js/ruxget-netdisk-baidu.js'],xunlei:['js/ruxget-netdisk-xunlei.js'],uc:['js/ruxget-netdisk-quark.js']};
-   await chrome.scripting.executeScript({target,world:'MAIN',files:ownAdapters[item.provider]||['lib/md5.min.js','js/shiying-netdisk-adapters.js']});
-   const cache=(await chrome.storage.local.get('shiyingNetdiskBaiduSealed')).shiyingNetdiskBaiduSealed;let values={};
-   if(item.provider==='baidu'&&cache?.expires>Date.now()){const opened=await chrome.runtime.sendNativeMessage('org.shiying.desktop',{action:'netdiskOpen',provider:'baidu',value:cache.sealed});if(opened?.ok)values.baidu_access_token=opened.value;}
+   const ownAdapters={quark:['js/ruxget-netdisk-quark.js'],aliyun:['js/ruxget-netdisk-aliyun.js'],baidu:['js/ruxget-netdisk-baidu.js'],xunlei:['js/ruxget-netdisk-xunlei.js'],uc:['js/ruxget-netdisk-quark.js'],pan123:['js/ruxget-netdisk-pan123.js']};
+   if(!ownAdapters[item.provider])throw new Error('网盘尚未支持');
+   await chrome.scripting.executeScript({target,world:'MAIN',files:ownAdapters[item.provider]});
+   const values={};
    const result=(await chrome.scripting.executeScript({target,world:'MAIN',func:(intent,provider,values)=>globalThis.ShiyingNetdiskPage.resolve(intent,provider,values),args:[message.intent,item.provider,values]}))[0]?.result;
    if(!result?.ok)throw new Error(result?.error||'当前网盘页面未能读取所选文件');
    if(!await enabled(item.provider))throw new Error('这个网盘的 Ruxget 下载已关闭');
@@ -74,14 +74,12 @@
   if(message.Message==='shiyingNetdiskRun')return run(message,sender);
   if(message.Message==='shiyingNetdiskBegin'){const provider=C.site(sender.url);if(sender.id!==chrome.runtime.id||sender.frameId!==0||!sender.documentId||!provider||!await enabled(provider))throw new Error('请在 Ruxget 插件中启用这个网盘');for(const [key,value]of intents){if(value.expires<Date.now())intents.delete(key);else if(value.document===sender.documentId)throw new Error('正在处理，请稍候');}const intent=crypto.randomUUID();intents.set(intent,{provider,tab:sender.tab.id,document:sender.documentId,expires:Date.now()+180000,requests:0});return {ok:true,intent};}
   if(message.Message==='shiyingNetdiskState'){const provider=C.site(sender.url)||message.provider;if(!provider||!C.items[provider])return {ok:true,enabled:false};if(!trusted(sender)&&sender.frameId!==0)throw new Error('页面无效');return {ok:true,provider,config:C.items[provider],...(await flags())[provider],enabled:await enabled(provider)};}
-  if(message.Message==='shiyingNetdiskSync'){if(!trusted(sender))throw new Error('请从 Ruxget 插件设置');await sync();if(!(await flags()).baidu?.enabled){await chrome.storage.local.remove('shiyingNetdiskBaiduSealed');await chrome.storage.session.remove('shiyingNetdiskAuthTab');}const tab=await chrome.tabs.get(message.tabId);if(C.site(tab.url))await chrome.scripting.executeScript({target:{tabId:tab.id},files:['js/shiying-netdisk.js','js/shiying-locale.js', 'js/shiying-netdisk-content.js']});return {ok:true};}
+  if(message.Message==='shiyingNetdiskSync'){if(!trusted(sender))throw new Error('请从 Ruxget 插件设置');await sync();await chrome.storage.local.remove('shiyingNetdiskBaiduSealed');await chrome.storage.session.remove(['shiyingNetdiskAuthTab','shiyingNetdiskAuthError']);const tab=await chrome.tabs.get(message.tabId);if(C.site(tab.url))await chrome.scripting.executeScript({target:{tabId:tab.id},files:['js/shiying-netdisk.js','js/shiying-locale.js', 'js/shiying-netdisk-content.js']});return {ok:true};}
   if(message.Message==='shiyingNetdiskOptions'){if(!trusted(sender)&&!await enabled(C.site(sender.url)))throw new Error('这个网盘尚未启用');return native({action:message.command==='folder'?'netdiskFolder':'show'});}
   if(message.Message==='shiyingNetdiskHide'){const provider=C.site(sender.url);if(!provider)throw new Error('网盘无效');const saved=await flags();saved[provider]={...saved[provider],visible:false};await chrome.storage.local.set({shiyingNetdisks:saved});return {ok:true};}
-  if(message.Message==='shiyingNetdiskAuthorize'){if(!trusted(sender))throw new Error('请从 Ruxget 插件授权');if(!await enabled('baidu'))throw new Error('请先启用百度网盘');const tab=await chrome.tabs.create({url:'about:blank'});await chrome.storage.session.set({shiyingNetdiskAuthTab:tab.id});await chrome.storage.session.remove('shiyingNetdiskAuthError');await chrome.tabs.update(tab.id,{url:C.authUrl,active:true});return {ok:true};}
   throw new Error('不支持的网盘操作');
  }
  const ready=(async()=>{const old=await chrome.declarativeNetRequest.getSessionRules();const ids=old.filter(rule=>rule.id>=1690000000&&rule.id<1691000000).map(rule=>rule.id);if(ids.length)await chrome.declarativeNetRequest.updateSessionRules({removeRuleIds:ids});await sync();})();
  chrome.runtime.onMessage.addListener((message,sender,respond)=>{if(!message.Message?.startsWith('shiyingNetdisk'))return;ready.then(()=>handle(message,sender)).then(respond,error=>respond({ok:false,error:errorText(error)}));return true;});
- chrome.tabs.onUpdated.addListener((id,change,tab)=>{if(!tab.url?.startsWith('https://openapi.baidu.com/oauth/2.0/'))return;if(change.status!=='complete'&&!change.url)return;if(authBusy.has(id))return;(async()=>{if((await chrome.storage.session.get('shiyingNetdiskAuthTab')).shiyingNetdiskAuthTab!==id||!await enabled('baidu'))return;let fragment='';try{fragment=new URL(tab.url).hash.slice(1);}catch{}if(!fragment.includes('access_token=')){try{const got=await chrome.scripting.executeScript({target:{tabId:id},world:'MAIN',func:()=>String(location.hash||'')});fragment=String(got?.[0]?.result||'').replace(/^#/,'');}catch{return;}}const hash=new URLSearchParams(fragment),token=hash.get('access_token');if(!token||token.length>4096)return;authBusy.add(id);try{const sealed=await chrome.runtime.sendNativeMessage('org.shiying.desktop',{action:'netdiskSeal',provider:'baidu',value:token});if(!sealed?.ok)throw new Error('授权信息未能保存，请重试');await chrome.storage.local.set({shiyingNetdiskBaiduSealed:{sealed:sealed.value,expires:Date.now()+Math.min(2592000,Math.max(1,Number(hash.get('expires_in'))||86400))*1000}});await chrome.storage.session.remove(['shiyingNetdiskAuthTab','shiyingNetdiskAuthError']);try{await chrome.tabs.remove(id);}catch{}}finally{authBusy.delete(id);}})().catch(error=>chrome.storage.session.set({shiyingNetdiskAuthError:errorText(error)}).catch(()=>{}));});
  chrome.permissions.onRemoved.addListener(()=>sync().catch(()=>{}));ready.catch(()=>{});
 })();

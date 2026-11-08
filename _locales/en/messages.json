@@ -260,9 +260,6 @@
   "uiNetdiskDisable": {
     "message": "Disable on this drive"
   },
-  "uiBaiduAuth": {
-    "message": "Baidu authorize"
-  },
   "uiDesktopSetup": {
     "message": "Install & connect desktop app"
   },
@@ -449,18 +446,6 @@
   },
   "uiNetdiskNoteOn": {
     "message": "Select files in the drive, then click \"Ruxget download\" beside the toolbar. The original download button still works."
-  },
-  "uiNetdiskNoteBaiduNeedAuth": {
-    "message": "Baidu downloads need \"Baidu authorize\" below first. The desktop app uses a token and never sends Baidu cookies - same for public share pages."
-  },
-  "uiNetdiskNoteBaiduReady": {
-    "message": "Baidu authorization saved. Select files in the drive, then click \"Ruxget download\"."
-  },
-  "uiNetdiskAuth": {
-    "message": "Baidu authorize"
-  },
-  "uiNetdiskReauth": {
-    "message": "Re-authorize"
   },
   "uiNetdiskSetupHint": {
     "message": "Install and connect the desktop app from \"Install & connect desktop\" below first."
