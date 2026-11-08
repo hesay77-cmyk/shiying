@@ -55,12 +55,15 @@ const server=http.createServer((request,response)=>{
  const ready=page=>button(page,/^下载$/).waitFor({state:'visible',timeout:15000});
  const download=async(page,count=1)=>{const before=await lastId();await button(page,/^下载$/).click();const done=await finished(before,count);assert(done.length>=count,'saved');return done;};
  const whole=(file,name,{height=0,seconds=6,audio=1,video=1}={})=>{const p=probe(file);check(p.video===video&&p.audio===audio&&Math.abs(p.seconds-seconds)<=1&&(!height||p.height===height)&&p.clean,`${name} (video ${p.video}, audio ${p.audio}, ${p.seconds}s, ${p.height}p, clean ${p.clean})`);return p;};
- // 1. Through the panel's entry, single TS playlist: starts by itself, one MP4, no download button afterwards.
+ // 1. Through the panel's entry, single TS playlist: waits for 下载 (0.4.81), one MP4, no download button afterwards.
  let before=await lastId();const opened=context.waitForEvent('page',{timeout:15000});
  const answer=await panel.evaluate(({data,tab})=>chrome.runtime.sendMessage({Message:'shiyingDownload',tabId:tab,data}),{tab:sourceTab,data:{url:origin+'/plain/ts/index.m3u8',ext:'m3u8',type:'application/vnd.apple.mpegurl',title:'HLS 测试',webUrl:origin+'/page.html',requestHeaders:referer}});
- assert.equal(answer?.ok,true,JSON.stringify(answer));let page=await opened;check(page.url().includes('/hls-download.html?')&&/autoStart=1/.test(page.url()),'the panel opens the HLS page with autoStart');
+ assert.equal(answer?.ok,true,JSON.stringify(answer));let page=await opened;check(page.url().includes('/hls-download.html?')&&!/autoStart/.test(page.url()),'the panel opens the HLS page without autoStart (0.4.81: the person chooses, like DASH)');
+ await ready(page);await page.waitForTimeout(1200);check((await lastId())===before,'…and nothing starts until 下载 is clicked');
+ await button(page,/^下载$/).click();
  let saved=await finished(before);let p=whole(saved[0],'a single TS playlist starts by itself and saves one MP4');check(p.mp4,'the TS segments are converted to MP4');
- await page.waitForFunction(()=>/下载完成/.test(document.body.innerText),null,{timeout:10000});check(!(await button(page,/^下载$/).isVisible().catch(()=>false)),'after 下载完成 there is no button that would download the same file again');await page.screenshot({path:path.join(report,'done.png'),fullPage:true});await page.close();
+ await page.waitForFunction(()=>/下载完成/.test(document.body.innerText),null,{timeout:10000});check(!(await button(page,/^下载$/).isVisible().catch(()=>false)),'after 下载完成 there is no button that would download the same file again');
+ {const bytes=fs.statSync(saved[0]).size,text=await page.locator('#received').innerText(),shown=bytes>=1048576?(bytes/1048576).toFixed(1)+' MB':(bytes/1024).toFixed(0)+' KB';check(text.endsWith(shown),'0.4.81: after saving, 已下载 shows the size of the written file ('+text+' for '+bytes+' bytes)');}await page.screenshot({path:path.join(report,'done.png'),fullPage:true});await page.close();
  // 2. Without autoStart nothing starts.
  page=await open('/plain/ts/index.m3u8');await ready(page);await page.waitForTimeout(1500);check(Object.keys(hits).filter(k=>k.startsWith('/plain/ts/')&&k.endsWith('.ts')).every(k=>hits[k]===1),'without autoStart the page waits for 下载');whole((await download(page))[0],'then 下载 saves it');await page.close();
  // 3. Master with two qualities.

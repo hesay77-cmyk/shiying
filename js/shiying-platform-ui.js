@@ -83,21 +83,41 @@ const ShiyingPlatformUI = (() => {
         $('#copyAll').hidden = platform;
         $('#platformCard').hidden = !platform;
     }
+    // 0.4.81: a finished download whose file was deleted or moved outside Chrome says so, offers no 打开, and its
+    // 删除文件 becomes 从列表移除. Chrome answers after looking on disk (RuxgetOpen.gone); later changes come as events.
+    const goneDownloads=new Set(),checkedAt=new Map();
+    const fileGone=job=>!!job&&job.status==='complete'&&Number.isInteger(job.downloadId)&&goneDownloads.has(job.downloadId);
+    function checkFile(job){
+        if(!job||job.status!=='complete'||!Number.isInteger(job.downloadId)||performance.now()-(checkedAt.get(job.downloadId)??-1e9)<2000)return;
+        const id=job.downloadId;checkedAt.set(id,performance.now());
+        RuxgetOpen.gone(id).then(missing=>{if(missing)markGone(id,true);}).catch(()=>{});
+    }
+    function markGone(id,missing){
+        if(goneDownloads.has(id)===missing)return;
+        if(missing)goneDownloads.add(id);else goneDownloads.delete(id);
+        if(currentJob?.downloadId===id){disarmDelete();renderJob(currentJob);}
+    }
+    chrome.downloads?.onChanged?.addListener(change=>{if(change.exists)markGone(change.id,change.exists.current===false);});
+    RuxgetOpen.onGone(id=>markGone(id,true));
+    // The side panel stays open while files are moved in Explorer: look again when it comes back into view.
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden&&currentJob)checkFile(currentJob);});
+    window.addEventListener('focus',()=>{if(currentJob)checkFile(currentJob);});
     function renderJob(job){
         currentJob=job;updateActions();
         $('#platformJob').hidden=!job;
         document.body.classList.toggle('has-job',!!job);
         if(!job){renderHint();return;}
-        const percent=Number.isFinite(job.progress)?Math.max(0,Math.min(100,job.progress)):0;
-        $('#platformStage').textContent=RuxgetText.tr(job.error||job.stage);
+        const percent=Number.isFinite(job.progress)?Math.max(0,Math.min(100,job.progress)):0,missing=fileGone(job);
+        $('#platformStage').textContent=missing?RuxgetOpen.goneText():RuxgetText.tr(job.error||job.stage);
+        $('#platformJob').classList.toggle('is-gone',missing);
         $('#platformPercent').textContent=Math.round(percent)+'%';
         $('#platformProgress').value=percent;
         $('#platformCancel').hidden=['complete','error','cancelled'].includes(job.status);
         if($('#platformDelete').dataset.armed!==job.id)disarmDelete();
         $('#platformDelete').hidden=!['complete','error','cancelled'].includes(job.status);
-        $('#platformOpen').hidden=!(job.status==='complete'&&Number.isInteger(job.downloadId));$('#platformOpen').textContent=pick('打开','Open');
+        $('#platformOpen').hidden=!(job.status==='complete'&&Number.isInteger(job.downloadId))||missing;$('#platformOpen').textContent=pick('打开','Open');
         $('#platformJob').title=$('#platformOpen').hidden?'':pick('双击打开文件','Double-click to open the file');
-        renderHint();
+        renderHint();checkFile(job);
     }
     // A language switch while the panel is open: the task area (stage, 打开, 删除文件), the method menu and the hint line are
     // written again; the other texts written here follow through RuxgetI18n.live. An armed 删除文件 starts over.
@@ -135,7 +155,7 @@ const ShiyingPlatformUI = (() => {
     }
     // Two clicks: the first only arms the button, so a stray click never deletes a file.
     let deleteTimer=0;
-    function disarmDelete(){clearTimeout(deleteTimer);const button=$('#platformDelete');delete button.dataset.armed;button.classList.remove('is-armed');button.textContent=currentJob&&currentJob.status!=='complete'?pick('移除记录','Remove'):pick('删除文件','Delete file');}
+    function disarmDelete(){clearTimeout(deleteTimer);const button=$('#platformDelete');delete button.dataset.armed;button.classList.remove('is-armed');button.textContent=currentJob&&(currentJob.status!=='complete'||fileGone(currentJob))?pick('移除记录','Remove'):pick('删除文件','Delete file');}
     // 0.4.73: the card shows only the download of the video it shows. Every read (the tab's video, a pasted link,
     // the refresh button) looks the job up again by that video's address, and a failed read for an address without a
     // download leaves no job: a finished or failed download of another video, with its 「删除文件」, never stays behind.
@@ -163,9 +183,9 @@ const ShiyingPlatformUI = (() => {
     $('#platformJob').addEventListener('dblclick',event=>{if(!event.target.closest('button'))openJob();});
     $('#platformDelete').addEventListener('click',async()=>{
         const button=$('#platformDelete');if(!currentJob)return;
-        if(button.dataset.armed!==currentJob.id){button.dataset.armed=currentJob.id;button.classList.add('is-armed');button.textContent=currentJob.status==='complete'?pick('再点一次确认删除','Click again to delete'):pick('再点一次移除记录（文件不受影响）','Click again to remove the record (no file is deleted)');clearTimeout(deleteTimer);deleteTimer=setTimeout(disarmDelete,4000);return;}
+        if(button.dataset.armed!==currentJob.id){button.dataset.armed=currentJob.id;button.classList.add('is-armed');button.textContent=fileGone(currentJob)?pick('再点一次移除记录','Click again to remove'):currentJob.status==='complete'?pick('再点一次确认删除','Click again to delete'):pick('再点一次移除记录（文件不受影响）','Click again to remove the record (no file is deleted)');clearTimeout(deleteTimer);deleteTimer=setTimeout(disarmDelete,4000);return;}
         button.disabled=true;
-        try{const hadFile=currentJob.status==='complete',result=await send('shiyingPlatformDelete',{id:currentJob.id,removeFile:hadFile});renderJob(null);if(typeof notify==='function')notify(!hadFile?pick('已移除记录','Removed'):result.removed?pick('已删除文件','File deleted'):pick('文件已不在原位置，已移除记录','The file was already gone; record removed'));}
+        try{const hadFile=currentJob.status==='complete'&&!fileGone(currentJob),result=await send('shiyingPlatformDelete',{id:currentJob.id,removeFile:hadFile});renderJob(null);if(typeof notify==='function')notify(!hadFile?pick('已移除记录','Removed'):result.removed?pick('已删除文件','File deleted'):pick('文件已不在原位置，已移除记录','The file was already gone; record removed'));}
         catch(error){live('#platformError',()=>RuxgetText.tr(error.message));$('#platformError').hidden=false;}
         finally{button.disabled=false;disarmDelete();}
     });
@@ -223,7 +243,7 @@ const ShiyingPlatformUI = (() => {
             $('#platformNote').textContent = '';
             live('#platformError',()=>RuxgetText.tr(error.message));
             $('#platformError').hidden = false;
-            qualityPlaceholder(()=>pick('读取成功后选择','Choose after reading'));
+            qualityPlaceholder(()=>pick('读取成功后选择','Choose once the video is read'));
         } finally {if (serial === generation){$('#platformRead').disabled = false;updateActions();}}
         if (serial !== generation) return;
         const urls = [source?.url, catalog?.url].filter(Boolean);

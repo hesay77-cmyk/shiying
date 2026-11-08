@@ -128,10 +128,11 @@
     const formatSize = bytes => {
         const n = Math.max(0, Number(bytes) || 0);
         if (n < 1024) return `${Math.round(n)} B`;
+        // 1 MB = 1024 × 1024 bytes, KB whole, MB one decimal, GB two: the same as the panel and the other pages.
         const units = ['KB', 'MB', 'GB'];
         let value = n / 1024, i = 0;
         while (value >= 1024 && i < units.length - 1) { value /= 1024; i++; }
-        return `${value.toFixed(1)} ${units[i]}`;
+        return `${value.toFixed([0, 1, 2][i])} ${units[i]}`;
     };
 
     const isHttpUrl = text => {

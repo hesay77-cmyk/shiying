@@ -1874,6 +1874,9 @@ async function finishJob(current, partial, reason) {
   if (current.stopped) return;
   current.state = 'done';
   current.savedId = lastId;
+  // 0.4.81: once saved, 已下载 is the size of what was written (the MP4), as in the panel and on disk, not the
+  // segments fetched from the network (TS packaging made those up to 10% larger).
+  current.bytes = files.reduce((sum, f) => sum + f.blob.size, 0);
   current.release();
   clearHeaderRules();
   setStage('stageDone');

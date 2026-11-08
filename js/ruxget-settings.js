@@ -81,17 +81,21 @@
         // Not installed, or not known yet: getting the app is the one primary action on the page (free, 3 MB, no ads).
         const offer = desk === 'missing' || desk === 'unpermitted';
         if (offer) list.push(button(pick('下载桌面版', 'Get Ruxget Desktop'), () => chrome.tabs.create({url: releaseUrl()}), true));
-        if (desk === 'unpermitted') list.push(button(pick('已安装？连接桌面版', 'Already installed? Connect it'), async () => { if (await allow()) await checkDesktop(); }));
+        if (desk === 'unpermitted') list.push(button(pick('已安装？连接桌面版', 'Already installed? Connect it'), async () => { if (await allow(true)) await checkDesktop(); }));
         const facts = $('#desktopFacts'); if (facts) { facts.hidden = !offer; facts.querySelector('[data-fact=free]').textContent = pick('免费', 'Free'); facts.querySelector('[data-fact=ads]').textContent = pick('无广告', 'No ads'); }
         // The shared download link (js/ruxget-desktop-get.js) is only needed here when neither the button nor the app is there.
         document.querySelectorAll('.settings-card .desktop-get-row').forEach(row => { row.hidden = offer || desk === 'ready'; });
         list.push(button(pick('桌面版设置与帮助', 'Desktop app help'), () => chrome.tabs.create({url: chrome.runtime.getURL('shiying-desktop.html')})));
         actions.replaceChildren(...list);
     }
-    async function allow() {
+    // 0.4.81: the 连接桌面版 button changes no setting, so its refusal says only what happened and that a retry works;
+    // a desktop mode refused says the choice stayed as it was.
+    async function allow(connecting = false) {
         let granted = false;
         try { granted = await chrome.permissions.request({permissions: ['nativeMessaging']}); } catch { granted = false; }
-        if (!granted) toast(pick('Chrome 中未允许 Ruxget 插件连接桌面版，此项设置没有更改', 'Ruxget wasn’t allowed in Chrome to connect to the desktop app, so this setting is unchanged'));
+        if (!granted) toast(connecting
+            ? pick('Chrome 没有允许 Ruxget 连接桌面版，可以再点一次重试', 'Chrome didn’t let Ruxget connect to the desktop app. Click again to retry.')
+            : pick('Chrome 没有允许 Ruxget 连接桌面版，下载方式保持不变', 'Chrome didn’t let Ruxget connect to the desktop app, so the download setting stays as it was.'));
         return granted;
     }
     async function setMode(next) {

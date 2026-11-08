@@ -1036,6 +1036,8 @@ async function finishJob(current) {
   if (current.stopped) return;
   current.state = 'done';
   current.savedId = lastId;
+  // 0.4.81: once saved, 已下载 is the size of what was written, as in the panel and on disk.
+  current.bytes = files.reduce((sum, f) => sum + f.blob.size, 0);
   current.release();
   clearHeaderRules();
   setStage('stageDone');

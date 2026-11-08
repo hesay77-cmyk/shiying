@@ -53,7 +53,7 @@
     async function removeChrome(job, removeFile) {
         const id = job.downloadId;
         if (job.status === 'running' || job.status === 'paused') { await chrome.downloads.cancel(id).catch(() => {}); await chrome.downloads.erase({id}).catch(() => {}); return pick('已停止并删除', 'Stopped and deleted'); }
-        if (!removeFile) { await hide(id); return job.status === 'complete' ? pick('已从列表移除，文件保留', 'Removed from the list; file kept') : pick('已从列表移除', 'Removed from the list'); }
+        if (!removeFile) { await hide(id); return job.status === 'complete' && !job.gone ? pick('已从列表移除，文件保留', 'Removed from the list; file kept') : pick('已从列表移除', 'Removed from the list'); }
         let removed = true;
         try { await chrome.downloads.removeFile(id); } catch { removed = false; }
         await chrome.downloads.erase({id}).catch(() => {});
@@ -70,7 +70,7 @@
                 return;
             }
             if (!reply?.ok) throw new Error(reply?.error || pick('删除没有完成，请重试', 'Couldn’t delete. Try again.'));
-            say(removeFile ? (reply.removed ? pick('已删除文件', 'File deleted') : pick('已从列表移除，但没能删除文件：Chrome 已不记得它，文件可能还在下载文件夹里', 'Removed from the list, but the file wasn’t deleted: Chrome no longer knows it, so it may still be in your downloads folder')) : job.status === 'complete' ? pick('已从列表移除，文件保留', 'Removed from the list; file kept') : pick('已停止并删除', 'Stopped and deleted'));
+            say(removeFile ? (reply.removed ? pick('已删除文件', 'File deleted') : pick('已从列表移除，但没能删除文件：Chrome 已不记得它，文件可能还在下载文件夹里', 'Removed from the list, but the file wasn’t deleted: Chrome no longer knows it, so it may still be in your downloads folder')) : job.gone ? pick('已从列表移除', 'Removed from the list') : job.status === 'complete' ? pick('已从列表移除，文件保留', 'Removed from the list; file kept') : pick('已停止并删除', 'Stopped and deleted'));
         } catch (error) {
             say(tr(error.message || String(error)));
         } finally { working = ''; confirming = ''; render().catch(() => {}); }
@@ -81,7 +81,11 @@
         row.className = 'recent-confirm'; buttons.className = 'recent-confirm-actions';
         const cancel = action(pick('取消', 'Cancel'), 'recent-plain', () => { confirming = ''; render().catch(() => {}); });
         const name = String(job.title || '').length > 36 ? String(job.title).slice(0, 35) + '…' : String(job.title || pick('这个下载', 'this download'));
-        if (job.status === 'complete') {
+        if (job.gone) {
+            // The file is already gone: only the record is left to remove.
+            question.textContent = pick('文件已不在，从列表移除？', 'The file is gone. Remove it from the list?');
+            buttons.append(action(pick('移除', 'Remove'), 'recent-danger', () => remove(job, false)), cancel);
+        } else if (job.status === 'complete') {
             question.textContent = pick(`删除「${name}」？`, `Delete “${name}”?`);
             buttons.append(action(pick('删除文件', 'Delete file'), 'recent-danger', () => remove(job, true)), action(pick('只移除记录', 'Remove from list'), 'recent-plain', () => remove(job, false)), cancel);
         } else if (job.desktop && job.state === 'paused') {
@@ -110,7 +114,8 @@
         return label + ' · ' + pick('已暂停', 'Paused') + ' · ' + percent + '%';
     }
     // Chrome's own downloads, minus the ones shown another way: site videos Ruxget saved (their own row) and downloads
-    // Ruxget Desktop took over (Chrome's copy was cancelled, the desktop row stands for it). Deleted files are left out.
+    // Ruxget Desktop took over (Chrome's copy was cancelled, the desktop row stands for it). 0.4.81: a file deleted or
+    // moved outside Chrome stays listed and says so (before, it silently dropped out of the list).
     const fileName = item => (item.filename || item.finalUrl || item.url || '').split(/[\\/]/).filter(Boolean).pop() || pick('下载的文件', 'Downloaded file');
     async function chromeJobs(siteDownloads) {
         const [items, {[HIDDEN_KEY]: hidden = []}] = await Promise.all([chrome.downloads.search({orderBy: ['-startTime'], limit: 60}).catch(() => []), chrome.storage.local.get(HIDDEN_KEY)]);
@@ -118,13 +123,24 @@
         // itself), and the copy paused while Ruxget Desktop takes it over.
         const {ruxgetPausedForHandOver: handing = []} = await chrome.storage.session.get('ruxgetPausedForHandOver').catch(() => ({}));
         const waiting = item => item.state === 'in_progress' && item.danger && !['safe', 'accepted', 'allowlistedByPolicy', 'deepScannedSafe', 'deepScannedOpenedDangerous'].includes(item.danger);
-        return items.filter(item => !item.incognito && !siteDownloads.has(item.id) && !hidden.includes(item.id) && !handing.includes(item.id) && !waiting(item) && !(item.state === 'interrupted' && item.error === 'USER_CANCELED') && !(item.state === 'complete' && item.exists === false))
-            .map(item => ({chrome: true, id: 'chrome-' + item.id, downloadId: item.id, title: fileName(item), item, time: Date.parse(item.startTime) || 0,
+        return items.filter(item => !item.incognito && !siteDownloads.has(item.id) && !hidden.includes(item.id) && !handing.includes(item.id) && !waiting(item) && !(item.state === 'interrupted' && item.error === 'USER_CANCELED'))
+            .map(item => ({chrome: true, id: 'chrome-' + item.id, downloadId: item.id, title: fileName(item), item, time: Date.parse(item.startTime) || 0, gone: item.state === 'complete' && item.exists === false,
                 status: item.state === 'complete' ? 'complete' : item.state === 'in_progress' ? (item.paused ? 'paused' : 'running') : 'error'}));
     }
-    const MB = 1024 * 1024, size = bytes => bytes >= 1024 * MB ? (bytes / 1024 / MB).toFixed(1) + ' GB' : bytes >= MB ? (bytes / MB).toFixed(bytes >= 100 * MB ? 0 : 1) + ' MB' : Math.max(1, Math.round(bytes / 1024)) + ' KB';
+    const goneText = () => window.RuxgetOpen ? RuxgetOpen.goneText() : pick('文件已被移动或删除', 'The file was moved or deleted');
+    // Site videos Ruxget saved through Chrome: does Chrome still find the file? (Searching makes Chrome look on disk;
+    // a file found missing comes back as downloads.onChanged, which renders the list again.)
+    async function markSiteGone(jobs) {
+        await Promise.all(jobs.filter(job => job.status === 'complete' && Number.isInteger(job.downloadId)).map(async job => {
+            const [item] = await chrome.downloads.search({id: job.downloadId}).catch(() => []);
+            job.gone = !!item && item.state === 'complete' && item.exists === false;
+        }));
+    }
+    // The same sizes as the download pages (1 MB = 1024 × 1024 bytes; KB whole, MB one decimal, GB two).
+    const MB = 1024 * 1024, size = bytes => bytes >= 1024 * MB ? (bytes / 1024 / MB).toFixed(2) + ' GB' : bytes >= MB ? (bytes / MB).toFixed(1) + ' MB' : Math.max(1, Math.round(bytes / 1024)) + ' KB';
     function chromeMeta(job) {
         const item = job.item, percent = item.totalBytes > 0 ? Math.round(item.bytesReceived / item.totalBytes * 100) : 0;
+        if (job.gone) return 'Chrome · ' + goneText();
         if (job.status === 'complete') return ['Chrome', item.fileSize > 0 ? size(item.fileSize) : '', pick('下载完成', 'Downloaded')].filter(Boolean).join(' · ');
         if (job.status === 'error') return 'Chrome · ' + pick('下载中断', 'Interrupted');
         // Bytes as well as the percentage: a large file stays at 0% for a while and would look stuck.
@@ -149,7 +165,10 @@
         for (const job of desktop) if (job.state === 'done') job.time = Math.max(job.time, seen[job.id] || 0);
         const current = job => !since || job.time >= since || (job.desktop ? job.state !== 'done' : !done(job));
         const jobs = [...browser, ...desktop, ...await chromeJobs(siteDownloads)].filter(current).sort((a, b) => b.time - a.time).slice(0, SHOWN);
-        if (empty) { empty.hidden = jobs.length > 0; empty.textContent = pick('这次打开 Chrome 后还没有下载。下载的文件会出现在这里，双击即可打开；以前的下载在「全部下载记录」中。', 'Nothing downloaded since Chrome started. Files you download show up here; double-click one to open it. Earlier downloads are in “All downloads”.'); }
+        await markSiteGone(jobs.filter(job => !job.desktop && !job.chrome));
+        // 0.4.81: the empty note no longer promises “only since Chrome started”: what is listed depends on when Chrome
+        // last started and on downloads still running, so it says “recent” and points to the full history.
+        if (empty) { empty.hidden = jobs.length > 0; empty.textContent = pick('还没有最近的下载。下载的文件会显示在这里，双击即可打开；更早的下载在「全部下载记录」中。', 'No recent downloads. Files you download appear here; double-click one to open it. Older downloads are in “All downloads”.'); }
         box.setAttribute('aria-label', pick('已下载', 'Downloads'));
         if (folder) folder.textContent = pick('打开下载文件夹', 'Open downloads folder');
         if (history) history.textContent = pick('全部下载记录', 'All downloads');
@@ -181,7 +200,7 @@
                 if (job.state === 'active') bar = percent;
             } else if (job.chrome) {
                 // Chrome saved it, so Chrome opens it: no desktop app involved.
-                if (job.status === 'complete') {
+                if (job.status === 'complete' && !job.gone) {
                     open = () => RuxgetOpen.file(job.downloadId, say);
                     show = chromeFolder(job.downloadId); showLabel = inFolder;
                 }
@@ -190,8 +209,8 @@
             } else {
                 show = () => chrome.tabs.create({url: chrome.runtime.getURL('shiying-task.html?id=' + encodeURIComponent(job.id))});
                 showLabel = pick('下载详情', 'Download details');
-                if (job.status === 'complete' && Number.isInteger(job.downloadId)) { open = () => RuxgetOpen.file(job.downloadId, say); show = chromeFolder(job.downloadId); showLabel = inFolder; }
-                const state = job.status === 'complete' ? pick('下载完成', 'Downloaded') : job.status === 'error' ? tr(job.error || job.stage) : job.status === 'cancelled' ? pick('已取消', 'Cancelled') : tr(job.stage) + ' · ' + percent + '%';
+                if (job.status === 'complete' && Number.isInteger(job.downloadId) && !job.gone) { open = () => RuxgetOpen.file(job.downloadId, say); show = chromeFolder(job.downloadId); showLabel = inFolder; }
+                const state = job.gone ? goneText() : job.status === 'complete' ? pick('下载完成', 'Downloaded') : job.status === 'error' ? tr(job.error || job.stage) : job.status === 'cancelled' ? pick('已取消', 'Cancelled') : tr(job.stage) + ' · ' + percent + '%';
                 meta.textContent = withHint('Ruxget · ' + (job.format === 'mp3' ? 'MP3' : (job.label || (job.height ? job.height + 'p' : 'MP4'))) + ' · ' + state);
             }
             button.append(title, meta);
@@ -214,6 +233,11 @@
                 more.type = 'button'; more.className = 'recent-show'; more.disabled = !!working;
                 more.title = more.ariaLabel = showLabel; more.innerHTML = icon(showIcon);
                 more.addEventListener('click', event => { if (event.detail <= 1) show(); }); extra.push(more);
+            } else if (job.gone) {
+                // Nothing to open: a double-click (or Enter) says why, the same words as the card and the media rows.
+                const why = () => say(pick('文件已不在原来的位置，可能被移动或删除了', 'The file is no longer where it was saved'));
+                openers.set(job.id, why); button.title = goneText(); button.dataset.gone = '1';
+                button.addEventListener('click', event => { if (event.detail === 0) why(); });
             } else if (show) {
                 button.title = showLabel;
                 button.addEventListener('click', show);
