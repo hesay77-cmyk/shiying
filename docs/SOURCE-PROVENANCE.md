@@ -15,11 +15,12 @@
 
 ## 干净重写（0.4.76 起）
 
-从 0.4.76 开始，来自 CatCatch 的部分按“干净室”方式逐块换成从零编写的代码：先根据现有行为写功能说明书（不含原代码），再由没有读过原代码的实现者只凭说明书和黑盒测试编写，最后用 `scripts/overlap-check.cjs` 与 CatCatch 2.7.2 和 LinkSwift 比对（20 个记号的结构序列；Ruxget 原创文件基线 0–1.6%，CatCatch 派生文件 79–97%，门槛 5%）。已经发布的版本仍按 GPL-3.0 提供。
+从 0.4.76 开始，来自 CatCatch 的部分按“干净室”方式逐块换成从零编写的代码：先根据现有行为写功能说明书（不含原代码），再由没有读过原代码的实现者只凭说明书和黑盒测试编写，最后用 `scripts/overlap-check.cjs` 与 CatCatch 2.7.2 和 LinkSwift 比对（CatCatch 自身代码与 LinkSwift 为语料，20 个记号的结构序列，字面量列表合并计；Ruxget 原创文件基线 0–1.6%，CatCatch 派生文件 79–97%，门槛 5%）。已经发布的版本仍按 GPL-3.0 提供。
 
 | 版本 | 新文件 | 替代 | 比对结果 |
 |---|---|---|---|
 | 0.4.76 | `file-download.html`、`js/file-download.js`、`css/file-download.css` | 主面板中需要来源头的文件下载（原 `downloader.html`） | 结构重合 2.7%，相同行 0 |
 | 0.4.76 | `dash-download.html`、`js/dash-download.js`、`css/dash-download.css` | 主面板和粘贴链接的 DASH 下载（原 `mpd.html`），改为一次下载合成带声音的 MP4 | 结构重合 0.6%，相同行 0 |
+| 0.4.77 | `hls-download.html`、`js/hls-download.js`、`css/hls-download.css` | 主面板和粘贴链接的 HLS（m3u8）下载（原 `m3u8.html`），在本地合成 MP4、支持直播录制，不再依赖第三方在线合并 | 结构重合 1.2%，相同行 0 |
 
-旧的 `downloader.html`、`mpd.html` 在 0.4.76 中仍供“高级工具（当前网页）”使用，计划随高级工具调整在 0.4.77 移除。
+旧的 `downloader.html`、`mpd.html`、`m3u8.html` 仍供“高级工具（当前网页）”使用，计划随识别引擎替换和高级工具移除一起删除。
