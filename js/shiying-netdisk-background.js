@@ -32,7 +32,7 @@
   if(cookie.length>16384)throw new Error('网盘登录信息过长，请重新登录');if(cookie)headers.Cookie=cookie;
   const rules=Object.entries(headers).map(([header,value])=>({header,operation:'set',value}));const rule=++ruleSerial;
   try{
-   if(rules.length)await chrome.declarativeNetRequest.updateSessionRules({addRules:[{id:rule,priority:3,action:{type:'modifyHeaders',requestHeaders:rules},condition:{initiatorDomains:[chrome.runtime.id],urlFilter:'|'+u.href+'|',resourceTypes:['xmlhttprequest']}}]});
+   if(rules.length)await chrome.declarativeNetRequest.updateSessionRules({addRules:[{id:rule,priority:3,action:{type:'modifyHeaders',requestHeaders:rules},condition:{initiatorDomains:[chrome.runtime.id],requestDomains:[u.hostname],tabIds:[chrome.tabs.TAB_ID_NONE],resourceTypes:['xmlhttprequest','other']}}]});
    const reply=await fetch(u.href,{method:p.method||'GET',body:p.method==='POST'?p.body:undefined,credentials:'include',signal:AbortSignal.timeout(20000)});
    try{const final=C.api(intent.provider,reply.url,p.method);if(final.hostname.endsWith('.share.123pan.cn')&&final.origin!==new URL(sender.url).origin)throw new Error();}catch{throw new Error('网盘跳转到登录页，请先完成登录或授权');}
    if(p.type==='final'){await reply.body?.cancel();return {finalUrl:reply.url,status:reply.status};}
