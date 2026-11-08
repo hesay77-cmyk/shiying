@@ -445,7 +445,7 @@ public partial class MainWindow : Form {
         return new{ok=true,id=id};
     }
     void HideToTray(){hiddenToTray=true;if(!preview){tray.Visible=true;Hide();}}
-    public void RestoreFromTray(){if(closingWindow||IsDisposed)return;if(startingInBackground){showWhenReady=true;return;}bool wasHidden=hiddenToTray;hiddenToTray=false;EnsureInterface();if(!preview){if(wasHidden||!Visible)Show();if(WindowState==FormWindowState.Minimized)WindowState=FormWindowState.Normal;Activate();}RefreshJobs();}
+    public void RestoreFromTray(){if(closingWindow||IsDisposed)return;if(startingInBackground){showWhenReady=true;return;}if(ShowWhenInterfaceDrawn())return;bool wasHidden=hiddenToTray;hiddenToTray=false;EnsureInterface();if(!preview){if(wasHidden||!Visible)Show();if(WindowState==FormWindowState.Minimized)WindowState=FormWindowState.Normal;Activate();}RefreshJobs();}
     static void Rounded(Graphics g,Color color,Rectangle bounds,int radius){using(var path=new GraphicsPath()){int d=radius*2;path.AddArc(bounds.Left,bounds.Top,d,d,180,90);path.AddArc(bounds.Right-d,bounds.Top,d,d,270,90);path.AddArc(bounds.Right-d,bounds.Bottom-d,d,d,0,90);path.AddArc(bounds.Left,bounds.Bottom-d,d,d,90,90);path.CloseFigure();using(var brush=new SolidBrush(color))g.FillPath(brush,path);}}
     Rectangle RowActionBounds(Rectangle row){return new Rectangle(row.Right-Ui(120),row.Top+Ui(16),Ui(64),Ui(29));}
     Rectangle RowMoreBounds(Rectangle row){return new Rectangle(row.Right-Ui(48),row.Top+Ui(16),Ui(32),Ui(29));}

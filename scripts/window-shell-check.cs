@@ -165,6 +165,25 @@ class WindowShellCheck {
    window.RestoreFromTray();Pump(()=>(bool)Field(window,"pluginReady")&&Field(window,"pluginView")!=null,"the interface did not come back when the window was opened",30);Application.DoEvents();
    var back=(Control)Field(window,"pluginView");Require(back.Dock==DockStyle.Fill&&back.Size==window.ClientSize,"the rebuilt interface does not fill the window ("+back.Size+" vs "+window.ClientSize+")");
    Require(JS(window,"document.readyState==='complete'&&!!document.querySelector('.desktop-app')")=="true","the rebuilt interface did not load its page");
+   // 0.4.76: the real tray path with an installed-style (not preview) window: the window's own timer releases the
+   // interface, and opening it from the tray keeps the window hidden until the rebuilt page has drawn (no blank flash).
+   double trayWaitMs;
+   using(var trayManager=new Manager(Path.Combine(report,"tray-state"))){
+    var listed=trayManager.Add("https://files.example.test/tray.bin","file","tray-check.bin");listed.Status="已完成";listed.Progress=100;
+    var real=new MainWindow(trayManager);real.PreparePluginLayout();real.StartPosition=FormStartPosition.Manual;real.Location=new Point(90,80);real.Show();
+    Await(real.InitializePlugin(Path.Combine(report,"tray-cache"),library),"Tray window WebView did not start");Pump(()=>(bool)Field(real,"pluginReady"),"Tray window interface did not become ready");
+    MainWindow.InterfaceReleaseAfter=TimeSpan.FromSeconds(2);Call(real,"HideToTray");
+    Pump(()=>Field(real,"pluginView")==null,"hidden in the tray, the window's timer did not release the interface",20);
+    real.RestoreFromTray();bool hiddenWhileBuilding=!real.Visible;real.RestoreFromTray();bool secondClickWaits=!real.Visible;
+    Pump(()=>real.Visible,"the window did not come back from the tray",10);Capture(real,Path.Combine(report,"tray-first-frame.png"));trayWaitMs=(DateTime.UtcNow-(DateTime)Field(real,"waitStarted")).TotalMilliseconds;
+    Require(hiddenWhileBuilding&&secondClickWaits,"the window was shown before its rebuilt interface had drawn");
+    Require((bool)Field(real,"pluginReady")&&trayWaitMs<2900,"the window waited for the 3-second fallback instead of the page ("+trayWaitMs+" ms)");
+    Require(JS(real,"document.readyState==='complete'&&!!document.querySelector('.desktop-app')&&document.body.innerText.indexOf('tray-check.bin')>=0")=="true","the reopened window did not show its tasks");
+    Capture(real,Path.Combine(report,"tray-reopened.png"));
+    ((NotifyIcon)Field(real,"tray")).Visible=false;real.Hide();real.GetType().GetField("closeReady",Private).SetValue(real,true);real.Close();real.Dispose();
+    MainWindow.InterfaceReleaseAfter=TimeSpan.FromSeconds(60);
+   }
+   Util.Atomic(Path.Combine(report,"tray-reopen.json"),new{trayWaitMs});
    Util.Atomic(Path.Combine(report,"child.json"),new{ok=true,version=Util.Version,privateDesktop=expected,wholeWindowCaptured=true,nativeCaptionRemoved=true,dragHit=drag,maximizeFitsWorkArea=true,miniRestoresSize=true,normalWidth=normal.Width,normalHeight=normal.Height,dpr,mediaDownloaded=false});CheckClose(window,manager,report);backdrop.Close();
   }
  }
