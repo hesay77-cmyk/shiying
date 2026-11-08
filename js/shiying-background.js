@@ -210,7 +210,7 @@ async function startDownload(data, tabId) {
         const requestHeaders = {...data.requestHeaders};
         if (data.cookie) requestHeaders.Cookie = data.cookie;
         const parameters = new URLSearchParams({url:data.url, title:data.title || '网页视频', filename:Shiying.filename(data), tabid:String(tabId), initiator:data.initiator || data.webUrl || '', requestHeaders:JSON.stringify(requestHeaders), autoClose:'0'});
-        // 0.4.75: DASH opens Ruxget's own page (pick the picture and sound, one merged MP4); HLS still merges in m3u8.html.
+        // 0.4.76: DASH opens Ruxget's own page (pick the picture and sound, one merged MP4); HLS still merges in m3u8.html.
         if (kind === 'dash') {
             const dash = new URLSearchParams({url:data.url, title:data.title || '', filename:Shiying.filename({...data, ext:'mp4'}), requestHeaders:JSON.stringify(requestHeaders)});
             await chrome.tabs.create({url:chrome.runtime.getURL(`dash-download.html?${dash}`), active:true});
@@ -224,7 +224,7 @@ async function startDownload(data, tabId) {
     const {saveAs} = await chrome.storage.sync.get({saveAs:false});
     // 有特殊请求头的文件直接交给内置下载器，避免浏览器下载丢失来源头导致 403。
     if ((data.requestHeaders && Object.keys(data.requestHeaders).length) || data.cookie) {
-        // 0.4.75: Ruxget's own file page (spec 01-文件下载页); it saves through Chrome and closes itself when done.
+        // 0.4.76: Ruxget's own file page (spec 01-文件下载页); it saves through Chrome and closes itself when done.
         const task = {url:data.url, filename:Shiying.filename(data), title:data.title || '', headers:{...data.requestHeaders}, cookie:data.cookie || '', size:Number(data.size) || 0};
         await chrome.tabs.create({url:chrome.runtime.getURL(`file-download.html?${new URLSearchParams({task:JSON.stringify(task)})}`), active:true});
         return {page:true};

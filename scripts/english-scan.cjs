@@ -328,7 +328,7 @@ const mixedText=lang=>{const out=[];const keep=/^(Ruxget|FFmpeg|ffmpeg|Aria2|ari
     'm3u8':[['#count',null,/^共 2 个文件，总时长 /,/^2 segments, .* in total$/]],
     'mpd':[['#count',null,/^共 2 个文件，总时长 /,/^2 segments, .* in total$/],['#tips span',null,'初始化分段：','Initialization segment: '],['#info',null,/^视频：v1 /,/^Video: v1 /]],
     'popup':[['img.copy','title','复制','Copy'],['img.play','title','预览','Preview'],['img.download','title','下载','Download']]};
-   const cases=[...toolPages.map(([label,address])=>({label,address,reload:!['downloader-file','dash','file-form','file'].includes(label) /* 0.4.75: Ruxget's own pages switch in place */,rendered:rendered[label]})),
+   const cases=[...toolPages.map(([label,address])=>({label,address,reload:!['downloader-file','dash','file-form','file'].includes(label) /* 0.4.76: Ruxget's own pages switch in place */,rendered:rendered[label]})),
     {label:'m3u8-downloading',address:m3u8,reload:false,run:async p=>{await p.locator('#mergeTs').click();await p.waitForTimeout(800);}},
     {label:'m3u8-ticked',address:m3u8,reload:false,run:async p=>{const box=p.locator('input[type=checkbox]:visible').first();await box.click();}},
     // The play button sits under 「查看切片」; the fixture segments are empty, so hls.js may hide it after a parsing error (shown again here).

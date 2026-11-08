@@ -80,7 +80,7 @@ const checks=[],check=(value,name)=>{assert(value,name);checks.push(name);};
  await popup.evaluate(()=>{window.streamDenied=true;});await popup.locator('#platformURL').fill('https://example.test/dash/manifest.mpd');await popup.locator('#platformRead').click();
  await popup.waitForFunction(()=>/需要允许访问这个网站/.test(document.querySelector('#platformPasteNote').textContent));check(await popup.locator('#linkDownload').isHidden(),'access denied for a playlist: a quiet note, no download, no file chooser');
  await popup.evaluate(()=>{window.streamDenied=false;});await popup.locator('#platformRead').click();
- check(new URL(await streamTab('dash-download')).searchParams.get('url')==='https://example.test/dash/manifest.mpd','a pasted .mpd opens Ruxget’s DASH page (0.4.75)');
+ check(new URL(await streamTab('dash-download')).searchParams.get('url')==='https://example.test/dash/manifest.mpd','a pasted .mpd opens Ruxget’s DASH page (0.4.76)');
  await show();await popup.locator('#linkDownloadURL').fill('https://example.test/again/playlist.M3U8');await popup.locator('#linkUseChrome').click();
  check(new URL(await streamTab('m3u8')).searchParams.get('url')==='https://example.test/again/playlist.M3U8'&&await popup.locator('#linkDownload').isHidden(),'a playlist typed into the file chooser goes to the HLS page too');
  check(await worker.evaluate(async()=>(await chrome.downloads.search({})).length)===downloadsBefore,'no Chrome download of a playlist text file');

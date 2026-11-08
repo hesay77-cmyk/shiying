@@ -13,13 +13,13 @@
 
 0.3.2 更新：在同一发行源码上收窄权限、增加按网站授权和撤销入口，更新隐私和商店填写资料。`shiying-engine.js`、`shiying-platform.js`、`shiying-core.js`、`shiying-task.js` 和主平台任务实现未修改；新增权限检查脚本。0.3.1 发行标签和安装包继续保留。
 
-## 干净重写（0.4.75 起）
+## 干净重写（0.4.76 起）
 
-从 0.4.75 开始，来自 CatCatch 的部分按“干净室”方式逐块换成从零编写的代码：先根据现有行为写功能说明书（不含原代码），再由没有读过原代码的实现者只凭说明书和黑盒测试编写，最后用 `scripts/overlap-check.cjs` 与 CatCatch 2.7.2 和 LinkSwift 比对（20 个记号的结构序列；Ruxget 原创文件基线 0–1.6%，CatCatch 派生文件 79–97%，门槛 5%）。已经发布的版本仍按 GPL-3.0 提供。
+从 0.4.76 开始，来自 CatCatch 的部分按“干净室”方式逐块换成从零编写的代码：先根据现有行为写功能说明书（不含原代码），再由没有读过原代码的实现者只凭说明书和黑盒测试编写，最后用 `scripts/overlap-check.cjs` 与 CatCatch 2.7.2 和 LinkSwift 比对（20 个记号的结构序列；Ruxget 原创文件基线 0–1.6%，CatCatch 派生文件 79–97%，门槛 5%）。已经发布的版本仍按 GPL-3.0 提供。
 
 | 版本 | 新文件 | 替代 | 比对结果 |
 |---|---|---|---|
-| 0.4.75 | `file-download.html`、`js/file-download.js`、`css/file-download.css` | 主面板中需要来源头的文件下载（原 `downloader.html`） | 结构重合 4.3%，相同行 0 |
-| 0.4.75 | `dash-download.html`、`js/dash-download.js`、`css/dash-download.css` | 主面板和粘贴链接的 DASH 下载（原 `mpd.html`），改为一次下载合成带声音的 MP4 | 结构重合 0.8%，相同行 3（通用写法） |
+| 0.4.76 | `file-download.html`、`js/file-download.js`、`css/file-download.css` | 主面板中需要来源头的文件下载（原 `downloader.html`） | 结构重合 4.3%，相同行 0 |
+| 0.4.76 | `dash-download.html`、`js/dash-download.js`、`css/dash-download.css` | 主面板和粘贴链接的 DASH 下载（原 `mpd.html`），改为一次下载合成带声音的 MP4 | 结构重合 0.8%，相同行 3（通用写法） |
 
-旧的 `downloader.html`、`mpd.html` 在 0.4.75 中仍供“高级工具（当前网页）”使用，计划随高级工具调整在 0.4.77 移除。
+旧的 `downloader.html`、`mpd.html` 在 0.4.76 中仍供“高级工具（当前网页）”使用，计划随高级工具调整在 0.4.77 移除。
