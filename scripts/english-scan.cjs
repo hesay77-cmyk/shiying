@@ -1,5 +1,5 @@
 // Lists visible Chinese text left in the English interface (popup, its dialogs, desktop app, extension pages,
-// and Ruxget's own download pages on a Chinese Chrome; the inherited CatCatch tool pages are gone since 0.4.79).
+// and Ruxget's own download pages on a Chinese Chrome; the old tool pages are gone since 0.4.79).
 // 0.4.74: also the Chinese interface (no English labels, colons in each language's style) and switching the language
 // while the panel or a tool page stays open (A2, D: visible pages switch in place, hidden idle pages may reload once,
 // touched or busy pages and the page the change was made on never reload). Fixture titles are Chinese on purpose.
@@ -196,7 +196,7 @@ const mixedText=lang=>{const out=[];const keep=/^(Ruxget|FFmpeg|ffmpeg|Aria2|ari
   mpd:'<?xml version="1.0"?><MPD xmlns="urn:mpeg:dash:schema:mpd:2011" type="static" mediaPresentationDuration="PT20S" minBufferTime="PT2S" profiles="urn:mpeg:dash:profile:isoff-on-demand:2011"><Period><AdaptationSet mimeType="video/mp4" contentType="video"><Representation id="v1" bandwidth="800000" width="1280" height="720" codecs="avc1.64001f"><SegmentTemplate media="v1-$Number$.m4s" initialization="v1-init.mp4" duration="10" startNumber="1" timescale="1"/></Representation></AdaptationSet><AdaptationSet mimeType="audio/mp4" contentType="audio" lang="en"><Representation id="a1" bandwidth="128000" codecs="mp4a.40.2"><SegmentTemplate media="a1-$Number$.m4s" initialization="a1-init.mp4" duration="10" startNumber="1" timescale="1"/></Representation></AdaptationSet></Period></MPD>',
   json:JSON.stringify({title:'Fixture',items:[1,2,{kind:'sample'}]})};
  const media='https://media.fixture/video/';
- // 0.4.79: only Ruxget's own download pages are left (the CatCatch tool pages are gone).
+ // 0.4.79: only Ruxget's own download pages are left.
  const toolPages=[
   ['dash',`dash-download.html?url=${encodeURIComponent(media+'manifest.mpd')}&title=Fixture`],
   ['file-form','file-download.html'],

@@ -1,6 +1,6 @@
 // Ruxget 0.4.79: the extension's service worker. It loads Ruxget's own background modules and the media recognition
 // engine (js/ruxget-engine.js, written from spec 05), and owns the toolbar and link menus, the side panel path per tab,
-// the first-run help page and the link-download error note. Nothing here comes from CatCatch.
+// the first-run help page and the link-download error note.
 importScripts(
     '/js/shiying-access.js',
     '/js/ruxget-engine.js',

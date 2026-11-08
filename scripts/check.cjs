@@ -51,7 +51,7 @@ for (const name of ['shiying-help.html', 'shiying.html']) {
     assert.ok(data >= 0 && data < polyfill, `${name}: js/ruxget-locale-data.js must load before js/polyfill.js`);
 }
 assert.ok(fs.readFileSync(path.join(root, 'build/LICENSE'), 'utf8').includes('GNU GENERAL PUBLIC LICENSE'));
-// 0.4.79: the old CatCatch pages, background and page script are gone, and nothing points at the third-party servers.
+// 0.4.79: the old tool pages, background and page script are gone, and nothing points at the third-party servers.
 for (const gone of ['popup.html', 'options.html', 'm3u8.html', 'mpd.html', 'downloader.html', 'preview.html', 'json.html', 'js/background.js', 'js/init.js', 'js/content-script.js', 'catch-script']) assert.ok(!fs.existsSync(path.join(root, 'build', gone)), `build still has ${gone}`);
 for (const name of fs.readdirSync(path.join(root, 'build/js'))) assert.ok(!/bmmmd.com|94cat.com/.test(fs.readFileSync(path.join(root, 'build/js', name), 'utf8')), `${name} points at a third-party server`);
 assert.equal(manifest.background.service_worker, 'js/ruxget-background.js');
