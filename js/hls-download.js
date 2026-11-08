@@ -48,6 +48,7 @@ const TEXT = {
     readFailedNoSource: '无法读取视频信息（{0}）。这个链接可能需要登录，或已经过期。',
     networkError: '网络错误',
     badPlaylist: '视频信息格式无法识别。',
+    pageTextGone: '网页生成的播放列表已失效，请重新播放后再试。',
     tooLarge: '视频较大，在浏览器中下载可能失败。安装了 Ruxget 桌面版时，建议用桌面版下载。',
     failedSegments: '有 {0} 个分段没有下载成功。',
     keyFailed: '无法取得解密密钥。可以在高级选项中填写自定义密钥。',
@@ -145,6 +146,7 @@ const TEXT = {
     readFailedNoSource: 'Could not read the video information ({0}). The link may need a sign-in, or it has expired.',
     networkError: 'network error',
     badPlaylist: 'The video information is in a format that cannot be recognized.',
+    pageTextGone: 'The playlist made by the page is no longer available. Play the video again, then retry.',
     tooLarge: 'This video is large and may fail to download in the browser. If Ruxget Desktop is installed, use it instead.',
     failedSegments: '{0} segments could not be downloaded.',
     keyFailed: 'The decryption key could not be obtained. You can enter a custom key in the advanced options.',
@@ -325,6 +327,7 @@ const params = {
   title: query.get('title') || '',
   filename: query.get('filename') || '',
   autoStart: query.get('autoStart') === '1',
+  textKey: query.get('textKey') || '',
   headers: {}
 };
 try {
@@ -593,6 +596,13 @@ async function fetchText(url, signal) {
   try { return { text: await response.text(), url: response.url || url }; } catch (_) { throw new ReadError(null); }
 }
 
+// spec 06 §6: a playlist the page made itself comes from the probe's copy; the url parameter (its page) is the base.
+async function pageText(key, url) {
+  const reply = await chrome.runtime.sendMessage({ Message: 'ruxgetPageText', key }).catch(() => null);
+  if (!reply || !reply.ok || typeof reply.text !== 'string') throw new Blocked('pageTextGone');
+  return { text: reply.text, url };
+}
+
 async function readMedia(url, signal) {
   await allowOrigins([url]);
   const { text, url: finalUrl } = await fetchText(url, signal);
@@ -646,7 +656,7 @@ async function loadPlaylist(url) {
   $('chooser').hidden = true;
   try {
     await allowOrigins([url]);
-    const { text, url: finalUrl } = await fetchText(url);
+    const { text, url: finalUrl } = params.textKey && url === params.url ? await pageText(params.textKey, url) : await fetchText(url);
     const top = parsePlaylistText(text, finalUrl);
     if (top.master) {
       info = { master: true, url: finalUrl, variants: top.variants, groups: top.groups };
@@ -2162,6 +2172,7 @@ function showForm() {
     }
     msg.hidden = true;
     params.url = url;
+    params.textKey = '';
     params.headers = source ? { Referer: source } : {};
     params.autoStart = false;
     loadPlaylist(url);

@@ -35,6 +35,7 @@ const TEXT = {
     readFailed: '无法读取视频信息（{0}）。请回到原网页刷新并重新播放后再试。',
     networkError: '网络错误',
     badManifest: '视频信息格式无法识别。',
+    pageTextGone: '网页生成的播放列表已失效，请重新播放后再试。',
     tooLarge: '视频较大，在浏览器中下载可能失败。安装了 Ruxget 桌面版时，建议用桌面版下载。',
     failedSegments: '有 {0} 个分段没有下载成功。',
     mergeFailed: '合成 MP4 失败。可以在高级选项中分别下载画面和声音。',
@@ -98,6 +99,7 @@ const TEXT = {
     readFailed: 'Could not read the video information ({0}). Go back to the source page, reload and play the video, then try again.',
     networkError: 'network error',
     badManifest: 'The video information is in a format that cannot be recognized.',
+    pageTextGone: 'The playlist made by the page is no longer available. Play the video again, then retry.',
     tooLarge: 'This video is large and may fail to download in the browser. If Ruxget Desktop is installed, use it instead.',
     failedSegments: '{0} segments could not be downloaded.',
     mergeFailed: 'Building the MP4 failed. You can download the video and audio separately in the advanced options.',
@@ -232,6 +234,7 @@ const params = {
   url: query.get('url') || '',
   title: query.get('title') || '',
   filename: query.get('filename') || '',
+  textKey: query.get('textKey') || '',
   headers: {}
 };
 try {
@@ -491,7 +494,12 @@ async function loadManifest(url) {
   $('chooser').hidden = true;
   await allowOrigins([url]);
   let response;
-  try {
+  // spec 06 §6: a manifest the page made itself comes from the probe's copy; the url parameter (its page) is the base.
+  if (params.textKey && url === params.url) {
+    const reply = await chrome.runtime.sendMessage({ Message: 'ruxgetPageText', key: params.textKey }).catch(() => null);
+    if (!reply || !reply.ok || typeof reply.text !== 'string') return showBlocked('pageTextGone');
+    response = { ok: true, url, text: async () => reply.text };
+  } else try {
     response = await fetch(url, { credentials: 'include', cache: 'no-store' });
   } catch (_) {
     return showBlocked(hasSource() ? 'readFailed' : 'readFailedNoSource', () => t('networkError'));
@@ -1293,6 +1301,7 @@ function showForm() {
     }
     msg.hidden = true;
     params.url = url;
+    params.textKey = '';
     params.headers = source ? { Referer: source } : {};
     loadManifest(url);
   });
