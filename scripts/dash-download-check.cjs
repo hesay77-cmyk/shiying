@@ -108,7 +108,7 @@ const server=http.createServer((request,response)=>{
  const ladderPick=await page.locator('select').first().evaluate(s=>s.options[s.selectedIndex].text);check(/1920×1080/.test(ladderPick),'with 2160p, 1440p, 1080p and 720p listed, 1080p is chosen first: '+ladderPick);
  {const p=probe((await download(page))[0]);check(p.height===1080&&p.audio===1,'and that is what downloads ('+p.height+'p)');}
  await page.evaluate(()=>chrome.storage.local.set({ruxgetUiLanguage:'en'}));await page.waitForTimeout(1200);
- {const text=await page.evaluate(()=>document.body.innerText);check(/Video/.test(text)&&/Audio/.test(text)&&!/Picture|Sound/.test(text),'the English page says Video and Audio');}
+ {const text=await page.evaluate(()=>document.body.innerText);check(/\bVideo\b/.test(text)&&/\bAudio\b/.test(text)&&!/Picture|Sound\b/.test(text),'the English page says Video and Audio');}
  await page.evaluate(()=>chrome.storage.local.set({ruxgetUiLanguage:'zh_CN'}));await page.close();
  check(dialogs.length===0,'no dialog appeared at any point');
  fs.writeFileSync(path.join(report,'summary.json'),JSON.stringify({checks},null,1));console.log(`dash-download-check passed (${checks.length} checks). Report: ${report}`);

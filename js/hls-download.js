@@ -113,8 +113,8 @@ const TEXT = {
     loading: 'Reading video information…',
     summary: '{0} segments, total length {1}',
     liveSummary: 'This is a live stream',
-    videoField: 'Picture',
-    audioField: 'Sound',
+    videoField: 'Video',
+    audioField: 'Audio',
     filenameField: 'File name',
     download: 'Download',
     record: 'Start recording',
@@ -151,10 +151,10 @@ const TEXT = {
     keyWrong: 'Decryption failed; the key may be wrong. You can enter a custom key in the advanced options.',
     tsSaved: 'This video could not be converted to MP4. It was saved as a TS file, which most players can play.',
     rawSaved: 'Building the MP4 failed. The downloaded data was saved as it is.',
-    mergeFailedSeparate: 'Building the MP4 failed. The picture and sound were saved as separate files.',
-    separateSaved: 'This video’s format cannot be combined in the browser. The picture and sound were saved as separate files.',
-    comboSeparate: 'This combination cannot be combined into one MP4. The picture and sound will be saved as separate files.',
-    downloadSeparate: 'Download picture and sound separately',
+    mergeFailedSeparate: 'Building the MP4 failed. The video and audio were saved as separate files.',
+    separateSaved: 'This video’s format cannot be combined in the browser. The video and audio were saved as separate files.',
+    comboSeparate: 'This combination cannot be combined into one MP4. The video and audio will be saved as separate files.',
+    downloadSeparate: 'Download video and audio separately',
     outOfMemory: 'The video is too large for the browser. Choose a lower quality, or use Ruxget Desktop.',
     saveFailed: 'Saving failed. Check that the download folder is writable, or choose another download location in Chrome settings.',
     saveCode: '({0})',
@@ -165,7 +165,7 @@ const TEXT = {
     advancedTitle: 'Advanced options',
     playlistAddress: 'Playlist address',
     segmentList: 'Segment addresses',
-    audioSegments: 'Sound segment addresses',
+    audioSegments: 'Audio segment addresses',
     copyAll: 'Copy all addresses',
     copied: 'All addresses copied.',
     copyFailed: 'Copying failed. Select the text in the box instead.',
@@ -173,7 +173,7 @@ const TEXT = {
     rangeFrom: 'From (number or time)',
     rangeTo: 'To (number or time)',
     rangeBad: 'Enter a segment number or h:mm:ss',
-    audioOnly: 'Sound only',
+    audioOnly: 'Audio only',
     customKey: 'Custom key',
     keyPlaceholder: '32 hex digits or Base64',
     ivPlaceholder: 'IV (optional): 32 hex digits',
@@ -188,8 +188,8 @@ const TEXT = {
     preview: 'Preview',
     closePreview: 'Close preview',
     previewFailed: 'This video cannot be previewed.',
-    soundFallback: 'Sound {0}',
-    soundOnlyVariant: 'Sound only',
+    soundFallback: 'Audio {0}',
+    soundOnlyVariant: 'Audio only',
     trackFallback: 'Quality {0}',
     suffixVideo: '-video',
     suffixAudio: '-audio',
@@ -655,7 +655,7 @@ async function loadPlaylist(url) {
       allowOrigins(playlistUrls(top));
     }
     // The default quality (and its sound) is read now: it gives the total length for the size estimates.
-    const first = info.variants[0];
+    const first = info.variants[defaultVariantIndex()];
     await ensurePlaylist(first);
     const rendition = defaultRendition(first);
     if (rendition) await ensurePlaylist(rendition);
@@ -741,6 +741,16 @@ function variantLabel(v, i, duration) {
   return parts.join(' · ');
 }
 
+// Default quality: the highest one no taller than 1080 lines (sound-only qualities do not count); when every
+// quality is taller, the lowest one (spec v3 R7). The list is already sorted sharpest first.
+function defaultVariantIndex() {
+  if (!info) return 0;
+  const pictures = info.variants.map((v, i) => ({ v, i })).filter(x => !isSoundOnlyVariant(x.v));
+  if (!pictures.length) return 0;
+  const fit = pictures.find(x => !x.v.height || x.v.height <= 1080);
+  return (fit || pictures[pictures.length - 1]).i;
+}
+
 // A live stream shows no size estimates (spec v2 R5).
 const liveList = () => !!(info && info.variants.some(v => v.playlist && v.playlist.live));
 
@@ -764,7 +774,7 @@ function totalDuration() {
 
 function renderOptions(initial) {
   const vs = $('videoSelect'), as = $('audioSelect');
-  const keepV = initial ? 0 : vs.selectedIndex;
+  const keepV = initial ? defaultVariantIndex() : vs.selectedIndex;
   const duration = totalDuration();
   vs.replaceChildren(...info.variants.map((v, i) => new Option(variantLabel(v, i, v.playlist ? v.playlist.duration : duration), String(i))));
   vs.selectedIndex = keepV >= 0 && keepV < info.variants.length ? keepV : 0;
