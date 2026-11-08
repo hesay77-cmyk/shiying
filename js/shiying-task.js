@@ -49,6 +49,8 @@ async function refresh() {
             $('#resultFile').textContent = job.file;
             $('#openFile').hidden = false;
             say('#taskNote', () => pick(`${checked.bytes > 0 ? `已保存 ${(checked.bytes/1024/1024).toFixed(1)} MB。` : '文件已保存。'}可以关闭这个页面。`, `${checked.bytes > 0 ? `Saved ${(checked.bytes/1024/1024).toFixed(1)} MB.` : 'File saved.'} You can close this page.`));
+            // 0.4.81: the file was deleted or moved outside Chrome: no 打开, and 删除文件 only removes the record.
+            if (savedDownload !== null && window.RuxgetOpen) RuxgetOpen.gone(savedDownload).then(missing => { if (missing) showGone(); }).catch(() => {});
         } else if (!ended) timer = setTimeout(refresh,1000);
         else say('#taskNote', () => job.status === 'cancelled' ? pick('可以回到 Ruxget 重新读取视频。','You can go back to Ruxget and read the video again.') : pick('回到 Ruxget 重新读取视频后，可再次下载。','Read the video again in Ruxget to download it again.'));
     } catch (error) {
@@ -69,6 +71,17 @@ function showDeleted(stage) {
     for (const node of ['#openTaskFile', '#openFile', '#deleteTask', '#cancelTask', '#taskResult', '#reconnect']) $(node).hidden = true;
     say('#taskNote', () => pick('可以关闭这个页面。', 'You can close this page.'));
 }
+function showGone() {
+    if (document.body.dataset.status !== 'complete') return;
+    savedDownload = null; document.body.dataset.gone = '1';
+    say('#taskStage', () => RuxgetOpen.goneText());
+    $('#openTaskFile').hidden = true; $('#openFile').hidden = true;
+    $('#deleteTask').dataset.file = '';
+    if (!$('#deleteTask').dataset.armed) say('#deleteTask', () => pick('移除记录', 'Remove'));
+    say('#taskNote', () => pick('文件已不在原来的位置，可以移除这条记录。', 'The file is no longer where it was saved. You can remove this record.'));
+}
+window.RuxgetOpen?.onGone(gone => { if (gone === savedDownload) showGone(); });
+chrome.downloads.onChanged.addListener(change => { if (change.exists?.current === false && change.id === savedDownload) showGone(); });
 // Two clicks, like the popup: the first arms, the second deletes the saved file and its record.
 let deleteTimer = 0;
 function disarmDelete() { clearTimeout(deleteTimer); const button = $('#deleteTask'); delete button.dataset.armed; button.classList.remove('is-armed'); const file = !!button.dataset.file; say('#deleteTask', () => file ? pick('删除文件', 'Delete file') : pick('移除记录', 'Remove')); }

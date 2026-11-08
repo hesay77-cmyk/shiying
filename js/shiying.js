@@ -342,9 +342,16 @@ chrome.runtime.onMessage.addListener(event => {
     if (event.Message === 'shiyingAccessRevoked') {cards.clear();refresh().then(updateSiteAccess).catch(failure);return;}
     if (event.Message === 'popupAddData' && event.data?.tabId === tabId && !media.some(item => item.url === event.data.url)) { media.push(event.data); render(); probeSoon(); }
 });
+function markGone(id) {
+    const status = downloads.get(id), card = status?.closest('[data-download]');
+    if (card?.dataset.opens === String(id)) { status.textContent = RuxgetOpen.goneText(); delete card.dataset.opens; card.title = ''; }
+}
+window.RuxgetOpen?.onGone(markGone);
 chrome.downloads.onChanged.addListener(async event => {
     const status = downloads.get(event.id);
     if (!status) return;
+    // 0.4.81: the finished file was deleted or moved outside Chrome: say so, and a double-click no longer offers to open it.
+    if (event.exists?.current === false) { markGone(event.id); return; }
     // Taken over by the desktop (takeover on): Chrome's copy was cancelled on purpose.
     if (event.error?.current === 'USER_CANCELED') {
         const {ruxgetTakeoverLog: log = []} = await chrome.storage.local.get('ruxgetTakeoverLog').catch(() => ({}));

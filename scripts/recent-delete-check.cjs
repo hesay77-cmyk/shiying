@@ -79,6 +79,41 @@ const checks=[];function check(name){checks.push(name);console.log('PASS '+name)
   await card.locator('#platformDelete').click();await card.locator('#platformDelete').click();await card.locator('#platformJob').waitFor({state:'hidden'});
   assert.deepEqual((await worker.evaluate(()=>chrome.storage.local.get('shiyingJobIds'))).shiyingJobIds,[]);
   check('download card: a cancelled download can be removed (“移除记录”)');
+  await card.close();
+
+  // 0.4.81: the saved file was deleted outside Chrome. The card, “已下载” and a double-click all say so; nothing asks
+  // for the “open files” permission; “删除文件” becomes removing the record.
+  const m=await saved('moved.bin'),o=await saved('outside.bin');fs.unlinkSync(m.file);fs.unlinkSync(o.file);
+  await setJob({status:'complete',progress:100,stage:'下载完成，文件和声音已检查',downloadId:m.downloadId,file:m.file,createdAt:new Date().toISOString()});
+  // Chrome looks for removed files at most once every 10 seconds; the downloads above just used that turn.
+  await new Promise(r=>setTimeout(r,11000));
+  await browser.addInitScript(()=>{if(location.protocol!=='chrome-extension:')return;window.asked=[];chrome.permissions.request=async p=>{asked.push(p);return false;};});
+  card=await browser.newPage();await card.goto(`chrome-extension://${id}/shiying.html?tabId=${tabId}`);
+  await card.waitForFunction(()=>document.querySelector('#platformStage')?.textContent==='文件已被移动或删除',null,{timeout:5000});
+  assert.equal(await card.locator('#platformOpen').isVisible(),false,'no 打开 for a file that is gone');
+  assert.equal(await card.locator('#platformDelete').innerText(),'移除记录');
+  await card.locator('#platformJob').dblclick({position:{x:8,y:8}});
+  await card.waitForFunction(()=>/文件已不在原来的位置/.test(document.querySelector('#toast')?.textContent||''),null,{timeout:3000});
+  assert.deepEqual(await card.evaluate(()=>asked),[],'nothing asks for a permission');
+  check('download card: a file deleted outside Chrome shows “文件已被移动或删除”, no 打开, and a double-click explains it without asking for a permission');
+  const list=await browser.newPage();await list.goto(`chrome-extension://${id}/shiying.html`);await list.locator('#tabDownloads').click();
+  const row=jobId=>list.locator(`#recentList li[data-id="${jobId}"]`);
+  await list.waitForFunction(ids=>ids.every(i=>/文件已被移动或删除/.test(document.querySelector(`#recentList li[data-id="${i}"]`)?.textContent||'')),['card','chrome-'+o.downloadId],{timeout:5000});
+  for(const r of ['card','chrome-'+o.downloadId]){assert.doesNotMatch(await row(r).innerText(),/双击打开|下载完成/);assert.equal(await row(r).locator('.recent-show').count(),0);}
+  check('已下载: a site video and a Chrome download whose files are gone say so, without “下载完成 · 双击打开” or the folder button');
+  await row('card').locator('.recent-open').dblclick();
+  await list.waitForFunction(()=>/文件已不在原来的位置/.test(document.querySelector('#toast')?.textContent||''),null,{timeout:3000});
+  assert.deepEqual(await list.evaluate(()=>asked),[]);
+  await row('chrome-'+o.downloadId).locator('.recent-delete').click();assert.match(await row('chrome-'+o.downloadId).innerText(),/文件已不在，从列表移除？/);
+  await row('chrome-'+o.downloadId).getByRole('button',{name:'移除'}).click();await row('chrome-'+o.downloadId).waitFor({state:'detached'});
+  assert.match(await list.locator('#toast').innerText(),/^已从列表移除$/);
+  check('已下载: a double-click explains the file is gone; the bin only removes the record');
+  await list.close();
+  await card.locator('#platformDelete').click();assert.equal(await card.locator('#platformDelete').innerText(),'再点一次移除记录');
+  await card.locator('#platformDelete').click();await card.locator('#platformJob').waitFor({state:'hidden'});
+  assert.match(await card.locator('#toast').innerText(),/已移除记录/);
+  assert.deepEqual((await worker.evaluate(()=>chrome.storage.local.get('shiyingJobIds'))).shiyingJobIds,[]);
+  check('download card: for a file that is gone, the button only removes the record');
   await card.close();await site.close();
 
   // The progress page offers the same.
