@@ -29,7 +29,7 @@ const server=http.createServer((request,response)=>{const name=new URL(request.u
  const panel=await context.newPage();
  // The page reports what it loaded the way the panel’s own page probe does (capture itself is the engine’s job).
  const reporter=await context.newPage();await reporter.goto(`chrome-extension://${id}/shiying-help.html`);
- for(const [file,mime] of [["/seg-001.m4s","video/iso.segment"],["/seg-002.m4s","video/iso.segment"],["/clip.hlv","application/x-hlv"],["/clip.mp4","video/mp4"]]){const r=await reporter.evaluate(({href,url,mime})=>chrome.runtime.sendMessage({Message:"addMedia",href,url,mime}),{href:origin+"/page.html",url:origin+file,mime});if(process.env.DEBUG_ALL)console.log(file,JSON.stringify(r));}
+ for(const [file,mime] of [["/seg-001.m4s","video/iso.segment"],["/dash/manifest.mpd","application/dash+xml"],["/dash/v720/piece_7.m4v","video/mp4"],["/seg-002.m4s","video/iso.segment"],["/clip.hlv","application/x-hlv"],["/clip.mp4","video/mp4"]]){const r=await reporter.evaluate(({href,url,mime})=>chrome.runtime.sendMessage({Message:"addMedia",href,url,mime}),{href:origin+"/page.html",url:origin+file,mime});if(process.env.DEBUG_ALL)console.log(file,JSON.stringify(r));}
  await reporter.close();await panel.setViewportSize({width:420,height:640});await panel.goto(`chrome-extension://${id}/shiying.html?tabId=${tab}`);
  if(process.env.DEBUG_ALL)console.log(JSON.stringify(await panel.evaluate(async t=>{const r=await chrome.runtime.sendMessage({Message:"getData",tabId:t});return Array.isArray(r)?r.map(i=>[i.url,i.ext,i.type]):r;},tab)));
  const toggle=panel.locator('#allRequestsToggle');await toggle.waitFor({state:'visible',timeout:10000});
@@ -38,6 +38,7 @@ const server=http.createServer((request,response)=>{const name=new URL(request.u
  await toggle.click();const rows=panel.locator('#allRequests .request-row');await rows.first().waitFor({state:'visible'});
  const texts=await rows.allInnerTexts();check(texts.some(t=>/seg-001/.test(t)&&/切片/.test(t)),'segments are listed and labelled 切片');
  check(texts.some(t=>/clip/.test(t)&&/其他/.test(t)&&/HLV/.test(t)),'other files are listed with their type');
+ check(texts.some(t=>/piece_7/.test(t)&&/切片/.test(t))&&!(await panel.locator('#mediaList').innerText()).includes('piece_7'),'a piece in a folder under a DASH playlist folds as a segment, not a video of its own');
  const segRow=rows.filter({hasText:'seg-001'});check(!(await segRow.getByRole('button',{name:'下载'}).isVisible())&&/随播放列表下载/.test(await segRow.innerText()),'a segment has no download of its own and says it goes with its playlist');
  await context.grantPermissions(['clipboard-read','clipboard-write'],{origin:`chrome-extension://${id}`}).catch(()=>{});
  await panel.evaluate(()=>{navigator.clipboard.writeText=async text=>{window.copied=text;};});await segRow.getByRole('button',{name:'复制地址'}).click();await panel.waitForTimeout(300);

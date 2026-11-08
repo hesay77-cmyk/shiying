@@ -78,16 +78,16 @@ const TEXT = {
     needHttp: 'Enter an address that starts with http or https',
     loading: 'Reading video information…',
     summary: '{0} segments, total length {1}',
-    videoField: 'Picture',
-    audioField: 'Sound',
+    videoField: 'Video',
+    audioField: 'Audio',
     filenameField: 'File name',
     download: 'Download',
     stop: 'Stop download',
     restart: 'Download again',
     retryFailed: 'Retry failed segments',
     showFile: 'Show in folder',
-    stageVideo: 'Downloading picture',
-    stageAudio: 'Downloading sound',
+    stageVideo: 'Downloading video',
+    stageAudio: 'Downloading audio',
     stageMerge: 'Building MP4',
     stageSave: 'Saving',
     stageDone: 'Download complete',
@@ -100,31 +100,31 @@ const TEXT = {
     badManifest: 'The video information is in a format that cannot be recognized.',
     tooLarge: 'This video is large and may fail to download in the browser. If Ruxget Desktop is installed, use it instead.',
     failedSegments: '{0} segments could not be downloaded.',
-    mergeFailed: 'Building the MP4 failed. You can download the picture and sound separately in the advanced options.',
+    mergeFailed: 'Building the MP4 failed. You can download the video and audio separately in the advanced options.',
     outOfMemory: 'The video is too large for the browser. Choose a lower quality, or use Ruxget Desktop.',
     saveFailed: 'Saving failed. Check that the download folder is writable, or choose another download location in Chrome settings.',
     saveCode: '({0})',
     readFailedNoSource: 'Could not read the video information ({0}). The link may need a sign-in, or it has expired.',
     summaryWhole: 'Total length {0}',
     sizeAbout: 'about {0}',
-    downloadSeparate: 'Download picture and sound separately',
-    comboSeparate: 'This combination cannot be combined into one MP4. The picture and sound will be saved as separate files.',
-    mergeFailedSeparate: 'Building the MP4 failed. The picture and sound were saved as separate files.',
+    downloadSeparate: 'Download video and audio separately',
+    comboSeparate: 'This combination cannot be combined into one MP4. The video and audio will be saved as separate files.',
+    mergeFailedSeparate: 'Building the MP4 failed. The video and audio were saved as separate files.',
     needAccess: 'The video segments are stored on another site ({0}). Allow access to download them.',
     allowAccess: 'Allow access',
     listSep: ', ',
-    separateSaved: 'This video’s format cannot be combined in the browser. The picture and sound were saved as separate files.',
+    separateSaved: 'This video’s format cannot be combined in the browser. The video and audio were saved as separate files.',
     advancedTitle: 'Advanced options',
     manifestAddress: 'Manifest address',
-    videoSegments: 'Picture segment addresses',
-    audioSegments: 'Sound segment addresses',
+    videoSegments: 'Video segment addresses',
+    audioSegments: 'Audio segment addresses',
     copyAll: 'Copy all addresses',
     copied: 'All addresses copied.',
     copyFailed: 'Copying failed. Select the text in the box instead.',
-    videoOnly: 'Picture only',
-    audioOnly: 'Sound only',
+    videoOnly: 'Video only',
+    audioOnly: 'Audio only',
     trackFallback: 'Track {0}',
-    soundFallback: 'Sound {0}',
+    soundFallback: 'Audio {0}',
     suffixVideo: '-video',
     suffixAudio: '-audio',
     defaultName: 'web-video',
@@ -511,9 +511,15 @@ async function loadManifest(url) {
 }
 
 // Defaults prefer tracks that can go into one MP4 (spec v2 R2). Lists are already sorted best first.
+// Spec v3 R7: among mergeable pictures, the sharpest one no taller than 1080 (higher bitrate first, as the list is
+// sorted); when every one is taller, the lowest. Without mergeable pictures the same rule runs over all of them.
 function defaultVideoIndex() {
-  const i = manifest.videos.findIndex(canMerge);
-  return i >= 0 ? i : 0;
+  const all = manifest.videos.map((v, i) => ({ v, i }));
+  const mergeable = all.filter(x => canMerge(x.v));
+  const pool = mergeable.length ? mergeable : all;
+  if (!pool.length) return 0;
+  const fits = pool.find(x => (x.v.height || 0) <= 1080);
+  return (fits || pool[pool.length - 1]).i;
 }
 
 function defaultAudioIndex() {

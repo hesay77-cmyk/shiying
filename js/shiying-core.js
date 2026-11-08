@@ -6,6 +6,8 @@ const Shiying = (() => {
         if (['m4s', 'ts'].includes(ext)) return 'fragment';
         if (['m3u8', 'm3u'].includes(ext) || /mpegurl/.test(type)) return 'hls';
         if (ext === 'mpd' || type === 'application/dash+xml') return 'dash';
+        // 0.4.79: a type of video/* wins over an audio-looking extension (an .ogg can hold video).
+        if (type.startsWith('video/')) return 'video';
         if (type.startsWith('audio/') || ['mp3','m4a','wav','ogg','aac','flac','opus','weba'].includes(ext)) return 'audio';
         if (type.startsWith('video/') || ['mp4','webm','mov','mkv','flv','avi','wmv','ogv','mpeg'].includes(ext)) return 'video';
         return 'other';

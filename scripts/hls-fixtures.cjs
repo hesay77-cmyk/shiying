@@ -29,6 +29,9 @@ function build(dir,ffmpeg=process.env.RUXGET_FFMPEG||'ffmpeg'){
  fresh('byterange');run('byterange',[...src(6),...h264,...hls(),'-hls_flags','single_file']);
  // 8. Live source: 30 s of 2 s TS segments; the test server slides a window over them.
  fresh('live');run('live',[...src(30),...h264,...hls()]);
+ // 9. A ladder of 2160p, 1440p, 1080p and 720p TS variants (2 s, low bitrates) for the default-quality rule.
+ fresh('ladder');const ladder=[[3840,2160,2500],[2560,1440,1800],[1920,1080,1200],[1280,720,600]];
+ run('ladder',['-f','lavfi','-i','testsrc=size=640x360:rate=25','-f','lavfi','-i','sine=frequency=440:sample_rate=48000','-t','2',...ladder.flatMap(()=>['-map','0:v','-map','1:a']),...ladder.flatMap(([w,h,k],i)=>[`-s:v:${i}`,`${w}x${h}`,`-b:v:${i}`,`${k}k`]),'-c:v','libx264','-pix_fmt','yuv420p','-preset','ultrafast','-g','25','-keyint_min','25','-sc_threshold','0','-c:a','aac','-b:a','96k',...hls(),'-master_pl_name','master.m3u8','-var_stream_map',ladder.map((_,i)=>`v:${i},a:${i}`).join(' '),'-hls_segment_filename','v%v_%03d.ts'],'v%v.m3u8');
  return dir;
 }
 module.exports={build};
