@@ -13,6 +13,8 @@
   const add=wanted.filter(item=>!registered.some(old=>old.id===item.id));if(add.length)await chrome.scripting.registerContentScripts(add);
   const update=wanted.filter(item=>{const old=registered.find(old=>old.id===item.id);return old&&(JSON.stringify(old.matches)!==JSON.stringify(item.matches)||JSON.stringify(old.js)!==JSON.stringify(item.js));});if(update.length)await chrome.scripting.updateContentScripts(update);
  }
+ // Cookies for a URL, including ones the drive stored partitioned under its own site (Chrome CHIPS).
+ async function cookiesFor(url,page){const site='https://'+new URL(page||url).hostname.split('.').slice(-2).join('.');const lists=await Promise.all([chrome.cookies.getAll({url}),chrome.cookies.getAll({url,partitionKey:{topLevelSite:site}}).catch(()=>[])]);const seen=new Set(),out=[];for(const c of lists.flat()){const k=c.name+'|'+c.domain+'|'+c.path;if(seen.has(k))continue;seen.add(k);out.push(c);}return out;}
  function context(sender,token){const item=intents.get(token);if(!item||item.expires<Date.now()||item.tab!==sender.tab?.id||item.document!==sender.documentId||sender.frameId!==0||C.site(sender.url)!==item.provider)throw new Error('本次下载已结束，请重新点击 Ruxget 下载');return item;}
  async function native(payload){const ping=await chrome.runtime.sendNativeMessage('org.shiying.desktop',{action:'ping'});if(!ping?.netdisk||!(ping.netdiskApi>=2))throw new Error('请先安装支持新版网盘下载的 Ruxget 桌面版 0.4.28 或更新版本');const result=await chrome.runtime.sendNativeMessage('org.shiying.desktop',payload);if(!result?.ok)throw new Error(result?.error||'桌面版没有接收任务，请重试');return result;}
  async function request(message,sender){
@@ -26,7 +28,7 @@
    for(const name of Object.keys(headers))if(/^(origin|referer)$/i.test(name))delete headers[name];
    headers.Origin=new URL(sender.url).origin;headers.Referer=headers.Origin+'/';
   }
-  const cookie=(await chrome.cookies.getAll({url:u.href})).map(item=>item.name+'='+item.value).join('; ');
+  const cookie=(await cookiesFor(u.href,sender.url)).map(item=>item.name+'='+item.value).join('; ');
   if(cookie.length>16384)throw new Error('网盘登录信息过长，请重新登录');if(cookie)headers.Cookie=cookie;
   const rules=Object.entries(headers).map(([header,value])=>({header,operation:'set',value}));const rule=++ruleSerial;
   try{
@@ -55,9 +57,9 @@
    if(!await enabled(item.provider))throw new Error('这个网盘的 Ruxget 下载已关闭');
    if(!Array.isArray(result.files)||!result.files.length||result.files.length>100)throw new Error('一次请选择 1–100 个文件');
    const files=result.files.map((file,index)=>{C.file(item.provider,file.url);if(typeof file.title!=='string'||!file.title||file.title.length>512||typeof file.key!=='string'||file.key.length>256||/[\x00-\x1f\x7f]/.test(file.key))throw new Error('网盘文件名或标识无效');if(file.size!==undefined&&file.size!==null&&(!Number.isSafeInteger(Number(file.size))||Number(file.size)<0))throw new Error('网盘文件大小无效');for(const [key,value]of Object.entries(file.headers||{}))if(!['User-Agent','Referer','Cookie'].includes(key)||typeof value!=='string'||value.length>(key==='User-Agent'?512:16384)||/[\r\n\x00]/.test(value)||key==='Referer'&&value!==new URL(sender.url).origin+'/')throw new Error('文件请求头无效');return {...file,index};});
-   if(item.provider==='baidu')for(const file of files){const cookie=(await chrome.cookies.getAll({url:file.url})).map(c=>c.name+'='+c.value).join('; ');if(cookie.length>16384)throw new Error('网盘登录信息过长，请重新登录');if(cookie)file.headers.Cookie=cookie;}
+   if(item.provider==='baidu')for(const file of files){const cookie=(await cookiesFor(file.url,sender.url)).map(c=>c.name+'='+c.value).join('; ');if(cookie.length>16384)throw new Error('网盘登录信息过长，请重新登录');if(cookie)file.headers.Cookie=cookie;}
    if(item.provider==='quark'||item.provider==='uc'){
-    const cookies=await chrome.cookies.getAll({url:sender.url});
+    const cookies=await cookiesFor(sender.url,sender.url);
     for(const file of files){
      // Keep the page's current download grant; the extension's cookie view may be incomplete.
      const current=file.headers.Cookie||'',names=new Set(current.split(';').map(pair=>pair.trim().split('=')[0]));
