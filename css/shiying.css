@@ -245,3 +245,5 @@ body:not([data-decided]) .view-panel{visibility:hidden}
 .settings-gear{width:28px;height:28px;padding:5px}
 .settings-gear svg{width:18px;height:18px}
 .view-tabs{margin-top:8px}
+/* 0.4.74: the task buttons stay one word each (no "打开" or "删除文件" broken over two lines); if a narrow column cannot hold them all, whole buttons move to a second row. */
+.job-actions{flex-wrap:wrap;row-gap:2px}.job-actions .text-button{white-space:nowrap}

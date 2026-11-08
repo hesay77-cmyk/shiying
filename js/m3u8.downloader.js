@@ -7,6 +7,7 @@ class Downloader {
         this.events = {};                // events
         this.pipeline = [];              // 数据处理管线
         this.autoRetry = false;          // 默认不会自动重试
+        (Downloader.instances || (Downloader.instances = [])).push(this); // 0.4.74: see the end of this file
         this.init();
     }
     /**
@@ -380,3 +381,6 @@ class Downloader {
         this.init();
     }
 }
+// 0.4.74: a page with a download (running, finished or failed) is never reloaded for a language switch: the reload
+// would stop it or start it again (see RuxgetPageLocale.busyWhen in js/polyfill.js).
+if (typeof RuxgetPageLocale !== "undefined" && RuxgetPageLocale.busyWhen) RuxgetPageLocale.busyWhen(() => (Downloader.instances || []).some(down => down.fragments.length > 0 || down.state !== "waiting"));

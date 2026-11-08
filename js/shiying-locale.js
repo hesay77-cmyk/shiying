@@ -87,38 +87,113 @@
     } catch (e) {}
   }
 
-  function applyDom(root) {
+  // 0.4.74: the first time an element is translated it gets its label. After that (a language switch, a second
+  // applyDom) only what is still the static label, in the language it was written in, is rewritten. Text the page has
+  // written there since belongs to the page: a live() text is left to live(), a message of the previous catalog becomes
+  // the same message in the new one (a button that reads 「读取中…」 or "Close"), anything else is left alone.
+  const translated = new WeakSet();
+  let templateEl = null;
+  function asHtml(text) {
+    try {
+      templateEl = templateEl || document.createElement("template");
+      templateEl.innerHTML = text;
+      return templateEl.innerHTML;
+    } catch (e) { return text; }
+  }
+  function plainMessage(entries, key) {
+    const entry = entries && Object.prototype.hasOwnProperty.call(entries, key) ? entries[key] : null;
+    return entry && typeof entry.message === "string" ? entry.message : "";
+  }
+  const reverseMaps = new WeakMap();
+  function reverseOf(entries) {
+    if (!entries) return new Map();
+    if (reverseMaps.has(entries)) return reverseMaps.get(entries);
+    const map = new Map();
+    reverseMaps.set(entries, map);
+    Object.keys(entries).forEach(function (key) {
+      const text = plainMessage(entries, key);
+      if (!text || text.indexOf("$") >= 0) return;
+      const html = asHtml(text);
+      if (map.has(html)) map.get(html).push(key); else map.set(html, [key]);
+    });
+    return map;
+  }
+  function ownedByLive(el, attr, current) {
+    const entry = liveTexts.get(el);
+    return !!(entry && entry[attr] && entry[attr].value === current);
+  }
+  // previous: the catalog the page was showing before (defaults to the current one).
+  function follow(el, store, key, current, html, previous) {
+    if (current == null || !translated.has(store)) return getMessage(key);
+    const old = plainMessage(previous, key);
+    if (current === key || (old && current === (html ? asHtml(old) : old))) return getMessage(key);
+    if (ownedByLive(el, html ? "textContent" : store.attr, html ? el.textContent : current)) return "";
+    if (previous === catalog) return "";
+    // Several keys with this text (「关闭」 is close and flowClose): only when they agree in the new language.
+    const keys = reverseOf(previous).get(html ? current : asHtml(current)) || [];
+    const texts = keys.map(function (other) { return getMessage(other); }).filter(function (text, i, all) { return all.indexOf(text) === i; });
+    return texts.length === 1 && keys.indexOf(texts[0]) < 0 ? texts[0] : "";
+  }
+  const attrMarks = new WeakMap();
+  function mark(el, attr) {
+    let marks = attrMarks.get(el);
+    if (!marks) attrMarks.set(el, marks = {});
+    return marks[attr] || (marks[attr] = { attr: attr });
+  }
+
+  // <i18n>key</i18n> and data-i18n-outer elements become plain text nodes that remember their key (as in js/i18n.js,
+  // whichever of the two runs first), so a later switch can write them again. A message with markup is inserted as
+  // HTML, as before, and stays as it is.
+  const outerTexts = [];
+  function replaceOuter(el, key) {
+    const text = getMessage(key);
+    if (!text || text === key) return;
+    if (/[<&]/.test(text)) { el.outerHTML = text; return; }
+    const node = document.createTextNode(text);
+    el.replaceWith(node);
+    outerTexts.push({ node: node, key: key });
+  }
+
+  function applyDom(root, previousCatalog) {
     const doc = root || document;
+    const previous = previousCatalog || catalog;
     doc.querySelectorAll("[data-i18n]").forEach(function (el) {
       if (el.hasAttribute("data-i18n-live")) return;
       const key = el.dataset.i18n;
-      const text = getMessage(key);
+      const text = follow(el, el, key, el.innerHTML, true, previous);
       if (text && text !== key) el.innerHTML = text;
+      translated.add(el);
     });
     doc.querySelectorAll("[data-i18n-outer]").forEach(function (el) {
-      const key = el.dataset.i18nOuter;
-      const text = getMessage(key);
-      if (text && text !== key) el.outerHTML = text;
+      replaceOuter(el, el.dataset.i18nOuter);
     });
     doc.querySelectorAll("i18n").forEach(function (el) {
-      const key = el.innerHTML.trim();
-      const text = getMessage(key);
-      if (text && text !== key) el.outerHTML = text;
+      replaceOuter(el, el.innerHTML.trim());
+    });
+    // Text that replaced an <i18n> or data-i18n-outer element earlier, while it still reads the previous label.
+    outerTexts.forEach(function (item) {
+      if (!item.node.isConnected) return;
+      const old = plainMessage(previous, item.key);
+      const text = getMessage(item.key);
+      if (text && text !== item.key && !/[<&]/.test(text) && (item.node.data === item.key || (old && item.node.data === old))) item.node.data = text;
     });
     doc.querySelectorAll("[data-i18n-placeholder]").forEach(function (el) {
-      const key = el.dataset.i18nPlaceholder;
-      const text = getMessage(key);
+      const key = el.dataset.i18nPlaceholder, store = mark(el, "placeholder");
+      const text = follow(el, store, key, el.getAttribute("placeholder"), false, previous);
       if (text && text !== key) el.setAttribute("placeholder", text);
+      translated.add(store);
     });
     doc.querySelectorAll("[data-i18n-title]").forEach(function (el) {
-      const key = el.dataset.i18nTitle;
-      const text = getMessage(key);
+      const key = el.dataset.i18nTitle, store = mark(el, "title");
+      const text = follow(el, store, key, el.getAttribute("title"), false, previous);
       if (text && text !== key) el.setAttribute("title", text);
+      translated.add(store);
     });
     doc.querySelectorAll("[data-i18n-aria]").forEach(function (el) {
-      const key = el.dataset.i18nAria;
-      const text = getMessage(key);
+      const key = el.dataset.i18nAria, store = mark(el, "aria-label");
+      const text = follow(el, store, key, el.getAttribute("aria-label"), false, previous);
       if (text && text !== key) el.setAttribute("aria-label", text);
+      translated.add(store);
     });
     const titleKey = doc.documentElement && doc.documentElement.dataset && doc.documentElement.dataset.i18nTitle;
     if (titleKey) {
@@ -200,6 +275,7 @@
     return catalog;
   }
 
+  let initPrevious = null;
   async function init() {
     if (readyPromise) return readyPromise;
     readyPromise = (async function () {
@@ -211,6 +287,7 @@
       writeMirror(pref);
       const lang = resolveLang(pref);
       try {
+        initPrevious = catalog;
         await loadCatalog(lang);
       } catch (e) {
         if (!localeLoadWarned) {
@@ -225,16 +302,55 @@
     return readyPromise;
   }
 
+  // 0.4.74: text that code writes (pick(...), t(...)) and that has to follow a language switch while the page stays open.
+  // live(el, render) writes render() now and again after every switch, unless other code has written something else
+  // there since (then that code owns the element). attr is "textContent" (default) or an attribute name.
+  const liveTexts = new Map();
+  const readLive = (el, attr) => attr === "textContent" ? el.textContent : el.getAttribute(attr);
+  const writeLive = (el, attr, value) => { if (attr === "textContent") el.textContent = value; else el.setAttribute(attr, value); };
+  function live(el, render, attr) {
+    if (!el) return "";
+    attr = attr || "textContent";
+    let value = "";
+    try { value = String(render() ?? ""); } catch (e) {}
+    writeLive(el, attr, value);
+    let entry = liveTexts.get(el);
+    if (!entry) {
+      // 0.4.74: a panel left open reads many lists; forget elements that are gone so the map doesn't keep growing.
+      if (liveTexts.size > 300) for (const old of liveTexts.keys()) if (!old.isConnected) liveTexts.delete(old);
+      liveTexts.set(el, entry = {});
+    }
+    entry[attr] = { render: render, value: value };
+    return value;
+  }
+  function rerenderLive() {
+    for (const [el, entry] of liveTexts) {
+      for (const attr of Object.keys(entry)) {
+        const item = entry[attr];
+        if (!el.isConnected || readLive(el, attr) !== item.value) { delete entry[attr]; continue; }
+        try { item.value = String(item.render() ?? ""); writeLive(el, attr, item.value); } catch (e) { delete entry[attr]; }
+      }
+      if (!Object.keys(entry).length) liveTexts.delete(el);
+    }
+  }
+  // Static markup first, then the page's own renderers (the event), then the live texts (they may read labels the event
+  // has just rewritten, such as a button name quoted in a note).
+  function announce(detail) {
+    try { document.dispatchEvent(new CustomEvent("ruxget-i18n-applied", { detail: detail })); } catch (e) {}
+    rerenderLive();
+  }
+
   async function setLanguage(pref) {
     if (pref !== "auto" && pref !== "en" && pref !== "zh_CN") pref = "auto";
     await chrome.storage.local.set({ [STORAGE_KEY]: pref });
     writeMirror(pref);
     const lang = resolveLang(pref);
+    const previous = catalog;
     await loadCatalog(lang);
-    applyDom(document);
-    try {
-      document.dispatchEvent(new CustomEvent("ruxget-i18n-applied", { detail: { lang: lang, pref: pref } }));
-    } catch (e) {}
+    // This page asked for the change: it switches in place now and is never reloaded for it (js/polyfill.js).
+    try { if (typeof RuxgetPageLocale !== "undefined" && RuxgetPageLocale.changedHere) RuxgetPageLocale.changedHere(currentLang); } catch (e) {}
+    applyDom(document, previous);
+    announce({ lang: lang, pref: pref });
     try {
       chrome.runtime.sendMessage({ Message: "ruxgetLocaleChanged", lang: lang, pref: pref });
     } catch (e) {}
@@ -248,9 +364,10 @@
         const pref = changes[STORAGE_KEY].newValue || "auto", lang = resolveLang(pref);
         writeMirror(pref);
         if (lang === currentLang) return;
+        const previous = catalog;
         loadCatalog(lang).then(function () {
-          applyDom(document);
-          try { document.dispatchEvent(new CustomEvent("ruxget-i18n-applied", { detail: { lang: lang, pref: pref } })); } catch (e) {}
+          applyDom(document, previous);
+          announce({ lang: lang, pref: pref });
         }).catch(function () {});
       });
     }
@@ -299,6 +416,7 @@
     applyDom,
     t,
     pick,
+    live,
     getLang: function () { return currentLang; },
     getMessage,
     ready: function () { return readyPromise || init(); }
@@ -312,11 +430,9 @@
   // Kick off early; pages that need translations should await RuxgetI18n.ready()
   init().then(function () {
     whenParsed(function () {
-      applyDom(document);
+      applyDom(document, initPrevious || catalog);
       // The mirror was stale: code that rendered text in the start language renders it again.
-      if (startLang && startLang !== currentLang) {
-        try { document.dispatchEvent(new CustomEvent("ruxget-i18n-applied", { detail: { lang: currentLang } })); } catch (e) {}
-      }
+      if (startLang && startLang !== currentLang) announce({ lang: currentLang });
     });
   });
 })(typeof globalThis !== "undefined" ? globalThis : window);

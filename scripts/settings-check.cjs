@@ -36,11 +36,11 @@ const checks=[];function check(name){checks.push(name);console.log('PASS '+name)
   assert.equal(await page.locator('#saveAs').isChecked(),false);assert.equal(await page.locator('#floating').isChecked(),true);assert.equal(await page.locator('#recognize').isChecked(),true);
   assert.equal(await page.locator('input[name=language][value=zh_CN]').isChecked(),true);
   assert.equal(await page.locator('#versionText').innerText(),'版本 '+manifest.version);
-  assert.equal(await page.locator('a.desktop-get').innerText(),'下载 Ruxget 桌面版（免费，3 MB）');assert.equal(await page.locator('a.desktop-get').getAttribute('href'),'https://hidaydream.cloud/?from=ext#editions');
+  assert.equal(await page.locator('a.desktop-get').innerText(),'下载 Ruxget 桌面版（免费，3 MB）');assert.equal(await page.locator('a.desktop-get').getAttribute('href'),'https://hidaydream.cloud/desktop/?from=ext');
   assert.equal(await page.locator('#helpLink').getAttribute('href'),'shiying-help.html');assert.equal(await page.locator('#advancedLink').getAttribute('href'),'options.html');
   assert.equal(await page.locator('#sitesLink').getAttribute('href'),'shiying-help.html#site-access');
   assert.match(await page.locator('#privacyLink').getAttribute('href'),/PRIVACY\.md$/);
-  assert.equal(await page.locator('#siteLink').innerText(),'Ruxget 官网');assert.equal(await page.locator('#siteLink').getAttribute('href'),'https://hidaydream.cloud/?from=ext');assert.equal(await page.locator('#siteLink').getAttribute('target'),'_blank');
+  assert.equal(await page.locator('#siteLink').innerText(),'Ruxget 桌面版介绍');assert.equal(await page.locator('#siteLink').getAttribute('href'),'https://hidaydream.cloud/desktop/?from=ext');assert.equal(await page.locator('#siteLink').getAttribute('target'),'_blank');
   assert.equal(await page.evaluate(()=>nativeCalls.length),0);assert.equal(await page.evaluate(()=>permissionRequests),0);
   await page.screenshot({path:path.join(report,'settings-zh.png'),fullPage:true});
   check('first visit: 从不 chosen, says Chrome isn’t allowed to talk to the desktop app yet, asks nothing and calls nothing by itself; links and version are there');
@@ -96,7 +96,7 @@ const checks=[];function check(name){checks.push(name);console.log('PASS '+name)
   await page.locator('label:has(input[name=language][value=en])').click();
   await page.waitForFunction(()=>document.querySelector('#desktopTitle').textContent==='Hand downloads to the desktop app');
   assert.equal(await page.title(),'Ruxget · Settings');assert.equal(await page.evaluate(()=>document.documentElement.lang),'en');
-  assert.equal(await page.locator('#siteLink').innerText(),'Ruxget website');
+  assert.equal(await page.locator('#siteLink').innerText(),'About Ruxget Desktop');
   assert.equal(await page.locator('#versionText').innerText(),'Version '+manifest.version);assert.equal(await page.locator('a.desktop-get').innerText(),'Get Ruxget Desktop (free, 3 MB)');
   assert.equal((await worker.evaluate(()=>chrome.storage.local.get('ruxgetUiLanguage'))).ruxgetUiLanguage,'en');
   assert.doesNotMatch((await page.locator('main').innerText()).replace('中文',''),/[一-鿿]/);

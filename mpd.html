@@ -27,7 +27,7 @@
     <section id="mpdCustom" class="hide">
       <h1 class="optionsTitle" data-i18n="titledash"></h1>
       <div class="optionBox">
-        <input type="text" id="mpdUrl" placeholder="mpd URL" class="fullInput" />
+        <input type="text" id="mpdUrl" placeholder="MPD URL" data-i18n-placeholder="mpdUrl" class="fullInput" />
         <input type="text" id="referer" placeholder="Referer" class="fullInput" />
         <button id="parse" type="button" data-i18n="parser"></button>
       </div>
@@ -37,7 +37,7 @@
       <h1 class="optionsTitle" data-i18n="titledash"></h1>
       <div class="optionBox">
         <div class="block">
-          mpd url
+          <p data-i18n-outer="mpdUrl"></p>
           <p><a id="mpd_url"></a></p>
         </div>
         <div class="block" id="tips"></div>
@@ -50,7 +50,7 @@
         </div>
         <div class="flex">
           <div>
-            <p data-i18n-outer="selectVideo"></p>: <select id="mpdVideoLists" class="select"></select>
+            <span data-i18n-label="selectVideo"></span><select id="mpdVideoLists" class="select"></select>
           </div>
           <button id="getVideo" data-i18n="extractSlices"></button>
           <button id="videoToM3u8" data-i18n="convertToM3U8"></button>
@@ -58,7 +58,7 @@
         <div class="line"></div>
         <div class="flex">
           <div>
-            <p data-i18n-outer="selectAudio"></p>: <select id="mpdAudioLists" class="select"></select>
+            <span data-i18n-label="selectAudio"></span><select id="mpdAudioLists" class="select"></select>
           </div>
           <button id="getAudio" data-i18n="extractSlices"></button>
           <button id="audioToM3u8" data-i18n="convertToM3U8"></button>

@@ -30,10 +30,10 @@
     "message": "数据载入中..."
   },
   "selectWebpage": {
-    "message": "选择页面:"
+    "message": "选择页面："
   },
   "selectMedia": {
-    "message": "选择媒体:"
+    "message": "选择媒体："
   },
   "noMediaDetected": {
     "message": "未检测到有媒体的网页"
@@ -42,7 +42,7 @@
     "message": "未检测到可操控媒体"
   },
   "multiplier": {
-    "message": "倍数:"
+    "message": "倍数："
   },
   "speedPlayback": {
     "message": "倍速播放"
@@ -81,7 +81,7 @@
     "message": "解析"
   },
   "m3u8Parser": {
-    "message": "M3U8解析器"
+    "message": "M3U8 解析器"
   },
   "mpdParser": {
     "message": "MPD解析器"
@@ -177,7 +177,7 @@
     "message": "还没有找到媒体，请播放视频；若已在播放，请刷新网页后重试。"
   },
   "regularFilterPlaceholder": {
-    "message": "正则筛选 匹配资源url 回车确认"
+    "message": "正则筛选：匹配资源网址，按回车确认"
   },
   "option": {
     "message": "选项"
@@ -201,7 +201,7 @@
     "message": "后缀"
   },
   "suffixTip": {
-    "message": "填写不含'.'的后缀, 不过滤大小填0"
+    "message": "填写不含“.”的后缀；不按大小过滤时填 0"
   },
   "filterSize": {
     "message": "过滤大小"
@@ -228,7 +228,7 @@
     "message": "添加类型"
   },
   "typeTip": {
-    "message": "填入正确的content-type类型, 不过滤大小填0"
+    "message": "填写正确的 Content-Type 类型；不按大小过滤时填 0"
   },
   "addTypeError": {
     "message": "抓取类型格式错误，请检查"
@@ -270,10 +270,10 @@
     "message": "屏蔽不想出现的资源"
   },
   "regexSuffixTip": {
-    "message": "为获取到的URL指定一个后缀名, 可留空，会自动截取后缀名(很多文件并不存在后缀名)"
+    "message": "为获取到的网址指定后缀名，可留空，会自动截取后缀名（很多文件没有后缀名）"
   },
   "regexTip": {
-    "message": "正则表达式占用资源较高, 非必要谨慎使用"
+    "message": "正则表达式占用资源较多，非必要请谨慎使用"
   },
   "copyTip": {
     "message": "为方便使用第三方应用，自定义复制按钮写入剪贴板的内容。"
@@ -285,7 +285,7 @@
     "message": "其他文件"
   },
   "autoSetRefererCookieParams": {
-    "message": "自动设置Referer cookie参数"
+    "message": "自动设置 Referer 和 Cookie 参数"
   },
   "secretKey": {
     "message": "密钥"
@@ -300,7 +300,7 @@
     "message": "非常优秀的下载工具 使用方法查看"
   },
   "m3u8DLTips": {
-    "message": "非常优秀的m3u8 mpd第三方下载工具 使用方法查看"
+    "message": "非常好用的 M3U8 / MPD 第三方下载工具，使用方法见"
   },
   "invoke": {
     "message": "调用"
@@ -333,10 +333,10 @@
     "message": "后台打开下载器页面"
   },
   "downloaderTip": {
-    "message": "如果检测到资源下载失败, 自动启用下载器再次尝试下载."
+    "message": "检测到资源下载失败时，自动启用下载器再试一次。"
   },
   "autoDownM3u8Tip": {
-    "message": "点击 下载按钮 使用m3u8解析器立即开始合并下载"
+    "message": "点击下载按钮，用 M3U8 解析器立即开始合并下载"
   },
   "otherSettings": {
     "message": "其他设置"
@@ -345,7 +345,7 @@
     "message": "使用本地播放器调用协议打开视频预览"
   },
   "previewModePlaceholder": {
-    "message": "留空为不启用 默认使用popup页面预览视频"
+    "message": "可不填；留空时用弹出页面预览视频"
   },
   "preview": {
     "message": "预览"
@@ -372,22 +372,22 @@
     "message": "更频繁"
   },
   "dopreview": {
-    "message": "preview"
+    "message": "页内预览"
   },
   "dopopup": {
-    "message": "popup"
+    "message": "弹出窗预览"
   },
   "winpreview": {
-    "message": "window preview"
+    "message": "新窗口预览"
   },
   "winpopup": {
-    "message": "window popup"
+    "message": "新窗口弹出"
   },
   "excludeDuplicateResources": {
-    "message": "排除重复的资源 (资源过多会占用大量CPU)"
+    "message": "排除重复的资源（资源过多时会占用大量 CPU）"
   },
   "customCSS": {
-    "message": "自定义CSS"
+    "message": "自定义 CSS"
   },
   "MQTT": {
     "message": "MQTT"
@@ -417,7 +417,7 @@
     "message": "主题"
   },
   "mqttQos": {
-    "message": "QoS级别"
+    "message": "QoS 级别"
   },
   "mqttQos0": {
     "message": "0(最多一次)"
@@ -438,19 +438,19 @@
     "message": "留空则使用默认JSON格式"
   },
   "mqttProtocolWss": {
-    "message": "WSS (安全)"
+    "message": "WSS（安全）"
   },
   "mqttProtocolWs": {
-    "message": "WS (非安全)"
+    "message": "WS（非安全）"
   },
   "mqttTitleLengthHelp": {
     "message": "MQTT消息中标题的最大长度"
   },
   "mqttBrokerHelp": {
-    "message": "MQTT代理的主机名或IP地址"
+    "message": "MQTT 代理的主机名或 IP 地址"
   },
   "mqttPathHelp": {
-    "message": "WebSocket路径 (通常为/mqtt或/ws)"
+    "message": "WebSocket 路径（通常为 /mqtt 或 /ws）"
   },
   "mqttClientIdHelp": {
     "message": "此连接的唯一客户端标识符"
@@ -510,31 +510,31 @@
     "message": "下载目录"
   },
   "sendFfmpeg": {
-    "message": "发送到在线ffmpeg"
+    "message": "发送到在线 FFmpeg"
   },
   "autoCloserDownload": {
     "message": "下载完自动关闭页面"
   },
   "m3u8Placeholder": {
-    "message": "请输入m3u8连接 / m3u8内容 / 切片清单 / $${range}标签"
+    "message": "请输入 M3U8 链接 / M3U8 内容 / 切片清单 / $${range} 标签"
   },
   "m3u8Url": {
-    "message": "m3u8地址"
+    "message": "M3U8 地址"
   },
   "nextLevel": {
     "message": "下一级文件"
   },
   "nextLevelTip": {
-    "message": "该m3u8文件中嵌套多个m3u8文件"
+    "message": "这个 M3U8 文件中嵌套了多个 M3U8 文件"
   },
   "multipleAudiosTip": {
-    "message": "该m3u8文件中嵌套多个音频"
+    "message": "这个 M3U8 文件中嵌套了多个音频"
   },
   "multipleSubtitles": {
     "message": "多个字幕"
   },
   "multipleSubtitlesTip": {
-    "message": "该m3u8文件中嵌套多个字幕"
+    "message": "这个 M3U8 文件中嵌套了多个字幕"
   },
   "possibleKey": {
     "message": "寻找到疑似密钥"
@@ -549,7 +549,7 @@
     "message": "下载切片列表"
   },
   "originalM3u8": {
-    "message": "原始m3u8"
+    "message": "原始 M3U8"
   },
   "segmentList": {
     "message": "切片列表"
@@ -570,7 +570,7 @@
     "message": "设置请求头"
   },
   "invokeM3u8DL": {
-    "message": "调用m3u8DL"
+    "message": "调用 m3u8DL"
   },
   "previewCommand": {
     "message": "预览命令"
@@ -591,7 +591,7 @@
     "message": "ffmpeg 转码"
   },
   "mp4Format": {
-    "message": "mp4格式"
+    "message": "MP4 格式"
   },
   "downloadWhileSaving": {
     "message": "边下边存"
@@ -639,10 +639,10 @@
     "message": "码率"
   },
   "ADTSerror": {
-    "message": "找不到ADTS头 可能是AES-128-ECB加密资源,暂不支持解密.请使用第三方合并软件..."
+    "message": "找不到 ADTS 头，可能是 AES-128-ECB 加密的资源，暂不支持解密。请使用第三方合并软件。"
   },
   "m3u8Error": {
-    "message": "解析或播放m3u8文件中有错误, 详细错误信息查看控制台"
+    "message": "解析或播放 M3U8 文件时出错，详细信息请查看控制台"
   },
   "noAudio": {
     "message": "无音频"
@@ -651,10 +651,10 @@
     "message": "无视频"
   },
   "hevcTip": {
-    "message": "HEVC/H.265编码切片文件 只支持在线ffmpeg转码"
+    "message": "HEVC/H.265 编码的切片文件，只支持在线 FFmpeg 转码"
   },
   "m3u8Info": {
-    "message": "共 $num$ 个文件, 总时长 $time$",
+    "message": "共 $num$ 个文件，总时长 $time$",
     "placeholders": {
       "num": {
         "content": "$1"
@@ -668,7 +668,7 @@
     "message": "加密HLS"
   },
   "encryptedSAMPLE": {
-    "message": "使用SAMPLE-AES-CTR加密的资源, 目前无法处理."
+    "message": "使用 SAMPLE-AES-CTR 加密的资源，目前无法处理。"
   },
   "liveHLS": {
     "message": "直播HLS"
@@ -689,16 +689,16 @@
     "message": "关闭"
   },
   "blobM3u8DLError": {
-    "message": "blob地址无法调用m3u8DL下载"
+    "message": "blob 地址无法调用 m3u8DL 下载"
   },
   "M3U8DLparameterLong": {
-    "message": "m3u8dl参数太长,可能导致无法唤醒m3u8DL, 请手动复制到m3u8DL下载"
+    "message": "m3u8DL 参数太长，可能无法唤起 m3u8DL，请手动复制到 m3u8DL 下载"
   },
   "runningCannotChangeSettings": {
-    "message": "正在运行, 不能更改设置"
+    "message": "正在运行，不能更改设置"
   },
   "streamSaverTip": {
-    "message": "边下边存功能 不支持ffmpeg在线转换格式 不支持错误切片重下 不支持另存为"
+    "message": "边下边存不支持 FFmpeg 在线转换格式、错误切片重下和另存为"
   },
   "stopRecording": {
     "message": "停止录制"
@@ -748,7 +748,7 @@
     "message": "合并中"
   },
   "fileTooLarge": {
-    "message": "文件大于$size$ 无法使用在线ffmpeg, 正在下载合并文件, 文件较大请耐心等待",
+    "message": "文件大于 $size$，无法使用在线 FFmpeg，正在下载合并文件，文件较大请耐心等待",
     "placeholders": {
       "size": {
         "content": "$1"
@@ -764,7 +764,7 @@
     }
   },
   "streamOnbeforeunload": {
-    "message": "正在推流, 关闭后停止下载..."
+    "message": "正在推流，关闭后会停止下载…"
   },
   "fileLoading": {
     "message": "文件载入中"
@@ -785,7 +785,7 @@
     "message": "提取切片"
   },
   "convertToM3U8": {
-    "message": "转为m3u8解析"
+    "message": "转为 M3U8 解析"
   },
   "selectAudio": {
     "message": "选择音频"
@@ -797,7 +797,7 @@
     "message": "视频"
   },
   "DRMerror": {
-    "message": "媒体有DRM保护, 请使用第三方工具下载."
+    "message": "媒体有 DRM 保护，请使用第三方工具下载。"
   },
   "regexTitle": {
     "message": "正则表达式匹配 或 来自深度搜索"
@@ -806,7 +806,7 @@
     "message": "携带请求头参数下载"
   },
   "m3u8Playlist": {
-    "message": "m3u8播放列表"
+    "message": "M3U8 播放列表"
   },
   "copiedToClipboard": {
     "message": "已复制到剪贴板"
@@ -960,7 +960,7 @@
     "message": "始终打开深度搜索"
   },
   "sideurlprotocol": {
-    "message": "m3u8dl 自定义协议"
+    "message": "m3u8DL 自定义协议"
   },
   "deleteDuplicateFilenames": {
     "message": "删除重复文件名"
@@ -972,13 +972,13 @@
     "message": "该网站要求禁止运行本程序"
   },
   "onlineFFmpeg": {
-    "message": "在线ffmpeg"
+    "message": "在线 FFmpeg"
   },
   "ffmpegIsNotReady": {
-    "message": "在线ffmpeg服务未就绪, 请稍后再试"
+    "message": "在线 FFmpeg 服务未就绪，请稍后再试"
   },
   "iframeFFmpeg": {
-    "message": "嵌套在线ffmpeg"
+    "message": "嵌套在线 FFmpeg"
   },
   "send2localTips": {
     "message": "是否合并数据发送？点击【确定】合并，点击【取消】逐条发送。"
@@ -1592,5 +1592,23 @@
   },
   "qrCode": {
     "message": "二维码"
+  },
+  "mpdUrl": {
+    "message": "MPD 地址"
+  },
+  "initSegment": {
+    "message": "初始化分段"
+  },
+  "folderPathExample": {
+    "message": "例如 D:\\downloads 或 /home/user/downloads"
+  },
+  "mainNavigation": {
+    "message": "主导航"
+  },
+  "sourceCode": {
+    "message": "源代码"
+  },
+  "m3u8OrMpd": {
+    "message": "M3U8 或 MPD"
   }
 }

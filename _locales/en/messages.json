@@ -1079,13 +1079,13 @@
     "message": "Current download"
   },
   "uiCancelDownload": {
-    "message": "Cancel download"
+    "message": "Cancel"
   },
   "uiViewProgress": {
-    "message": "View progress"
+    "message": "Details"
   },
   "uiDownloadOptions": {
-    "message": "Download options"
+    "message": "Options"
   },
   "uiFullVideo": {
     "message": "Download full video"
@@ -1597,5 +1597,23 @@
   },
   "qrCode": {
     "message": "QR code"
+  },
+  "mpdUrl": {
+    "message": "MPD URL"
+  },
+  "initSegment": {
+    "message": "Initialization segment"
+  },
+  "folderPathExample": {
+    "message": "e.g. D:\\downloads or /home/user/downloads"
+  },
+  "mainNavigation": {
+    "message": "Main navigation"
+  },
+  "sourceCode": {
+    "message": "Source code"
+  },
+  "m3u8OrMpd": {
+    "message": "M3U8 or MPD"
   }
 }

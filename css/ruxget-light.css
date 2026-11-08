@@ -203,6 +203,10 @@ a{color:var(--olive)}
 .key-hint{background:var(--raise)!important;color:var(--fg)!important;border-color:var(--edge)!important}
 .help-intro{max-width:none!important}
 .help-intro,.start-steps{padding:24px!important;border:1px solid var(--edge)!important;border-radius:16px!important;margin-bottom:24px!important}
+/* 0.4.74: a card's first heading starts at its padding (the second card had a 24 px empty band at its top). */
+.help-intro>:first-child,.start-steps>:first-child{margin-top:0!important}.help-intro>:last-child,.start-steps>:last-child{margin-bottom:0!important}
+/* The folded help cards (普通文件 / 版本与开源) have the card surface, so their text keeps off its edges too. */
+.help-details{padding:16px 24px!important;border:1px solid var(--edge)!important;border-radius:16px!important}.help-details>:last-child{margin-bottom:0!important}
 #sitePermissionForm button{background:var(--olive)!important;color:var(--olive-ink)!important;border-radius:8px!important;font-weight:600}
 #sitePermissionForm button:hover{background:var(--olive-hover)!important}
 #grantedSites button{background:var(--raise)!important;color:var(--fg)!important;border-radius:8px!important}

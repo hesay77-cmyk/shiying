@@ -49,3 +49,7 @@ summary { cursor:pointer; }
 .shiying-tool details>.merge{min-width:0;max-width:100%;flex-wrap:wrap;justify-content:flex-start;gap:8px}
 .shiying-tool .rangeDown{flex:0 0 auto;max-width:100%}
 @media(max-width:600px){.shiying-tool .wrapper,.shiying-tool .wrapper1080,.shiying-tool .wrapper1024,.shiying-tool .m3u8_wrapper{padding:0 16px}.shiying-tool .optionBox{padding:16px}.shiying-tool-heading{padding:0 16px}.shiying-tool .progress-wrapper{flex-basis:140px}}
+/* 0.4.74: an untranslated <i18n>key</i18n> is never painted (popup.html showed "mediaControl / settings" for a moment). */
+i18n{visibility:hidden}.TabButton:has(> i18n){visibility:hidden}
+/* 0.4.74: the DASH track lists show their whole text ("v1 | 1280×720 | 781 Kbps"), not 8rem of it. */
+.dash .flex{flex-wrap:wrap;gap:8px;align-items:center}.dash .flex>div{min-width:0;max-width:100%}.dash .select{width:auto;min-width:8rem;max-width:100%;margin-bottom:0}

@@ -23,3 +23,10 @@ advanced.addEventListener('click', () => {
 });
 heading.append(logo,title,advanced);
 document.body.prepend(heading);
+// 0.4.74: the heading follows a language switch made while the page is open.
+if (typeof RuxgetPageLocale !== 'undefined' && RuxgetPageLocale.onChange) RuxgetPageLocale.onChange(() => {
+    name.textContent = location.pathname.endsWith('/downloader.html') ? toolText('titleDownload', 'Ruxget · File Download') : toolText('titleM3U8', 'Ruxget · Video Download');
+    if (!new URLSearchParams(location.search).get('title')) source.textContent = toolText('toolKeepPageOpen', 'Keep this page open. Download progress appears here.');
+    const open = document.body.classList.contains('advanced');
+    advanced.textContent = open ? toolText('toolHideAdvanced', 'Hide advanced options') : toolText('toolShowAdvanced', 'Show advanced options');
+});

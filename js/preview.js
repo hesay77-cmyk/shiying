@@ -475,14 +475,14 @@ class FilePreview {
                 <img src="${item.favIconUrl || 'img/icon.png'}" class="preview-image icon">
             </div>
             <div class="bottom-row">
-                <img src="img/regex.png" class="${item.isRegex ? "" : "hide"}" title="${i18n.regexTitle}" style="width: 23px;">
+                <img src="img/regex.png" class="${item.isRegex ? "" : "hide"}" title="${i18n.regexTitle}" data-i18n-title="regexTitle" style="width: 23px;">
                 <div class="file-info">${item.ext}</div>
             </div>
             <div class="actions">
-                <img src="img/copy.png" class="icon copy" title="${i18n.copy}">
-                <img src="img/delete.svg" class="icon delete" title="${i18n.delete}">
-                <img src="img/download.svg" class="icon download" title="${i18n.download}">
-                <img src="img/mqtt.svg" class="icon mqtt ${G.mqttEnable ? "" : "hide"}" title="${i18n.send2MQTT}">
+                <img src="img/copy.png" class="icon copy" title="${i18n.copy}" data-i18n-title="copy">
+                <img src="img/delete.svg" class="icon delete" title="${i18n.delete}" data-i18n-title="delete">
+                <img src="img/download.svg" class="icon download" title="${i18n.download}" data-i18n-title="download">
+                <img src="img/mqtt.svg" class="icon mqtt ${G.mqttEnable ? "" : "hide"}" title="${i18n.send2MQTT}" data-i18n-title="send2MQTT">
             </div>`;
         // 添加文件信息
         if (item.size && item.size >= 1024 && !isM3U8(item)) {

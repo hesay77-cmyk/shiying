@@ -40,3 +40,10 @@ Ruxget（原名拾影）是 CatCatch 的独立开源改版，非猫抓官方产�
 0.4.52：插件 ⋯ 菜单新增「打开 Ruxget 桌面版」（请求本机桌面版显示窗口，不传送其他数据）和「接管 Chrome 下载…」快捷入口；未安装桌面版时，下载链接改为 Ruxget 网站的下载页 https://hidaydream.com/tools/ruxget/。接管下载取消 Chrome 副本后等待取消完成再清除记录。插件下载卡片、进度页和「最近下载」新增删除：确认后可删除已保存文件（chrome.downloads.removeFile）或只移除记录，进行中的下载会先停止；桌面版每个任务行都显示「删除任务」，下载中的任务会先暂停（最多等待 15 秒）再删除。桌面版保存位置默认跟随 Chrome 的下载文件夹（由插件在交接时告知，仅本机传递），用户在桌面版自选后不再跟随；升级前已自选文件夹的用户保持不变。插件下载视频时不再让 Chrome 缓存媒体数据（cache: no-store），取消或删除后重新下载会从头开始，也不会占用浏览器缓存空间。
 
 0.4.53：插件名称和简介按浏览器语言显示。下载卡片新增一行页面内提示（不弹窗、无需关闭）：下载失败或视频较长时建议改用桌面版；累计完成 5 次下载后显示一次评分链接，最多出现 5 次，点过后不再出现，计数只保存在本机。插件里“下载安装桌面版”和桌面版设置页的链接改为 https://hidaydream.cloud/ 并带 from=ext / from=wizard 来源标记，仅用于官网的汇总访问统计。
+
+## 其他第三方资源与随附程序（0.4.74 补充）
+
+- **Geist 字体**（css/fonts/geist.woff2）：Vercel 与 The Geist Project Authors，SIL Open Font License 1.1，许可全文见 css/fonts/OFL.txt。
+- **图标**：img/ 下部分 SVG 图标的图形路径取自 Google Material Symbols（https://github.com/google/material-design-icons），Apache License 2.0。
+- **lib/m3u8-decrypt.js**：源自 hls.js 的 aes-decryptor（Apache License 2.0），已修改，文件头有说明；许可见 lib/LICENSES。
+- **Windows 桌面版随附程序**：aria2 1.37.0（GPL-2.0-or-later，附 OpenSSL 例外）随安装包分发，许可文本随程序安装在 licenses 文件夹。对应源码可从 https://github.com/aria2/aria2/releases/tag/release-1.37.0 获取；自本版本起三年内，任何人都可以通过 https://github.com/hesay77-cmyk/shiying/issues 向我们索取与所分发程序对应的完整源码，我们免费提供。FFmpeg、yt-dlp、Node.js 不随安装包分发，由桌面版首次使用时从各自官方地址下载，各自的许可文本同样保存在 licenses 文件夹。

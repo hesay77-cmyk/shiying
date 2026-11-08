@@ -54,6 +54,7 @@ public partial class MainWindow : Form {
     [StructLayout(LayoutKind.Sequential)]struct GlassMargins{public int Left,Right,Top,Bottom;}
     [DllImport("dwmapi.dll")]static extern int DwmExtendFrameIntoClientArea(IntPtr handle,ref GlassMargins margins);
     [DllImport("user32.dll")]static extern bool IsZoomed(IntPtr handle);
+    [DllImport("user32.dll")]static extern bool IsIconic(IntPtr handle);
     [DllImport("user32.dll")]static extern bool ReleaseCapture();
     [DllImport("user32.dll")]static extern bool PostMessage(IntPtr handle,int message,IntPtr wparam,IntPtr lparam);
     [StructLayout(LayoutKind.Sequential)]struct WindowLimits{public Point Reserved,MaxSize,MaxPosition,MinTrack,MaxTrack;}
@@ -64,7 +65,9 @@ public partial class MainWindow : Form {
     protected override void OnHandleCreated(EventArgs e){base.OnHandleCreated(e);ApplyLightFrame(this);if(resizeFrameEnabled){int noBorder=-2;NativeOutlineSuppressed=DwmSetWindowAttribute(Handle,34,ref noBorder,4)==0;}ApplyGlassBackdrop();}
     protected override void OnPaintBackground(PaintEventArgs e){
         if(!resizeFrameEnabled){base.OnPaintBackground(e);return;}
-        e.Graphics.Clear(Color.Transparent);
+        // 0.4.74: the page's own cream, not the system material: a strip the interface hasn't covered yet (while the
+        // window is being restored or resized) shows as the same light surface instead of a grey band.
+        e.Graphics.Clear(Color.FromArgb(244,240,228));
     }
     bool resizeFrameEnabled;
     protected override CreateParams CreateParams{get{var value=base.CreateParams;if(resizeFrameEnabled)value.Style&=~0x00c00000;return value;}}
@@ -83,7 +86,38 @@ public partial class MainWindow : Form {
     Rectangle normalFrame;
     bool lastNormalMaximized;
     WindowLayout rememberedLayout;
+    // 0.4.74: minimizing used to lay the interface out at 0×0, so restoring showed a grey window, then a grey strip on
+    // the right and bottom, before it was drawn again (a visible jerk). While minimized the interface keeps its size;
+    // restored, it fills the window again at the size it already has, so nothing needs redrawing.
+    void KeepInterfaceWhileMinimized(){
+        if(pluginView==null)return;
+        if(IsHandleCreated&&IsIconic(Handle)){if(pluginView.Dock==DockStyle.Fill){var bounds=pluginView.Bounds;pluginView.Dock=DockStyle.None;pluginView.Bounds=bounds;}}
+        else if(pluginView.Dock!=DockStyle.Fill)pluginView.Dock=DockStyle.Fill;
+    }
+    // 0.4.74: right after a restore (from minimized or maximized) WinForms re-applies the window size it remembers
+    // (Form.RestoreWindowBoundsIfNecessary). Because the window's first size was given as a client size, WinForms
+    // treats that remembered size as a client size and adds a standard frame this window doesn't have: the window grew
+    // by the frame (22 px at 150 %) and then shrank back, a visible jerk. Here client and window are the same size, so
+    // the remembered size is marked as a window size again (WinForms' own two flags; nothing else changes).
+    static readonly System.Reflection.FieldInfo FormStateEx=typeof(Form).GetField("formStateEx",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance);
+    static readonly System.Reflection.FieldInfo[] ClientSizeFlags={typeof(Form).GetField("FormStateExWindowBoundsWidthIsClientSize",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Static),typeof(Form).GetField("FormStateExWindowBoundsHeightIsClientSize",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Static)};
+    internal bool RestoreSizeIsWindowSize(){
+        try{
+            if(FormStateEx==null||ClientSizeFlags.Any(f=>f==null))return false;
+            var state=(System.Collections.Specialized.BitVector32)FormStateEx.GetValue(this);
+            foreach(var flag in ClientSizeFlags)state[(System.Collections.Specialized.BitVector32.Section)flag.GetValue(null)]=0;
+            FormStateEx.SetValue(this,state);return true;
+        }catch(Exception){return false;}
+    }
+    int sizeMessages;
+    // 0.4.74: a window only moved (not resized) is restored where it was, not at the last place it was resized.
+    protected override void OnLocationChanged(EventArgs e){
+        base.OnLocationChanged(e);
+        if(resizeFrameEnabled&&!miniMode&&IsHandleCreated&&!IsIconic(Handle)&&!IsZoomed(Handle)&&WindowState==FormWindowState.Normal)normalFrame=Bounds;
+    }
     protected override void OnResize(EventArgs e){
+        if(resizeFrameEnabled&&IsHandleCreated&&(IsIconic(Handle)||IsZoomed(Handle)))RestoreSizeIsWindowSize();
+        KeepInterfaceWhileMinimized();
         base.OnResize(e);UpdateResizeFrame();
         if(resizeFrameEnabled&&!miniMode){
             if((IsHandleCreated&&IsZoomed(Handle))||WindowState==FormWindowState.Maximized)lastNormalMaximized=true;
@@ -128,11 +162,23 @@ public partial class MainWindow : Form {
         bool restoreCommand=message.Msg==0x112&&(message.WParam.ToInt64()&0xfff0)==0xf120;Rectangle restoreFrame=normalFrame;
         if(message.Msg==0x112&&(message.WParam.ToInt64()&0xfff0)==0xf030&&miniMode)SetMini(false);
         if(message.Msg==0x83&&resizeFrameEnabled){
-            if(WindowState==FormWindowState.Maximized||IsZoomed(message.HWnd)){Rectangle work=Screen.FromHandle(message.HWnd).WorkingArea;Marshal.WriteInt32(message.LParam,0,work.Left);Marshal.WriteInt32(message.LParam,4,work.Top);Marshal.WriteInt32(message.LParam,8,work.Right);Marshal.WriteInt32(message.LParam,12,work.Bottom);}
+            // 0.4.74: ask Windows, not WinForms' cached WindowState: while a maximized window is being restored the cache
+            // still says Maximized, and the restored window got the whole work area as its client (a 3840-wide interface
+            // in a 1470-wide window until something resized it again).
+            // The monitor is the one the new rectangle is on (Win+Shift+arrow moves a maximized window between monitors).
+            if(IsZoomed(message.HWnd)){Rectangle proposed=Rectangle.FromLTRB(Marshal.ReadInt32(message.LParam,0),Marshal.ReadInt32(message.LParam,4),Marshal.ReadInt32(message.LParam,8),Marshal.ReadInt32(message.LParam,12));Rectangle work=(proposed.Width>0&&proposed.Height>0?Screen.FromRectangle(proposed):Screen.FromHandle(message.HWnd)).WorkingArea;Marshal.WriteInt32(message.LParam,0,work.Left);Marshal.WriteInt32(message.LParam,4,work.Top);Marshal.WriteInt32(message.LParam,8,work.Right);Marshal.WriteInt32(message.LParam,12,work.Bottom);}
             message.Result=IntPtr.Zero;return;
         }
-        base.WndProc(ref message);
-        if(restoreCommand&&resizeFrameEnabled&&WindowState==FormWindowState.Normal&&!restoreFrame.IsEmpty)Bounds=restoreFrame;
+        bool sizeMessage=message.Msg==0x05||message.Msg==0x46||message.Msg==0x47;if(sizeMessage)sizeMessages++;
+        try{base.WndProc(ref message);}finally{
+            if(sizeMessage&&--sizeMessages==0){
+                // A restore can lay the interface out at a size WinForms saw half-way; once the window has settled,
+                // read the real size from Windows and let the interface fill exactly that.
+                if(resizeFrameEnabled&&IsHandleCreated&&!IsIconic(Handle)){UpdateBounds();if(pluginView!=null&&pluginView.Dock==DockStyle.Fill&&pluginView.Size!=ClientSize)PerformLayout();}
+            }
+        }
+        // 0.4.74: never for the mini window (the full frame used to blow it up after a taskbar restore).
+        if(restoreCommand&&resizeFrameEnabled&&!miniMode&&WindowState==FormWindowState.Normal&&!restoreFrame.IsEmpty)Bounds=restoreFrame;
         if(message.Msg==0x24&&resizeFrameEnabled){var limit=(WindowLimits)Marshal.PtrToStructure(message.LParam,typeof(WindowLimits));var monitor=Screen.FromHandle(message.HWnd);Rectangle bounds=monitor.Bounds,work=monitor.WorkingArea;limit.MaxPosition=new Point(work.Left-bounds.Left,work.Top-bounds.Top);limit.MaxSize=new Point(work.Width,work.Height);Marshal.StructureToPtr(limit,message.LParam,false);message.Result=IntPtr.Zero;}
         if(message.Msg==0x31e)ApplyGlassBackdrop();
         if(message.Msg==0x84&&message.Result==new IntPtr(1)&&resizeFrameEnabled&&WindowState==FormWindowState.Normal){

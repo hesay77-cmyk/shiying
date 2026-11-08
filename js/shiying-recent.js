@@ -166,7 +166,9 @@
             button.type = 'button'; button.className = 'recent-open'; button.dataset.status = job.status;
             title.textContent = job.title || pick('网页视频', 'Video'); title.title = job.title || '';
             const percent = Number.isFinite(Number(job.progress)) ? Math.round(Number(job.progress)) : 0;
-            const hint = ' · ' + pick('双击打开', 'double-click to open');
+            // 0.4.74: in English "Downloaded · double-click to open" wrapped mid-word in the 360 px panel; a finished row that
+            // opens says only "Double-click to open" (being openable already means it finished).
+            const withHint = text => !open ? text : pick(text + ' · 双击打开', text.replace(/ · Downloaded$/, '') + ' · Double-click to open');
             // Every finished row has the same folder button: show the file selected in its folder.
             const FOLDER = 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', inFolder = pick('在文件夹中显示', 'Show in folder');
             const chromeFolder = id => () => { try { chrome.downloads.show(id); } catch { say(pick('文件已不在原来的位置，可能被移动或删除了', 'The file is no longer where it was saved')); } };
@@ -175,7 +177,7 @@
                 show = () => native({action: 'show'}).catch(() => say(pick('桌面版没有响应', 'Ruxget Desktop didn’t respond')));
                 showLabel = pick('在桌面版中查看', 'Show in Ruxget Desktop');
                 if (job.state === 'done') { open = () => openDesktop(job); show = () => revealDesktop(job); showLabel = inFolder; }
-                meta.textContent = desktopMeta(job) + (open ? hint : ''); button.dataset.desktop = job.state;
+                meta.textContent = withHint(desktopMeta(job)); button.dataset.desktop = job.state;
                 if (job.state === 'active') bar = percent;
             } else if (job.chrome) {
                 // Chrome saved it, so Chrome opens it: no desktop app involved.
@@ -183,14 +185,14 @@
                     open = () => RuxgetOpen.file(job.downloadId, say);
                     show = chromeFolder(job.downloadId); showLabel = inFolder;
                 }
-                meta.textContent = chromeMeta(job) + (open ? hint : '');
+                meta.textContent = withHint(chromeMeta(job));
                 if (job.status === 'running' && job.item.totalBytes > 0) bar = Math.round(job.item.bytesReceived / job.item.totalBytes * 100);
             } else {
                 show = () => chrome.tabs.create({url: chrome.runtime.getURL('shiying-task.html?id=' + encodeURIComponent(job.id))});
                 showLabel = pick('下载详情', 'Download details');
                 if (job.status === 'complete' && Number.isInteger(job.downloadId)) { open = () => RuxgetOpen.file(job.downloadId, say); show = chromeFolder(job.downloadId); showLabel = inFolder; }
                 const state = job.status === 'complete' ? pick('下载完成', 'Downloaded') : job.status === 'error' ? tr(job.error || job.stage) : job.status === 'cancelled' ? pick('已取消', 'Cancelled') : tr(job.stage) + ' · ' + percent + '%';
-                meta.textContent = 'Ruxget · ' + (job.format === 'mp3' ? 'MP3' : (job.label || (job.height ? job.height + 'p' : 'MP4'))) + ' · ' + state + (open ? hint : '');
+                meta.textContent = withHint('Ruxget · ' + (job.format === 'mp3' ? 'MP3' : (job.label || (job.height ? job.height + 'p' : 'MP4'))) + ' · ' + state);
             }
             button.append(title, meta);
             if (bar >= 0) { const line = document.createElement('i'); line.className = 'recent-bar'; line.style.setProperty('--progress', bar + '%'); button.append(line); }

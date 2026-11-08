@@ -16,7 +16,7 @@ function notify(text) {
 }
 function message(Message, extra = {}) { return chrome.runtime.sendMessage({Message, tabId, ...extra}); }
 // An error shows at once, on 本页视频 where it is written (the tabs otherwise wait for the page to be read).
-function failure(error) { if(error.cancelled)return;const text=RuxgetText.tr(error.message || String(error));$('#error').textContent = text; $('#error').hidden = false; document.body.dataset.decided = '1'; if(window.RuxgetTabs?.current()==='downloads'&&typeof notify==='function')notify(text); }
+function failure(error) { if(error.cancelled)return;const source=error.message || String(error),text=RuxgetI18n.live($('#error'),()=>RuxgetText.tr(source)); $('#error').hidden = false; document.body.dataset.decided = '1'; if(window.RuxgetTabs?.current()==='downloads'&&typeof notify==='function')notify(text); }
 function onClick(element, action) { element.addEventListener('click', () => Promise.resolve().then(action).catch(failure)); }
 async function copy(url) { await navigator.clipboard.writeText(url); notify('链接已复制'); }
 async function quality(data, card) {
@@ -239,8 +239,8 @@ async function updateSiteAccess() {
     accessPatterns = [...new Set([site,...accessCandidates.map(item => ShiyingAccess.origin(item.url))])];
     const missing = accessPatterns.filter(pattern => !ShiyingAccess.allows(pattern.slice(0,-1)));
     $('#siteAccess').hidden = !missing.length;
-    $('#allowSite').textContent = ShiyingAccess.allows(currentSite.url) ? RuxgetI18n.pick('允许媒体来源','Allow media sources') : RuxgetI18n.pick('允许此网站','Allow this site');
-    $('#siteAccessNote').textContent = RuxgetI18n.pick('允许此网站后，Ruxget 才能检测页面里的视频。','Allow this site so Ruxget can find videos on the page.');
+    const sourcesOnly=ShiyingAccess.allows(currentSite.url);RuxgetI18n.live($('#allowSite'),()=>sourcesOnly ? RuxgetI18n.pick('允许媒体来源','Allow media sources') : RuxgetI18n.pick('允许此网站','Allow this site'));
+    RuxgetI18n.live($('#siteAccessNote'),()=>RuxgetI18n.pick('允许此网站后，Ruxget 才能检测页面里的视频。','Allow this site so Ruxget can find videos on the page.'));
     if (!missing.length) {await recordSiteMedia(currentSite, accessCandidates);await refresh();}
 }
 async function recordSiteMedia(tab, candidates) {
@@ -252,7 +252,7 @@ $('#allowSite').addEventListener('click', () => {
     const requestedSite = currentSite;
     // Invoke the browser permission prompt before any await or message hop.
     ShiyingAccess.request(accessPatterns).then(async granted => {
-        if (!granted) {$('#siteAccessNote').textContent = RuxgetI18n.pick('未获得此网站的访问权限，Ruxget 无法检测本页视频。需要时可再次点击「允许此网站」。', 'This site wasn’t allowed, so Ruxget can’t find videos on this page. Click “Allow this site” whenever you need it.');return;}
+        if (!granted) {RuxgetI18n.live($('#siteAccessNote'),()=>RuxgetI18n.pick('未获得此网站的访问权限，Ruxget 无法检测本页视频。需要时可再次点击「允许此网站」。', 'This site wasn’t allowed, so Ruxget can’t find videos on this page. Click “Allow this site” whenever you need it.'));return;}
         const result = await message('shiyingSyncAccess');
         if (!result?.ok) throw new Error(result?.error || '网站授权未能更新');
         const tab = await chrome.tabs.get(requestedSite.id);

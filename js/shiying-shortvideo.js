@@ -56,7 +56,7 @@
                 return JSON.parse(JSON.stringify({
                     title: a.desc || a.itemTitle || a.caption || document.title.replace(/\s*-\s*抖音$/, ''),
                     artist: a.authorInfo?.nickname || '', duration: Number(v.duration) / 1000,
-                    cover: srcs(v.coverUrlList)[0] || srcs(v.originCoverUrlList)[0] || '',
+                    covers: [...srcs(v.coverUrlList), ...srcs(v.originCoverUrlList), ...srcs(v.cover), ...srcs(v.originCover)],
                     formats: (v.bitRateList || []).map(item => ({width:item.width, height:item.height, h265:!!item.isH265 || /265|hevc|bytevc1/i.test(String(item.format || item.videoFormat || '')), bytes:Number(item.dataSize) || 0, urls:srcs(item.playAddr)})),
                     fallback: {width:v.width, height:v.height, bytes:Number(v.dataSize) || 0, urls:srcs(v.playAddr)}
                 }));
@@ -79,7 +79,7 @@
                 if (!info) return {error:'没有读到视频，请先播放一下再试'};
                 const reps = info.manifest?.adaptationSet?.[0]?.representation || [];
                 return JSON.parse(JSON.stringify({
-                    title: info.caption || document.title.replace(/-快手$/, ''), artist: author, duration: Number(info.duration) / 1000, cover: info.coverUrl || '',
+                    title: info.caption || document.title.replace(/-快手$/, ''), artist: author, duration: Number(info.duration) / 1000, covers: [info.coverUrl, ...(Array.isArray(info.coverUrls) ? info.coverUrls.map(item => typeof item === 'string' ? item : item?.url) : [])].filter(Boolean),
                     formats: reps.map(rep => ({width:rep.width, height:rep.height, h265:false, bytes:Number(rep.fileSize) || 0, urls:[rep.url, ...(rep.backupUrl || [])].filter(Boolean)})),
                     fallback: {width:0, height:0, bytes:0, urls:[info.photoUrl].filter(Boolean)}
                 }));
@@ -97,7 +97,7 @@
                 return JSON.parse(JSON.stringify({
                     title: note.title || note.desc || '', artist: note.user?.nickname || note.user?.nickName || '',
                     duration: Number(h264[0]?.duration || note.video?.capa?.duration * 1000 || 0) / 1000,
-                    cover: note.imageList?.[0]?.urlDefault || note.imageList?.[0]?.urlPre || '',
+                    covers: [note.imageList?.[0]?.urlDefault, note.imageList?.[0]?.urlPre, note.imageList?.[0]?.url, ...(note.imageList?.[0]?.infoList || []).map(item => item?.url)].filter(Boolean),
                     formats: h264.map(item => ({width:item.width, height:item.height, h265:false, bytes:Number(item.size) || 0, urls:[item.masterUrl, ...(item.backupUrls || [])].filter(Boolean)})),
                     fallback: {width:0, height:0, bytes:0, urls:[]}
                 }));
@@ -105,6 +105,26 @@
         }
     };
     ShiyingPlatform.pageReaders = pageReaders;
+
+    // 0.4.74: the cover handed to the desktop app. The app draws covers with GDI+, which reads JPEG and PNG but not WebP
+    // (a WebP cover showed only ▷ there). Of the page's cover addresses the first that looks like JPEG or PNG wins
+    // (…/c.jpeg, …~tplv-dy-cropcenter:323:430.jpeg?…, ?format=jpg), else the first one. Only https addresses are kept.
+    ShiyingPlatform.pickCover = function(list) {
+        const urls = [...new Set((Array.isArray(list) ? list : [list]).map(item => String(item || '').trim().replace(/^http:\/\//i, 'https://')).filter(item => /^https:\/\/[^/\s]+/i.test(item)))];
+        const still = address => {
+            let link;
+            try {link = new URL(address);} catch {return false;}
+            let where = link.pathname;
+            try {where = decodeURIComponent(where);} catch {}
+            where = where.toLowerCase();
+            const query = link.search.toLowerCase();
+            // 小红书 names the format in an image style after "!" (…!nd_dft_wlteh_webp_3, …!nd_dft_wlteh_jpg_3).
+            if (/\.(webp|avif|heic|heif|gif)$/.test(where) || /![\w-]*_(webp|avif|heic)(_\d+)?$/.test(where) || /[?&](format|fmt|imageformat)=(webp|avif|heic)\b/.test(query)) return false;
+            return /\.(jpe?g|png)(?=[!~@:]|$)/.test(where) || /~tplv-[^/]*[.:](jpe?g|png)$/.test(where) || /![\w-]*_(jpe?g|png)(_\d+)?$/.test(where) ||
+                /[?&](format|fmt|imageformat)=(jpe?g|png)\b/.test(query) || /\.(jpe?g|png)\b/.test(query);
+        };
+        return urls.find(still) || urls[0] || '';
+    };
 
     // Page data -> catalog. One file per quality; the label uses the short side (竖屏 1080×1920 → 1080p).
     ShiyingPlatform.muxedCatalog = function(source, data) {
@@ -118,7 +138,7 @@
         const label = item => (item.height ? Math.min(item.width || item.height, item.height) + 'p' : '原画');
         const duration = Number(data.duration);
         if (!Number.isFinite(duration) || duration <= 0) throw new Error('没读到完整视频时长，请重新读取');
-        return {...source, siteName:sites[site].name, muxed:true, title:String(data.title || sites[site].name + '视频').replace(/\s+/g, ' ').trim().slice(0, 300), artist:String(data.artist || '').slice(0, 100), cover:/^https:\/\//.test(String(data.cover || '').replace(/^http:/, 'https:')) ? String(data.cover).replace(/^http:/, 'https:') : '', duration, video, audio:[video[video.length - 1]], choices:video.map(item => ({height:item.height, label:label(item)})), subtitles:[]};
+        return {...source, siteName:sites[site].name, muxed:true, title:String(data.title || sites[site].name + '视频').replace(/\s+/g, ' ').trim().slice(0, 300), artist:String(data.artist || '').slice(0, 100), cover:this.pickCover(data.covers || [data.cover]), duration, video, audio:[video[video.length - 1]], choices:video.map(item => ({height:item.height, label:label(item)})), subtitles:[]};
     };
     for (const site of Object.keys(sites)) {
         ShiyingPlatform.readers[site] = async (source, tab) => {

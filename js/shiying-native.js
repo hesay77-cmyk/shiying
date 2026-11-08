@@ -1,6 +1,6 @@
 // 只在用户点击时申请 Native Messaging；浏览器不直接访问桌面下载引擎的 RPC。
 const ShiyingNative = {
-    DESKTOP_RELEASE_URL: 'https://hidaydream.cloud/?from=ext#editions',
+    DESKTOP_RELEASE_URL: 'https://hidaydream.cloud/desktop/?from=ext',
     file(url,referer='') {
         url=String(url||'').trim().replace(/ /g,'%20');let parsed;
         try{parsed=new URL(url);}catch{throw new Error('请输入完整的 HTTP 或 HTTPS 下载链接');}
@@ -44,21 +44,23 @@ const ShiyingNative = {
         if (ShiyingNative.pendingPrompt) return ShiyingNative.pendingPrompt;
         ShiyingNative.pendingPrompt=(async()=>{
             const t=ShiyingNative.msg,missing=reason==='missing';
+            // 0.4.74: the sheet follows a language switch while it is open (RuxgetI18n.live in js/shiying-locale.js).
+            const say=(element,render)=>window.RuxgetI18n?.live?RuxgetI18n.live(element,render):(element.textContent=render());
             const dialog=document.createElement('dialog');
             dialog.className='link-download-sheet desktop-connect-sheet';
             dialog.id='desktopConnectPrompt';dialog.setAttribute('aria-labelledby','desktopConnectTitle');
             dialog.setAttribute('aria-describedby','desktopConnectNote');
             const title=document.createElement('h2');title.id='desktopConnectTitle';
-            title.textContent=missing?t('uiDesktopConnectionMissing','尚未连接 Ruxget 桌面版'):t('uiDesktopConnectionFailed','暂时无法连接 Ruxget 桌面版');
+            say(title,()=>missing?t('uiDesktopConnectionMissing','尚未连接 Ruxget 桌面版'):t('uiDesktopConnectionFailed','暂时无法连接 Ruxget 桌面版'));
             const note=document.createElement('p');note.id='desktopConnectNote';note.className='quality-note';
-            note.textContent=missing?t('uiDesktopConnectionMissingNote','如未安装，可免费下载（3 MB）；如已安装，请修复连接。也可以继续用 Chrome 下载。'):t('uiDesktopConnectionFailedNote','可能是连接权限或桌面版启动异常。请先修复连接，无需重新安装。');
+            say(note,()=>missing?t('uiDesktopConnectionMissingNote','如未安装，可免费下载（3 MB）；如已安装，请修复连接。也可以继续用 Chrome 下载。'):t('uiDesktopConnectionFailedNote','可能是连接权限或桌面版启动异常。请先修复连接，无需重新安装。'));
             const actions=document.createElement('div');actions.className='desktop-connect-actions';
             dialog.append(title,note,actions);
             const choice=await new Promise(resolve=>{
                 for (const [value,key,label] of [['install','uiDesktopInstallAction','下载安装'],['repair','uiDesktopRepairAction','已安装，修复连接'],['chrome','uiDesktopChromeAction','继续用 Chrome']]) {
                     const button=document.createElement('button');button.type='button';button.dataset.desktopAction=value;
                     button.className=(missing?value==='install':value==='repair')?'download-button':'text-button';
-                    button.textContent=t(key,label);button.addEventListener('click',()=>dialog.close(value));actions.append(button);
+                    say(button,()=>t(key,label));button.addEventListener('click',()=>dialog.close(value));actions.append(button);
                 }
                 dialog.addEventListener('close',()=>{const value=dialog.returnValue||'cancel';dialog.remove();resolve(value);},{once:true});
                 document.body.append(dialog);dialog.showModal();

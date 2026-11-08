@@ -139,6 +139,8 @@
     <button id="popup" class="button2" data-i18n="popup" title="Open in popup window" data-i18n-title="tipPopupWindow"></button>
     <button id="currentPage" class="hide" data-i18n="currentPage" title="Switch to current page" data-i18n-title="tipSwitchCurrent"></button>
   </div>
+  <!-- 0.4.74: labels are translated before the large libraries load, so raw message keys are never painted. -->
+  <script src="js/i18n.js"></script>
   <script src="lib/base64.js"></script>
   <script src="lib/mqtt.min.js"></script>
   <script src="js/popup-utils.js"></script>
@@ -146,7 +148,6 @@
   <script src="js/media-control.js"></script>
   <script src="lib/jquery.qrcode.min.js"></script>
   <script src="lib/hls.min.js"></script>
-  <script src="js/i18n.js"></script>
 </body>
 
 </html>

@@ -488,8 +488,22 @@ document.addEventListener('DOMContentLoaded', async function () {
     const stored = await chrome.storage.local.get(RuxgetI18n.STORAGE_KEY);
     sel.value = stored[RuxgetI18n.STORAGE_KEY] || 'auto';
     sel.addEventListener('change', async function () {
+      // setLanguage switches this page in place (static labels, then the texts below); it is never reloaded for it.
       await RuxgetI18n.setLanguage(sel.value);
-      RuxgetI18n.applyDom(document);
     });
   } catch (e) { console.warn(e); }
+});
+
+// 0.4.74: text this page writes from code, written again after a language switch (this page switches in place).
+if (typeof RuxgetPageLocale !== "undefined" && RuxgetPageLocale.onChange) RuxgetPageLocale.onChange(function () {
+    $("#version").html(i18n.catCatch + " v" + chrome.runtime.getManifest().version);
+    const names = { tips: i18n.invokeProtocolTemplate, default: i18n.default + " / " + i18n.disable, vlcCustom: i18n.customVLCProtocol + " vlc://", shareApi: i18n.systemShare };
+    for (const key of Object.keys(names)) {
+        if (playerList.has(key)) playerList.get(key).name = names[key];
+        $("#PlayerTemplate option").filter(function () { return this.value === key; }).text(names[key]);
+    }
+    $("input.ext").attr("placeholder", i18n.suffix);
+    $("input.type").attr("placeholder", i18n.type);
+    $("input.regex").attr("placeholder", i18n.regexExpression);
+    $("#blockUrlList input[name=url]").attr("placeholder", i18n.blockUrlTips);
 });

@@ -356,11 +356,13 @@ hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
             maxBandwidth = Math.max(maxBandwidth, item.attrs.BANDWIDTH);
             if (maxBandwidth == item.attrs.BANDWIDTH) { dataMerge.video = item; }   // 默选择码率最大的
             const html = $(`<div class="block">
-                    <div><label class="more_class"><input type="radio" name="more_video" ${maxBandwidth == item.attrs.BANDWIDTH ? "checked" : ""}/>${item.attrs.RESOLUTION ? i18n.resolution + ":" + item.attrs.RESOLUTION : ""}${item.attrs.BANDWIDTH ? " | " + i18n.bitrate + ":" + (parseInt(item.attrs.BANDWIDTH / 1000) + " Kbps") : ""}</label></div>
+                    <div><label class="more_class"><input type="radio" name="more_video" ${maxBandwidth == item.attrs.BANDWIDTH ? "checked" : ""}/><span class="more_text"></span></label></div>
                     <a href="${url}">${name}</a>
-                    <button id="parser" type="button">${i18n.parser}</button>
-                    <button class="sendFfmpeg" type="button">${i18n.sendFfmpeg}</button>
+                    <button id="parser" type="button" data-i18n="parser">${i18n.parser}</button>
+                    <button class="sendFfmpeg" type="button" data-i18n="sendFfmpeg">${i18n.sendFfmpeg}</button>
                 </div>`);
+            // 0.4.74: rendered again when the language changes while the page is open (i18nRender in js/polyfill.js).
+            i18nRender(html.find(".more_text"), () => (item.attrs.RESOLUTION ? i18nLabel(i18n.resolution, String(item.attrs.RESOLUTION).replace("x", "×")) : "") + (item.attrs.BANDWIDTH ? (item.attrs.RESOLUTION ? " | " : "") + i18nLabel(i18n.bitrate, parseInt(item.attrs.BANDWIDTH / 1000) + " Kbps") : ""));
             html.find(".sendFfmpeg").click(function () {
                 let newUrl = url + `&autoDown=1`;
                 newUrl += `&ffmpeg=addFile`;
@@ -395,8 +397,8 @@ hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
             const html = $(`<div class="block">
                     <div><label><input type="radio" name="more_audio" ${index == 0 ? "checked" : ""}/>${item.name ? item.name : ""} | ${item.lang ? item.lang : ""} | ${item.groupId ? item.groupId : ""}</label></div>
                     <a href="${url}">${name}</a>
-                    <button id="parser" type="button">${i18n.parser}</button>
-                    <button class="sendFfmpeg" type="button">${i18n.sendFfmpeg}</button>
+                    <button id="parser" type="button" data-i18n="parser">${i18n.parser}</button>
+                    <button class="sendFfmpeg" type="button" data-i18n="sendFfmpeg">${i18n.sendFfmpeg}</button>
                 </div>`);
             html.find(".sendFfmpeg").click(function () {
                 let newUrl = url + `&autoDown=1`;
@@ -565,8 +567,13 @@ hls.on(Hls.Events.ERROR, function (event, data) {
         });
     }
 
-    autoDown && highlight();
     console.log(data);
+    // 0.4.74: hls.js recovers from non-fatal errors by itself (bufferStalledError while the buffer refills, a fragment
+    // that is retried), so only a fatal one shows the error box, stops loading or brings the tab forward. Kept as before:
+    // the one-time ADTS tip, which hls.js reports as non-fatal although that stream's audio can't be decoded.
+    const adtsError = data.type == "mediaError" && data.details == "fragParsingError" && data.error?.message == "No ADTS header found in AAC PES";
+    if (!data.fatal && !adtsError) { return; }
+    autoDown && highlight();
     if (data.details == "bufferStalledError") {
         hls.stopLoad();
     }
@@ -584,7 +591,7 @@ hls.on(Hls.Events.ERROR, function (event, data) {
         return;
     }
     $("#loading").show();
-    $("#loading .optionBox").html(`${i18n.m3u8Error}<button id="setRequestHeadersError">${i18n.setRequestHeaders}</button>`);
+    $("#loading .optionBox").html(`<span data-i18n="m3u8Error">${i18n.m3u8Error}</span><button id="setRequestHeadersError" data-i18n="setRequestHeaders">${i18n.setRequestHeaders}</button>`);
 
     /**
      * 下载出错 如果在录制中 停止下载 保存文件
@@ -597,7 +604,7 @@ hls.on(Hls.Events.ERROR, function (event, data) {
         const params = new URLSearchParams(url.search);
         params.set("retryCount", recorderRetryCount ? recorderRetryCount - 1 : 0);
         params.set("autoDown", 1);
-        $progress.html(i18n.retryCount + ": " + recorderRetryCount);
+        $progress.html(i18nLabel(i18n.retryCount, recorderRetryCount));
         setTimeout(() => {
             window.location.href = window.location.origin + window.location.pathname + "?" + params.toString();
         }, 3000);
@@ -633,23 +640,26 @@ hls.on(Hls.Events.BUFFER_CREATED, function (event, data) {
     if (data.tracks && info.html() == "") {
         if (data.tracks.audiovideo) {
             if (data.tracks.audiovideo?.metadata) {
-                info.append(` ${i18n.resolution}:${data.tracks.audiovideo.metadata.width} x ${data.tracks.audiovideo.metadata.height}`);
+                const { width, height } = data.tracks.audiovideo.metadata;
+                i18nRender(info, () => ` ${i18nLabel(i18n.resolution, width + "×" + height)}`, true);
             }
             if (data.tracks.audiovideo.codec && data.tracks.audiovideo.codec.startsWith("hvc1")) {
-                info.append(` <b>${i18n.hevcTip}</b>`);
+                i18nRender(info, () => ` <b>${i18n.hevcTip}</b>`, true);
             }
             return;
         }
-        !data.tracks.audio && info.append(` (${i18n.noAudio})`);
-        !data.tracks.video && info.append(` (${i18n.noVideo})`);
+        !data.tracks.audio && i18nRender(info, () => ` (${i18n.noAudio})`, true);
+        !data.tracks.video && i18nRender(info, () => ` (${i18n.noVideo})`, true);
         if (data.tracks.video?.metadata) {
-            info.append(` ${i18n.resolution}:${data.tracks.video.metadata.width} x ${data.tracks.video.metadata.height}`);
+            const { width, height } = data.tracks.video.metadata;
+            i18nRender(info, () => ` ${i18nLabel(i18n.resolution, width + "×" + height)}`, true);
         }
         if (hls.levels[currentLevel]?.bitrate) {
-            info.append(` ${i18n.bitrate}:${parseInt(hls.levels[currentLevel].bitrate / 1000)} Kbps`);
+            const levelBitrate = hls.levels[currentLevel].bitrate;
+            i18nRender(info, () => ` ${i18nLabel(i18n.bitrate, parseInt(levelBitrate / 1000) + " Kbps")}`, true);
         }
         if (data.tracks?.video?.codec && data.tracks.video.codec.startsWith("hvc1")) {
-            info.append(` <b>${i18n.hevcTip}</b>`);
+            i18nRender(info, () => ` <b>${i18n.hevcTip}</b>`, true);
         }
     }
 });
@@ -775,11 +785,11 @@ function parseTs(data) {
 
 
     // 提示加密
-    isEncrypted && $("#count").append(` (${i18n.encryptedHLS})`);
+    isEncrypted && i18nRender($("#count"), () => ` (${i18n.encryptedHLS})`, true);
 
     // SAMPLE 加密算法
     if (data.m3u8.includes("#EXT-X-KEY:METHOD=SAMPLE-AES-CTR")) {
-        $("#count").append(' <b>' + i18n.encryptedSAMPLE + '</b>');
+        i18nRender($("#count"), () => ' <b>' + i18n.encryptedSAMPLE + '</b>', true);
     }
 
     // 范围下载所需数据
@@ -790,10 +800,11 @@ function parseTs(data) {
     if (data.live) {
         autoDown && highlight();
         $("#recorder").show();
-        $(".videoInfo #info").html(i18n.liveHLS);
+        i18nRender($(".videoInfo #info"), () => i18n.liveHLS);
     } else {
         estimateFileInfo(_fragments, data.totalduration); // 估算文件大小
-        $("#count").append(i18n("m3u8Info", [_fragments.length, secToTime(data.totalduration)]));
+        const fragmentCount = _fragments.length, totalDuration = data.totalduration;
+        i18nRender($("#count"), () => i18n("m3u8Info", [fragmentCount, secToTime(totalDuration)]), true);
         $("#sendFfmpeg").show();
         $("#retryCount").parent().hide();
     }
@@ -834,17 +845,17 @@ function parseTs(data) {
 
     function showKeyInfo(buffer, decryptdata, i) {
         const $tips = $("#tips");
-        $tips.append(`${i18n.keyAddress}: <input type="text" value="${decryptdata.uri}" spellcheck="false" readonly="readonly" class="keyUrl">`);
+        $tips.append(`${i18nLabel(i18n.keyAddress)}<input type="text" value="${decryptdata.uri}" spellcheck="false" readonly="readonly" class="keyUrl">`);
         // 准备算法及密钥字段
         const method = decryptdata.method || "NONE";
         const keyHex = buffer ? ArrayBufferToHexString(buffer) : i18n.keyDownloadFailed;
         const keyBase64 = buffer ? ArrayBufferToBase64(buffer) : null; // buffer 为空时不显示 Base64
         // 构建 key 区块（包含算法、Hex、可能的 Base64）
         let keyBlock = `
-        <div class="method">${i18n.encryptionAlgorithm}: <input type="text" value="${method}" spellcheck="false" readonly="readonly"></div>
-        <div>${i18n.key}(Hex): <input type="text" value="${keyHex}" spellcheck="false" readonly="readonly"></div>`;
+        <div class="method">${i18nLabel(i18n.encryptionAlgorithm)}<input type="text" value="${method}" spellcheck="false" readonly="readonly"></div>
+        <div>${i18nLabel(i18n.key + " (Hex)")}<input type="text" value="${keyHex}" spellcheck="false" readonly="readonly"></div>`;
         if (keyBase64 !== null) {
-            keyBlock += `<div>${i18n.key}(Base64): <input type="text" value="${keyBase64}" spellcheck="false" readonly="readonly"></div>`;
+            keyBlock += `<div>${i18nLabel(i18n.key + " (Base64)")}<input type="text" value="${keyBase64}" spellcheck="false" readonly="readonly"></div>`;
         }
         // 检查 IV 是否为默认值（常见 MPEG-DASH 的默认 IV：末尾为 i 或 i+1）
         const defaultIv1 = new Uint8Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, i + 1]).toString();
@@ -896,9 +907,10 @@ async function estimateFileInfo(fragments, duration) {
 
     if (successfulFetches > 0) {
         estimateFileSize = totalSize / successfulFetches * fragments.length;
-        $("#estimateFileSize").append(` ${i18n.estimateSize}: ${byteToSize(estimateFileSize)}`);
+        const estimated = estimateFileSize;
+        i18nRender($("#estimateFileSize"), () => ` ${i18nLabel(i18n.estimateSize, byteToSize(estimated))}`, true);
         const bitrate = (estimateFileSize * 8) / duration;
-        $("#estimateBitrate").append(` ${i18n.bitrate}: ${formatBitrate(bitrate)}`);
+        i18nRender($("#estimateBitrate"), () => ` ${i18nLabel(i18n.bitrate, formatBitrate(bitrate))}`, true);
     }
 }
 /**************************** 监听 / 按钮绑定 ****************************/
@@ -1629,7 +1641,7 @@ function downloadNew(start = 0, end = _fragments.length) {
         if (recorder) {
             $progress.html(i18n.waitingForLiveData);
             downDuration += fragment.duration;
-            $fileDuration.html(i18n.recordingDuration + ":" + secToTime(downDuration));
+            $fileDuration.html(i18nLabel(i18n.recordingDuration, secToTime(downDuration)));
             return;
         }
 
@@ -1641,8 +1653,8 @@ function downloadNew(start = 0, end = _fragments.length) {
         item.status = 2; // 下载完成
 
         $progress.html(`${down.success}/${down.total}`);
-        $fileSize.html(i18n.downloaded + ":" + byteToSize(down.buffersize));
-        $fileDuration.html(i18n.downloadedVideoLength + ":" + secToTime(down.duration));
+        $fileSize.html(i18nLabel(i18n.downloaded, byteToSize(down.buffersize)));
+        $fileDuration.html(i18nLabel(i18n.downloadedVideoLength, secToTime(down.duration)));
 
         if (allOption.M3u8HideDownloadedSegments) {
             item.root.style.display = "none";
@@ -2352,3 +2364,5 @@ chrome.runtime.onMessage.addListener(function (Message, sender, sendResponse) {
         $("#autoClose").prop("checked") && closeTab();
     }, 1000);
 });
+// 0.4.74: recording, sending to FFmpeg or saving a stream keeps the page from reloading for a language switch.
+if (typeof RuxgetPageLocale !== "undefined" && RuxgetPageLocale.busyWhen) RuxgetPageLocale.busyWhen(() => recorder || isSendFfmpeg || !!fileStream || downId > 0);

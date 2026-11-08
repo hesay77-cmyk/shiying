@@ -14,7 +14,7 @@
         const element = document.createElement('button'); element.type = 'button'; element.className = primary ? 'primary-button' : 'text-button';
         element.textContent = label; element.addEventListener('click', handler); return element;
     }
-    const releaseUrl = () => typeof ShiyingNative !== 'undefined' ? ShiyingNative.DESKTOP_RELEASE_URL : 'https://hidaydream.cloud/?from=ext#editions';
+    const releaseUrl = () => typeof ShiyingNative !== 'undefined' ? ShiyingNative.DESKTOP_RELEASE_URL : 'https://hidaydream.cloud/desktop/?from=ext';
     function label() {
         staticText();
         renderDesktop(); showFolder().catch(() => {});
@@ -46,7 +46,7 @@
             '#sitesLink': ['管理网站权限', 'Manage site access'],
             '#languageTitle': ['语言', 'Language'],
             '#langAuto': ['跟随浏览器', 'Same as browser'],
-            '#siteLink': ['Ruxget 官网', 'Ruxget website'],
+            '#siteLink': ['Ruxget 桌面版介绍', 'About Ruxget Desktop'],
             '#helpLink': ['帮助', 'Help'],
             '#privacyLink': ['隐私说明', 'Privacy'],
             '#advancedLink': ['高级选项', 'Advanced options'],
@@ -140,9 +140,14 @@
         toast(event.target.checked ? pick('已恢复识别', 'Detection is on') : pick('已暂停识别，已找到的仍可下载', 'Detection paused; items already found can still be downloaded'));
     });
     // --- Language ------------------------------------------------------------------------------------------------
+    const LANGUAGE_KEY = window.RuxgetI18n?.STORAGE_KEY || 'ruxgetUiLanguage';
+    const checkLanguage = pref => document.querySelectorAll('input[name=language]').forEach(input => { input.checked = input.value === (pref || 'auto'); });
     document.querySelectorAll('input[name=language]').forEach(input => input.addEventListener('change', async () => {
         if (window.RuxgetI18n) { await RuxgetI18n.setLanguage(input.value); label(); }
     }));
+    // 0.4.74: a change made elsewhere (another settings tab, 高级选项, the panel) shows here too: the choice is ticked again
+    // and the page is written in the new language (js/shiying-locale.js announces it once its catalog is switched).
+    document.addEventListener('ruxget-i18n-applied', () => label());
     // --- Start ---------------------------------------------------------------------------------------------------
     staticText();
     (async () => {
@@ -153,14 +158,15 @@
         $('#saveAs').checked = !!saveAs; $('#recognize').checked = enable !== false; // The page button shows unless it was hidden on purpose (shiying-floating.js reads it that way).
         $('#floating').checked = floating.hidden !== true;
         $('#subtitles').checked = (await chrome.storage.local.get('ruxgetSaveSubtitles')).ruxgetSaveSubtitles === true;
-        const lang = language[window.RuxgetI18n?.STORAGE_KEY || 'ruxgetUiLanguage'] || 'auto';
-        document.querySelectorAll('input[name=language]').forEach(input => { input.checked = input.value === lang; });
+        checkLanguage(language[LANGUAGE_KEY]);
         mode = await readMode();
         label();
         await checkDesktop();
     })().catch(error => toast(error.message));
     chrome.storage.onChanged.addListener((changes, area) => {
         if (area === 'local' && changes.ruxgetChromeFolder) showFolder().catch(() => {});
+        // The text follows through ruxget-i18n-applied; "auto" ↔ the browser's own language changes only the ticked choice.
+        if (area === 'local' && changes[LANGUAGE_KEY]) checkLanguage(changes[LANGUAGE_KEY].newValue);
         if (area === 'local' && (changes[MODE_KEY] || changes.ruxgetTakeover) && !busy) readMode().then(next => { mode = next; renderDesktop(); }).catch(() => {});
         if (area === 'local' && changes.ruxgetSaveSubtitles) $('#subtitles').checked = changes.ruxgetSaveSubtitles.newValue === true;
         if (area === 'local' && changes.shiyingFloating) $('#floating').checked = changes.shiyingFloating.newValue?.hidden !== true;

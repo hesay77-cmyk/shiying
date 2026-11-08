@@ -20,7 +20,7 @@
 
 <body>
   <!-- 添加导航栏 -->
-  <nav class="sidebar" aria-label="Main Navigation">
+  <nav class="sidebar" aria-label="Main navigation" data-i18n-aria="mainNavigation">
     <ul>
       <li><a href="#anchorSuffix" data-i18n="suffix" title="suffix" data-i18n-title="suffix"></a></li>
       <li><a href="#anchorType" data-i18n="type" title="type" data-i18n-title="type"></a></li>
@@ -267,7 +267,7 @@
           <div class="item">
             <div><span data-i18n-outer="downloadDir"></span></div>
             <input id="aria2RpcDir" save="input" type="text" class="width100"
-              placeholder="D:\downloads or /home/user/downloads">
+              placeholder="D:\downloads or /home/user/downloads" data-i18n-placeholder="folderPathExample">
           </div>
 
           <div class="flex-end">
@@ -369,7 +369,7 @@
         </span>
         <div class="list">
           <div class="item">
-            <div><span data-i18n-outer="enable"></span> m3u8dl:// <span data-i18n-outer="download"></span> m3u8 or mpd
+            <div><span data-i18n-outer="enable"></span> m3u8dl:// <span data-i18n-outer="download"></span> <span data-i18n-outer="m3u8OrMpd"></span>
             </div>
             <div class="switch m3u8DL">
               <select id="m3u8dl" class="select" save="select">
@@ -493,7 +493,7 @@
             <label for="webUrl">${webUrl}</label><input type="text" class="width100" value="https://bmmmd.com/test.html"
               id="webUrl">
             <label for="title">${title}</label><input type="text" class="width100" value="test Video" id="title">
-            <span data-i18n-outer="result"></span>:<br><span id="tagTestResult"></span>
+            <span data-i18n-label="result"></span><br><span id="tagTestResult"></span>
           </div>
           <div class="flex-end">
             <button type="button" id="showTestTag" data-i18n="test"></button>
@@ -732,7 +732,7 @@
             <div class="switch switchSelect">
               <select id="onlineServiceAddress" class="select" save="select">
                 <option value="0" data-i18n="withinChina"></option>
-                <option value="1">cloudflare</option>
+                <option value="1">Cloudflare</option>
               </select>
             </div>
           </div>
@@ -978,11 +978,11 @@
           <div id="version"></div>
         </div>
         <div class="item">
-          <span data-i18n-outer="documentation"></span>:
+          <span data-i18n-label="documentation"></span>
           <a href="https://cat-catch.94cat.com/" target="_blank" id="docs">https://cat-catch.94cat.com/</a>
         </div>
         <div class="item">
-          Github:
+          <span data-i18n-label="sourceCode"></span>
           <a href="https://github.com/xifangczy/cat-catch" target="_blank">https://github.com/xifangczy/cat-catch</a>
         </div>
       </div>

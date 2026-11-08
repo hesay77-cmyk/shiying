@@ -104,29 +104,29 @@ function AddMedia(data, currentTab = true) {
             <div class="panel-heading">
                 <input type="checkbox" class="DownCheck"/>
                 ${G.ShowWebIco ? `<img class="favicon ${!data.favIconUrl ? "faviconFlag" : ""}" requestId="${data.requestId}" src="${data.favIconUrl}"/>` : ""}
-                <img src="img/regex.png" class="regex ${data.isRegex ? "" : "hide"}" title="${i18n.regexTitle}"/>
+                <img src="img/regex.png" class="regex ${data.isRegex ? "" : "hide"}" title="${i18n.regexTitle}" data-i18n-title="regexTitle"/>
                 <span class="group">${data.group && G.showGroup ? `[${data.group}]` : ""}</span>
                 <span class="name ${data.parsing || data.isRegex || data.tabId == -1 ? "bold" : ""}">${trimName}</span>
                 <span class="size ${data.size ? "" : "hide"}">${data.size}</span>
-                <img src="img/copy.png" class="icon copy" id="copy" title="${i18n.copy}"/>
-                <img src="img/parsing.png" class="icon parsing ${data.parsing ? "" : "hide"}" id="parsing" data-type="${data.parsing}" title="${i18n.parser}"/>
-                <img src="img/play.png" class="icon play ${data.isPlay ? "" : "hide"}" id="play" title="${i18n.preview}"/>
-                <img src="img/download.svg" class="icon download" id="download" title="${i18n.download}"/>
+                <img src="img/copy.png" class="icon copy" id="copy" title="${i18n.copy}" data-i18n-title="copy"/>
+                <img src="img/parsing.png" class="icon parsing ${data.parsing ? "" : "hide"}" id="parsing" data-type="${data.parsing}" title="${i18n.parser}" data-i18n-title="parser"/>
+                <img src="img/play.png" class="icon play ${data.isPlay ? "" : "hide"}" id="play" title="${i18n.preview}" data-i18n-title="preview"/>
+                <img src="img/download.svg" class="icon download" id="download" title="${i18n.download}" data-i18n-title="download"/>
                 <img src="img/aria2.png" class="icon aria2 ${G.enableAria2Rpc ? "" : "hide"}"" id="aria2" title="Aria2"/>
-                <img src="img/invoke.svg" class="icon invoke ${G.invoke ? "" : "hide"}"" id="invoke" title="${i18n.invoke}"/>
-                <img src="img/send.svg" class="icon send ${G.send2localManual || G.send2local ? "" : "hide"}"" id="send2local" title="${i18n.send2local}"/>
-                <img src="img/mqtt.svg" class="icon mqtt ${G.mqttEnable ? "" : "hide"}" id="mqtt" title="${i18n.send2MQTT}"/>
+                <img src="img/invoke.svg" class="icon invoke ${G.invoke ? "" : "hide"}"" id="invoke" title="${i18n.invoke}" data-i18n-title="invoke"/>
+                <img src="img/send.svg" class="icon send ${G.send2localManual || G.send2local ? "" : "hide"}"" id="send2local" title="${i18n.send2local}" data-i18n-title="send2local"/>
+                <img src="img/mqtt.svg" class="icon mqtt ${G.mqttEnable ? "" : "hide"}" id="mqtt" title="${i18n.send2MQTT}" data-i18n-title="send2MQTT"/>
             </div>
             <div class="url hide">
                 <div id="mediaInfo" data-state="false">
-                    ${data.title ? `<b>${i18n.title}:</b> ${data.title}` : ""}
-                    ${data.type ? `<br><b>MIME:</b>  ${data.type}` : ""}
+                    ${data.title ? `<b>${i18nLabel(i18n.title)}</b>${data.title}` : ""}
+                    ${data.type ? `<br><b>${i18nLabel("MIME")}</b>${data.type}` : ""}
                 </div>
                 <div class="moreButton">
-                    <div id="qrcode"><img src="img/qrcode.png" class="icon qrcode" title="${i18n.qrCode}"/></div>
-                    <div id="catDown"><img src="img/cat-down.png" class="icon cat-down" title="${i18n.downloadWithRequestHeader}"/></div>
-                    <div id="catDownFFmpeg"><img src="img/send2ffmpeg.svg" class="icon send2ffmpeg" title="${i18n.sendFfmpeg}"/></div>
-                    <div><img src="img/invoke.svg" class="icon invoke" title="${i18n.invoke}"/></div>
+                    <div id="qrcode"><img src="img/qrcode.png" class="icon qrcode" title="${i18n.qrCode}" data-i18n-title="qrCode"/></div>
+                    <div id="catDown"><img src="img/cat-down.png" class="icon cat-down" title="${i18n.downloadWithRequestHeader}" data-i18n-title="downloadWithRequestHeader"/></div>
+                    <div id="catDownFFmpeg"><img src="img/send2ffmpeg.svg" class="icon send2ffmpeg" title="${i18n.sendFfmpeg}" data-i18n-title="sendFfmpeg"/></div>
+                    <div><img src="img/invoke.svg" class="icon invoke" title="${i18n.invoke}" data-i18n-title="invoke"/></div>
                 </div>
                 <a href="${data.url}" target="_blank" download="${data.downFileName}">${data.url}</a>
                 <br>
@@ -193,8 +193,8 @@ function AddMedia(data, currentTab = true) {
             const totalBytes = fragments.reduce((sum, item) => sum + item.bytes, 0);
             const totalDuration = fragments.reduce((sum, item) => sum + item.duration, 0);
             const bps = totalBytes * 8 / totalDuration;
-            mediaInfo.append(`<br><b>${i18n.bitrate}:</b> ${formatBitrate(bps)}`);
-            totalFragments && mediaInfo.append(`<br><b>${i18n.estimateSize}:</b> ${byteToSize(totalBytes / fragments.length * totalFragments)}`);
+            mediaInfo.append(`<br><b>${i18nLabel(i18n.bitrate)}</b>${formatBitrate(bps)}`);
+            totalFragments && mediaInfo.append(`<br><b>${i18nLabel(i18n.estimateSize)}</b>${byteToSize(totalBytes / fragments.length * totalFragments)}`);
             hls.off(Hls.Events.FRAG_LOADED, onFragLoaded);
           }
         }
@@ -215,10 +215,10 @@ function AddMedia(data, currentTab = true) {
         preview.show();
         if (this.duration && this.duration != Infinity) {
           data.duration = this.duration;
-          mediaInfo.append(`<br><b>${i18n.duration}:</b> ${secToTime(this.duration)}`);
+          mediaInfo.append(`<br><b>${i18nLabel(i18n.duration)}</b>${secToTime(this.duration)}`);
         }
         if (this.videoHeight && this.videoWidth) {
-          mediaInfo.append(`<br><b>${i18n.resolution}:</b> ${this.videoWidth}x${this.videoHeight}`);
+          mediaInfo.append(`<br><b>${i18nLabel(i18n.resolution)}</b>${this.videoWidth}×${this.videoHeight}`);
           data.videoWidth = this.videoWidth;
           data.videoHeight = this.videoHeight;
         }
@@ -226,7 +226,7 @@ function AddMedia(data, currentTab = true) {
           .then(function (size) {
             if (!size || isNaN(size) || size < 1024) return;
             const bps = (size * 8) / data.duration;
-            mediaInfo.append(`<br><b>${i18n.bitrate}:</b> ${formatBitrate(bps)}`);
+            mediaInfo.append(`<br><b>${i18nLabel(i18n.bitrate)}</b>${formatBitrate(bps)}`);
           })
           .catch(function (error) {
             console.warn(error);
@@ -283,8 +283,8 @@ function AddMedia(data, currentTab = true) {
           data.html.find('.confirm').remove();
           const confirm = $(`<div class="confirm">
                         <textarea type="text" class="width100" rows="10">${m3u8dlArg}</textarea>
-                        <button class="button2" id="confirm">${i18n.confirm}</button>
-                        <button class="button2" id="close">${i18n.close}</button>
+                        <button class="button2" id="confirm" data-i18n="confirm">${i18n.confirm}</button>
+                        <button class="button2" id="close" data-i18n="close">${i18n.close}</button>
                     </div>`);
           confirm.find("#confirm").click(function () {
             const textarea = confirm.find("textarea").val();
@@ -332,8 +332,8 @@ function AddMedia(data, currentTab = true) {
       data.html.find('.confirm').remove();
       const confirm = $(`<div class="confirm">
                         <textarea type="text" class="width100" rows="10">${url}</textarea>
-                        <button class="button2" id="confirm">${i18n.confirm}</button>
-                        <button class="button2" id="close">${i18n.close}</button>
+                        <button class="button2" id="confirm" data-i18n="confirm">${i18n.confirm}</button>
+                        <button class="button2" id="close" data-i18n="close">${i18n.close}</button>
                     </div>`);
       confirm.find("#confirm").click(function () {
         const url = confirm.find("textarea").val();
@@ -479,8 +479,8 @@ function AddKey(key) {
         <div class="panel">
             <div class="panel-heading">
                 <span class="name bold">${key}</span>
-                <img src="img/copy.png" class="icon copy" id="copy" title="${i18n.copy}"/>
-                <img src="img/send.svg" class="icon send ${G.send2localManual || G.send2local ? "" : "hide"}"" id="send2local" title="${i18n.send2local}"/>
+                <img src="img/copy.png" class="icon copy" id="copy" title="${i18n.copy}" data-i18n-title="copy"/>
+                <img src="img/send.svg" class="icon send ${G.send2localManual || G.send2local ? "" : "hide"}"" id="send2local" title="${i18n.send2local}" data-i18n-title="send2local"/>
             </div>
             <div class="url hide">
                 Hex: ${base64Key}

@@ -122,7 +122,7 @@ function start() {
                                 <span class="progress-text" data-text="0%">0%</span>
                                 </div>
                             </div>
-                            <button class="cancel-btn">${i18n.stopDownload}</button>
+                            <button class="cancel-btn" data-i18n="stopDownload">${i18n.stopDownload}</button>
                             </div>
                         </div>`);
 

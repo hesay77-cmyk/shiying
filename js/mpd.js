@@ -140,18 +140,16 @@ function parseMPD(mpdContent) {
     }
 
     for (let key in mpdJson.playlists) {
-        $("#mpdVideoLists").append(`<option value='${key}'>${mpdJson.playlists[key].attributes.NAME
-            } | ${(mpdJson.playlists[key].attributes.BANDWIDTH / 1024).toFixed(1)
-            } kbps |  ${Number(mpdJson.playlists[key].attributes["FRAME-RATE"]||0).toFixed(1)
-            } fps |  ${mpdJson.playlists[key].attributes.RESOLUTION.width
-            } x ${mpdJson.playlists[key].attributes.RESOLUTION.height
-            }</option>`);
+        // 0.4.74: "v1 | 1280×720 | 781 Kbps | 25 fps" (no "0.0 fps" when the manifest has no frame rate).
+        const attrs = mpdJson.playlists[key].attributes, fps = Number(attrs["FRAME-RATE"] || 0);
+        const parts = [attrs.NAME, attrs.RESOLUTION ? attrs.RESOLUTION.width + "×" + attrs.RESOLUTION.height : "", Math.round(attrs.BANDWIDTH / 1000) + " Kbps", fps ? Number(fps.toFixed(2)) + " fps" : ""];
+        $("#mpdVideoLists").append(`<option value='${key}'>${parts.filter(Boolean).join(" | ")}</option>`);
     }
     for (let key in mpdJson.mediaGroups.AUDIO.audio) {
         for (let index in mpdJson.mediaGroups.AUDIO.audio[key].playlists) {
             let item = mpdJson.mediaGroups.AUDIO.audio[key].playlists[index];
             // console.log(item);
-            $("#mpdAudioLists").append(`<option value='${key}$-bmmmd-$${index}'>${key} | ${item.attributes.NAME} | ${item.attributes.BANDWIDTH / 1000}Kbps</option>`);
+            $("#mpdAudioLists").append(`<option value='${key}$-bmmmd-$${index}'>${key} | ${item.attributes.NAME} | ${Math.round(item.attributes.BANDWIDTH / 1000)} Kbps</option>`);
         }
     }
     $("#info").html(getInfo("video"));
@@ -173,15 +171,20 @@ function showSegment(type, index) {
         textarea += items.segments[key].resolvedUri + "\n\n";
     }
     $("#media_file").html(textarea);
-    $("#count").html(i18n("m3u8Info", [items.segments.length, secToTime(mpdJson.duration)]));
-    items.segments.length > 0 && $("#tips").html('initialization: <input type="text" value="' + items.segments[0].map.resolvedUri + '" spellcheck="false" readonly="readonly" class="width100">');
-    $("#info").html(getInfo(type));
+    // 0.4.74: rendered again when the language changes while the page is open (i18nRender in js/polyfill.js).
+    const segmentCount = items.segments.length;
+    i18nRender($("#count"), () => i18n("m3u8Info", [segmentCount, secToTime(mpdJson.duration)]));
+    if (items.segments.length > 0) {
+        $("#tips").html('<span></span><input type="text" value="' + items.segments[0].map.resolvedUri + '" spellcheck="false" readonly="readonly" class="width100">');
+        i18nRender($("#tips span").first(), () => i18nLabel(i18n.initSegment));
+    }
+    const shown = getInfo(type, true);
+    i18nRender($("#info"), () => getInfo(type, false, shown));
 }
 
-function getInfo(type = "audio") {
-    if (type == "audio") {
-        return i18n.audio + ": " + $("#mpdAudioLists").find("option:selected").text();
-    } else {
-        return i18n.video + ": " + $("#mpdVideoLists").find("option:selected").text();
-    }
+// onlyTrack: just the selected track's own text; track: that text as read earlier (a re-render keeps the same track).
+function getInfo(type = "audio", onlyTrack = false, track = null) {
+    const selected = track ?? $(type == "audio" ? "#mpdAudioLists" : "#mpdVideoLists").find("option:selected").text();
+    if (onlyTrack) { return selected; }
+    return i18nLabel(type == "audio" ? i18n.audio : i18n.video, "") + selected;
 }

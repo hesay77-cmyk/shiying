@@ -16,7 +16,7 @@
     // Chrome's file name once it has one; before that the link's last part.
     const fromUrl = url => { try { return decodeURIComponent(new URL(url).pathname.split('/').pop() || ''); } catch { return ''; } };
     const fileName = (item, fallback) => String(item?.filename || '').split(/[\\/]/).pop() || fallback || fromUrl(item?.finalUrl || item?.url) || pick('这个文件', 'this file');
-    const releaseUrl = () => typeof ShiyingNative !== 'undefined' ? ShiyingNative.DESKTOP_RELEASE_URL : 'https://hidaydream.cloud/?from=ext#editions';
+    const releaseUrl = () => typeof ShiyingNative !== 'undefined' ? ShiyingNative.DESKTOP_RELEASE_URL : 'https://hidaydream.cloud/desktop/?from=ext';
     const install = () => chrome.tabs.create({url: releaseUrl()});
     let desk = 'unpermitted', busy = false, justMissing = false, shownCard = '', shownList = '';
     function button(label, className, handler, aria) {
