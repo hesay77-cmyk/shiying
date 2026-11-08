@@ -37,24 +37,24 @@ const server=http.createServer((request,response)=>{const url=new URL(request.ur
  const tabOf=async page=>worker.evaluate(async u=>(await chrome.tabs.query({})).find(t=>t.url===u).id,page.url());
  const panelFor=async page=>{const panel=await context.newPage();await panel.setViewportSize({width:380,height:640});await panel.goto(`chrome-extension://${id}/shiying.html?tabId=${await tabOf(page)}`);await panel.waitForTimeout(1500);return panel;};
  const listed=(panel,re)=>panel.evaluate(src=>document.body.innerText.match(new RegExp(src))!==null,re);
- const toggle=panel=>panel.getByRole('button',{name:/页面播放器探测/});
+ const toggle=panel=>panel.getByRole('button',{name:/找出网页里藏起来的视频/});
  const enable=async(site,panel)=>{const reload=site.waitForEvent('load',{timeout:15000});await toggle(panel).click();await reload;await site.waitForTimeout(1500);};
  // 1–2. A playlist fetched from an address with no extension and the wrong type.
  const site=await context.newPage();await site.goto(origin+'/hidden.html');await site.waitForFunction(()=>window.got>0);
  let panel=await panelFor(site);check(!(await listed(panel,'api/play')),'without the probe, a playlist behind /api/play (text/plain) is not found');
- check(await toggle(panel).isVisible(),'the panel offers 页面播放器探测 on an allowed site');
+ check(await toggle(panel).isVisible(),'the panel offers 找出网页里藏起来的视频 (页面播放器探测) on an allowed site');
  await enable(site,panel);await panel.close();panel=await panelFor(site);
  check(await listed(panel,'(api/play|m3u8|网页|play)')&&(await panel.evaluate(t=>chrome.runtime.sendMessage({Message:'getData',tabId:t}),await tabOf(site))||[]).some(i=>/api\/play/.test(i.url)&&/m3u8/.test(i.ext)),'with the probe on (the page reloaded), the hidden playlist is listed as m3u8');
- check(/已开启/.test(await panel.evaluate(()=>document.body.innerText)),'the panel says the probe is on');await panel.screenshot({path:path.join(report,'probe-on.png'),fullPage:true});
+ check(/正在找网页里藏起来的视频/.test(await panel.evaluate(()=>document.body.innerText)),'the panel says it is looking for hidden videos (the probe is on)');await panel.screenshot({path:path.join(report,'probe-on.png'),fullPage:true});
  // 3. An address inside JSON.
  await site.goto(origin+'/json.html');await site.waitForFunction(()=>window.got);await site.waitForTimeout(1200);
  const data=await worker.evaluate(async u=>{const t=(await chrome.tabs.query({})).find(x=>x.url===u);return t?t.id:0;},site.url());
  const items=await panel.evaluate(t=>chrome.runtime.sendMessage({Message:'getData',tabId:t}),data);check((items||[]).some(i=>/\/v\/index\.m3u8\?t=1/.test(i.url)),'a playlist address inside a JSON answer is listed (same site, probe still on)');
  // 4–5. MediaSource recording, save, clear.
  await site.goto(origin+'/mse.html');await site.waitForFunction(()=>window.done===true,null,{timeout:30000});await site.waitForTimeout(1500);
- await panel.close();panel=await panelFor(site);const card=panel.locator('text=网页播放器缓存');await card.waitFor({timeout:10000});
+ await panel.close();panel=await panelFor(site);const card=panel.locator('text=从网页播放器录下的内容');await card.waitFor({timeout:10000});
  const sizes=await site.evaluate(()=>({video:window.appended.video.length,audio:window.appended.audio.length}));
- check(true,'a 网页播放器缓存 card appears for the MediaSource player');await panel.screenshot({path:path.join(report,'cache-card.png'),fullPage:true});
+ check(true,'a 从网页播放器录下的内容 card appears for the MediaSource player');await panel.screenshot({path:path.join(report,'cache-card.png'),fullPage:true});
  const saved=[];site.on('download',d=>saved.push(d));
  await panel.getByRole('button',{name:/^保存$/}).click();for(let i=0;i<50&&saved.length<2;i++)await site.waitForTimeout(200);
  check(saved.length===2,'保存 gives two files (picture and sound)');

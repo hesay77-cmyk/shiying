@@ -29,14 +29,15 @@ const RuxgetProbePanel = (() => {
         button.type = 'button'; button.className = 'hint-link'; button.disabled = busy;
         if (info.on) {
             const text = document.createElement('span');
-            text.textContent = pick('页面播放器探测已开启', 'Page player probe is on');
-            text.title = pick('正在网页中查找藏起来的播放列表，并记录播放器缓存', 'Looking for hidden playlists on the page and recording what its player plays');
+            // 0.4.81: plain words for everyone (it was 页面播放器探测 / Page player probe).
+            text.textContent = pick('正在找网页里藏起来的视频', 'Looking for hidden videos');
+            text.title = pick('请播放视频，找到的会显示在列表里', 'Play the video; anything found shows up in the list');
             button.textContent = pick('关闭', 'Turn off');
             button.title = pick('关闭后网页会刷新一次，恢复原样', 'The page reloads once and is back to normal');
             entry.replaceChildren(text, ' · ', button);
         } else {
-            button.textContent = pick('页面播放器探测', 'Page player probe');
-            button.title = pick('只对这个标签页开启：网页会刷新一次，Ruxget 在网页里观察播放器，找出藏起来的播放列表并记录播放器缓存', 'For this tab only: the page reloads once, then Ruxget watches its player for hidden playlists and records what it plays');
+            button.textContent = pick('找出网页里藏起来的视频', 'Find videos hidden in the page');
+            button.title = pick('有些网站的视频在列表里找不到，打开后会刷新网页再找一次（只对这个标签页）', 'Some sites’ videos don’t show up in the list. This reloads the page and looks again (this tab only).');
             entry.replaceChildren(button);
         }
         button.addEventListener('click', () => toggle(!info.on));
@@ -46,9 +47,9 @@ const RuxgetProbePanel = (() => {
         busy = true; paint();
         try {
             const reply = await send('ruxgetProbeSet', {on});
-            if (!reply || reply.ok === false) throw new Error(reply?.error || pick('页面播放器探测未能切换，请重试', 'The probe could not be switched; try again'));
+            if (!reply || reply.ok === false) throw new Error(reply?.error || pick('没能切换，请重试', 'Couldn’t switch it. Try again.'));
             info = {on: reply.on === true, tracks: []};
-            say(on ? pick('已开启页面播放器探测，网页已刷新；请播放视频', 'Probe on; the page reloaded. Play the video') : pick('已关闭页面播放器探测，网页已刷新', 'Probe off; the page reloaded'));
+            say(on ? pick('网页已刷新，请播放视频，Ruxget 会再找一次', 'The page reloaded. Play the video and Ruxget will look again.') : pick('已停止查找，网页已刷新', 'Stopped looking; the page reloaded.'));
         } catch (error) { say(error.message || String(error)); }
         finally { busy = false; paint(); }
     }
@@ -79,10 +80,10 @@ const RuxgetProbePanel = (() => {
         const card = document.createElement('article'), row = document.createElement('div'), icon = document.createElement('div'), body = document.createElement('div'), title = document.createElement('h3'), lines = document.createElement('div');
         card.className = 'media-item probe-card'; row.className = 'media-row'; icon.className = 'file-icon'; body.className = 'media-info'; lines.className = 'probe-tracks';
         icon.setAttribute('aria-hidden', 'true'); icon.textContent = '▷';
-        title.textContent = pick('网页播放器缓存', 'Page player data');
+        title.textContent = pick('从网页播放器录下的内容', 'Recorded from the page’s player');
         for (const track of tracks) {
             const {audio, label} = describe(track.type), line = document.createElement('span');
-            line.textContent = [audio ? pick('声音', 'Sound') : pick('画面', 'Picture'), label, pick('已记录 ', 'Recorded ') + size(track.size)].join(' · ') + (track.full ? pick('（记录已达上限）', ' (recording limit reached)') : '');
+            line.textContent = [audio ? pick('声音', 'Audio') : pick('画面', 'Video'), label, pick('已记录 ', 'Recorded ') + size(track.size)].join(' · ') + (track.full ? pick('（记录已达上限）', ' (recording limit reached)') : '');
             lines.append(line);
         }
         body.append(title, lines);
@@ -107,7 +108,7 @@ const RuxgetProbePanel = (() => {
         if (busy) return;
         busy = true; paint();
         try {
-            const reply = await send(name, {labels: {video: pick('画面', 'Picture'), audio: pick('声音', 'Sound')}});
+            const reply = await send(name, {labels: {video: pick('画面', 'Video'), audio: pick('声音', 'Audio')}});
             if (!reply || reply.ok === false) throw new Error(reply?.error || pick('网页没有回应，请刷新网页后重试', 'The page did not answer; reload it and try again'));
             if (name === 'ruxgetProbeClear') info = {...info, tracks: (info.tracks || []).map(t => ({...t, size: 0, full: false}))};
             say(name === 'ruxgetProbeSave' ? pick('已开始保存，文件会出现在 Chrome 下载列表中', 'Saving; the files will appear in Chrome’s downloads') : pick('已清空记录，从现在起重新记录', 'Recording cleared; recording starts again from now'));
