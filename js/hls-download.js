@@ -1727,7 +1727,9 @@ function saveBlob(current, blob, filename) {
       }
     };
     chrome.downloads.onChanged.addListener(listener);
-    chrome.downloads.download({ url, filename, saveAs: !!saveAsSetting, conflictAction: 'uniquify' }).then(newId => {
+    // Saved in the Ruxget folder inside Chrome's download folder, unless the user picks the place (spec v4).
+    const target = saveAsSetting ? filename : 'Ruxget/' + filename;
+    chrome.downloads.download({ url, filename: target, saveAs: !!saveAsSetting, conflictAction: 'uniquify' }).then(newId => {
       id = newId;
       current.downloadId = newId;
       if (current.stopped && !current.live) chrome.downloads.cancel(newId).catch(() => {});
