@@ -1,4 +1,4 @@
-// Ruxget 纯浏览器流程：原站读取，插件内合并/转换，Chrome 保存。GPL-3.0。
+// Ruxget 纯浏览器流程：原站读取，插件内合并/转换，Chrome 保存。
 importScripts('/js/shiying-core.js','/js/shiying-platform.js','/js/shiying-shortvideo.js');
 const NATIVE_JOB_PREFIX='shiyingJob:',NATIVE_CATALOG_PREFIX='shiyingCatalog:';
 let engineCreation;

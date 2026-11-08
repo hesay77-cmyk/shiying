@@ -1,4 +1,4 @@
-// Pinned, hash-checked first-use components. No remote manifests or self-update. GPL-3.0.
+// Pinned, hash-checked first-use components. No remote manifests or self-update.
 using System;
 using System.Collections.Generic;
 using System.IO;

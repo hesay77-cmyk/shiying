@@ -1,4 +1,4 @@
-// Ruxget 桌面界面。标准 WinForms 控件保留键盘、缩放和辅助功能支持。GPL-3.0-or-later。
+// Ruxget 桌面界面。标准 WinForms 控件保留键盘、缩放和辅助功能支持。
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;

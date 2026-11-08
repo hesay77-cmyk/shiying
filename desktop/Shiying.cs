@@ -1,4 +1,4 @@
-// Ruxget 桌面版。GPL-3.0-or-later。仅使用 .NET Framework 和独立下载组件。
+// Ruxget 桌面版。仅使用 .NET Framework 和独立下载组件。
 using System;
 using System.Collections;
 using System.Collections.Generic;

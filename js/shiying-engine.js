@@ -1,4 +1,4 @@
-// 一个浏览器隐藏页完成下载、合并、MP3 和检查；无外部程序。GPL-3.0。
+// 一个浏览器隐藏页完成下载、合并、MP3 和检查；无外部程序。
 import {createFile,DataStream,Log} from '../lib/mp4box/mp4box.all.mjs';
 Log.setLogLevel(Log.error);
 // Media is fetched with cache:'no-store': a cancelled or deleted download must not leave pieces in Chrome's HTTP cache

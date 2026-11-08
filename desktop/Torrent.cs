@@ -1,4 +1,4 @@
-// BitTorrent metadata validation and an on-demand, separate aria2 session. GPL-3.0.
+// BitTorrent metadata validation and an on-demand, separate aria2 session.
 using System;
 using System.Collections;
 using System.Collections.Generic;

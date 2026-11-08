@@ -1,4 +1,4 @@
-// Built-in netdisk handoff. GPL-3.0-or-later; browser adapters retain their AGPL notice.
+// Built-in netdisk handoff.
 using System;
 using System.Collections;
 using System.Collections.Generic;

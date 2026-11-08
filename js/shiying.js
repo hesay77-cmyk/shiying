@@ -1,4 +1,4 @@
-// Ruxget，2026-10-12：无框架的中文主界面。GPL-3.0。
+// Ruxget，2026-10-12：无框架的中文主界面。
 const $ = selector => document.querySelector(selector);
 const packageVersion=chrome.runtime.getManifest?.().version;
 if($('#extensionVersion')&&packageVersion)$('#extensionVersion').textContent='Ruxget · '+packageVersion;

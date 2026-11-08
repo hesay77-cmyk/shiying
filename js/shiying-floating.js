@@ -1,4 +1,4 @@
-// Quiet contextual video entry; actual catalogs and job snapshots only. GPL-3.0.
+// Quiet contextual video entry; actual catalogs and job snapshots only.
 (() => {
  if(window.top!==window)return;
  try{if(!chrome.runtime?.id)return;}catch{return;}

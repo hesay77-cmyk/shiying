@@ -1,4 +1,4 @@
-﻿// Per-user installation and explicit browser pairing. No profile scanning. GPL-3.0.
+﻿// Per-user installation and explicit browser pairing. No profile scanning.
 using System;
 using System.Collections;
 using System.Collections.Generic;

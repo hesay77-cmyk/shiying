@@ -1,4 +1,4 @@
-// GPL-3.0. Concrete optional origins can be added or removed by the user.
+// Concrete optional origins can be added or removed by the user.
 const siteForm=document.querySelector('#sitePermissionForm'),siteStatus=document.querySelector('#sitePermissionStatus');
 // 0.4.74: these texts follow a language switch while the page is open (RuxgetI18n.live in js/shiying-locale.js).
 const siteSay=(element,zh,en)=>window.RuxgetI18n?.live?RuxgetI18n.live(element,()=>RuxgetI18n.pick(zh,en)):(element.textContent=zh);

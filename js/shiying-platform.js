@@ -1,4 +1,4 @@
-// Ruxget 平台入口，GPL-3.0。只处理实际可访问的视频格式。
+// Ruxget 平台入口。只处理实际可访问的视频格式。
 const ShiyingPlatform = {
     // Extension points for optional site modules: extra link resolvers, page readers and media hosts per site.
     resolvers: [],

@@ -1,51 +1,23 @@
-# Ruxget · 开源组件与修改说明
+# Ruxget · 版权与随附组件
 
-0.4.28 本地复查（2026-10-18）：修复网盘返回部分或重复文件时可能静默漏掉所选文件的问题；缺少百度授权时直接指向插件内的明确授权入口，不在下载点击时隐式请求 OAuth；登录网页或无效 JSON 改为中文重试提示。保留原始 LinkSwift 1.1.3 和 AGPL 许可，修改仍通过同一模板与构建脚本生成。新增多文件、登录失效、处理中关闭、动态工具栏和大批量分段转交的隔离检查，未将模拟数据测试表述为真实网盘账号验收。
+Ruxget（Chrome 插件与 Windows 桌面版）由曦编写，版权所有，保留所有权利，详见 [LICENSE](LICENSE)。
 
-本轮真实公开页面检查还补齐 123 的 `*.share.123pan.cn` 分享域名、CSS 模块表格和正常网页 Web v2 下载流程，保留配额与付费限制，不发起付款；允许源站实际返回的两个精确 123295 CDN 域名及 pd1.cjjd19.com 区域线路。动态脚本注册在升级时更新新分享页面匹配规则。公开字体完成下载、跨进程续传与来源 MD5 校验；真实登录账号的验收另行记录。
+## 随附的开源组件
 
-Ruxget（原名拾影）是 CatCatch 的独立开源改版，非猫抓官方产品。免费提供完整源码，沿用 GPL-3.0。
+以下组件随插件一起提供，各自保留原作者的版权和许可，不受 Ruxget 版权声明约束：
 
-上游： https://github.com/xifangczy/cat-catch
-基线： 876fdce8e5dfaa267d849a8348cbf8fa4dd56776 / CatCatch 2.7.2。
-改动日期：2026-10-12。
+| 组件 | 版本 | 许可 | 用途 |
+|---|---|---|---|
+| hls.js | 1.6.16 | Apache-2.0 | 播放与读取 HLS（m3u8） |
+| mux.js | 7.1.0 | Apache-2.0 | 把 TS 分段转成 MP4 |
+| mpd-parser | 1.4.0 | Apache-2.0 | 读取 DASH（mpd）清单 |
+| mp4box.js | 2.4.1 | BSD-3-Clause | 合成 MP4 |
+| lamejs | 1.2.1 | LGPL-3.0 | 编码 MP3（未修改，作为独立文件提供） |
 
-新建中文主界面、清晰度读取与后台下载入口；统一工具页排版；默认使用本地 MP4 合并；安装包只包含简体中文；修正下载器在来源请求头设置完成前就启动的时序问题。保留上游 LICENSE、原作者与第三方库声明。完整许可见 LICENSE；第三方组件见 lib/third-party-libraries.md。
+来源地址、版本与校验值见 `lib/third-party-libraries.md` 和 `third-party-source/SOURCES.json`，许可全文在 `lib/` 与 `lib/LICENSES/`。原始源码包保存在 `third-party-source/`。
 
-本软件不提供担保。允许按照 GPL-3.0 使用、修改和再分发。对外发布修改版时，应保留许可、作者信息，并向接收者提供相应源码。
+桌面版在用户首次需要时另行下载的独立工具（如 aria2），按各自的许可单独提供，不随 Ruxget 一起分发。
 
-0.2.0：新增视频平台专用读取、真实源清晰度选择、完整有声 MP4 下载卡片和独立任务页；B站从当前页面正常 API 取得 DASH 轨道，按来源头与完整 Range 下载，登录 Cookie 按原站正常请求规则使用，不上传给 Ruxget 开发者；其他平台通过未修改的官方 yt-dlp 提取；本机 FFmpeg 合并并验证分辨率、时长、音轨和全片解码；新增只接受 Ruxget 扩展来源的本机助手。没有接入 Loader.to 私有 API，没有复制其网页脚本或广告代码。参考其“提交网址和格式 → 任务进度 → 成品下载”的公开交互，后端工具选择属于 Ruxget 实现，非对其私有算法的声明。
+## 历史版本
 
-历史本机助手的第三方组件、精确版本、来源和许可随旧包保存，开发工作区可查 helper/开源组件说明.md、helper/licenses。当前 0.3.1 不使用助手。扩展中 GPL-3.0 第三方说明保持原样。测试浏览器资料与媒体不属于发行源码。
-
-0.3.0：改为纯 Chrome 扩展。平台媒体通过正常原站接口读取，在扩展隐藏页内下载、检查、合并 MP4 或编码 MP3，再由 Chrome 保存。不连接本机助手，不调用 Node/yt-dlp/FFmpeg，也不加载远端执行代码。新增随包提供的 MP4Box.js 2.4.1（BSD-3-Clause）与未修改的 lamejs 1.2.1（LGPL）；原始组件包、许可和源码来源随源码 ZIP 提供。历史助手实现与旧包保留在开发工作区，不作为新版运行依赖。部分平台的公开播放器请求参数参考 yt-dlp 2026.08.19 的客户端资料，未复制其 Python 实现。
-
-0.3.1：改为固定白底的简洁界面，使用标准无衬线字体，移除平台页面的重复标题与装饰卡片，保留自动读取、清晰度选择与视频/MP3 独立下载入口；同步简化进度页与说明页。下载引擎与原站媒体读取保持不变。
-
-
-公开发行整理：移除 CatCatch 原插件公钥，将项目主页改为 Ruxget 独立仓库；补齐隐私说明、商店填写资料与第三方来源。默认下载代码保持 0.3.1 已验收版本原样。
-
-0.3.2：移除默认所有网站主机权限和全站自动内容脚本。视频平台使用固定站点权限，其他网站和媒体来源经用户操作按具体网站授权，提供撤销入口和缓存访问边界。网络规则改用 declarativeNetRequestWithHostAccess，媒体解析、合并与 MP3 编码保持不变。
-
-0.4.27 本地预览（2026-10-18）：新增按站点开启的内置网盘下载入口，网盘选择/API 适配基于 LinkSwift 1.1.3（Hmjz100、油小猴，AGPL-3.0-or-later，https://github.com/hmjz100/LinkSwift）。保留该组件的 AGPL 许可；原有 GPL 组件保留原许可。原始脚本位于 third-party-source/LinkSwift-1.1.3.user.js，修改模板和可复现提取脚本位于 scripts/netdisk-page.template.js、scripts/build-netdisk.py，输出为 js/shiying-netdisk-adapters.js。改动包括移除脚本管理器依赖、原版 UI 与自动授权，改用本地扩展消息桥、站点权限检查和桌面静默入队；完整修改源码随本地源码 ZIP 提供。许可全文见 lib/LICENSES/LinkSwift-AGPL-3.0.txt。
-
-网盘签名使用未修改的 js-md5 0.7.3（Chen, Yi-Cyuan，MIT），文件 lib/md5.min.js，许可 lib/LICENSES/js-md5-MIT.txt。上游地址、版本、字节数和 SHA-256 见 third-party-source/netdisk-sources.json。内置下载不需要安装篡改猴，也不运行远端脚本。
-
-0.4.49：Chrome 商店版只保留 B站专用读取，新增 B站字幕、MP3 歌名/作者/封面标签、浮钮一键下载和最近下载列表；网页媒体、网盘、BT 及更多视频网站可交给配套桌面版。GitHub 完整版另含一个可选的视频平台模块，不随商店版发布。
-
-0.4.50：新增抖音、快手、小红书视频读取：点击插件时读取当前网页播放器已加载的视频信息（activeTab），下载画面与声音已合在一起的 MP4，或转为 MP3；抖音、小红书首次下载时按需申请其视频服务器的可选权限以带上来源页。桌面版可接收这三家的单文件视频并提取 MP3。数据结构对照参考了 yt-dlp 的公开适配代码，未复制其实现。
-
-0.4.51：新增可选的「用 Ruxget 接管 Chrome 下载」，默认关闭。打开后，新开始的普通下载先暂停，交给本机桌面版；桌面版确认能直接下载才取消 Chrome 的这份，否则恢复由 Chrome 下载。只转交链接、来源页、浏览器标识、文件名和大小，不转交 Cookie。
-
-0.4.52：插件 ⋯ 菜单新增「打开 Ruxget 桌面版」（请求本机桌面版显示窗口，不传送其他数据）和「接管 Chrome 下载…」快捷入口；未安装桌面版时，下载链接改为 Ruxget 网站的下载页 https://hidaydream.com/tools/ruxget/。接管下载取消 Chrome 副本后等待取消完成再清除记录。插件下载卡片、进度页和「最近下载」新增删除：确认后可删除已保存文件（chrome.downloads.removeFile）或只移除记录，进行中的下载会先停止；桌面版每个任务行都显示「删除任务」，下载中的任务会先暂停（最多等待 15 秒）再删除。桌面版保存位置默认跟随 Chrome 的下载文件夹（由插件在交接时告知，仅本机传递），用户在桌面版自选后不再跟随；升级前已自选文件夹的用户保持不变。插件下载视频时不再让 Chrome 缓存媒体数据（cache: no-store），取消或删除后重新下载会从头开始，也不会占用浏览器缓存空间。
-
-0.4.53：插件名称和简介按浏览器语言显示。下载卡片新增一行页面内提示（不弹窗、无需关闭）：下载失败或视频较长时建议改用桌面版；累计完成 5 次下载后显示一次评分链接，最多出现 5 次，点过后不再出现，计数只保存在本机。插件里“下载安装桌面版”和桌面版设置页的链接改为 https://hidaydream.cloud/ 并带 from=ext / from=wizard 来源标记，仅用于官网的汇总访问统计。
-
-## 其他第三方资源与随附程序（0.4.74 补充）
-
-- **Geist 字体**（css/fonts/geist.woff2）：Vercel 与 The Geist Project Authors，SIL Open Font License 1.1，许可全文见 css/fonts/OFL.txt。
-- **图标**：img/ 下部分 SVG 图标的图形路径取自 Google Material Symbols（https://github.com/google/material-design-icons），Apache License 2.0。
-- **lib/m3u8-decrypt.js**：源自 hls.js 的 aes-decryptor（Apache License 2.0），已修改，文件头有说明；许可见 lib/LICENSES。
-- **Windows 桌面版随附程序**：aria2 1.37.0（GPL-2.0-or-later，附 OpenSSL 例外）随安装包分发，许可文本随程序安装在 licenses 文件夹。对应源码可从 https://github.com/aria2/aria2/releases/tag/release-1.37.0 获取；自本版本起三年内，任何人都可以通过 https://github.com/hesay77-cmyk/shiying/issues 向我们索取与所分发程序对应的完整源码，我们免费提供。FFmpeg、yt-dlp、Node.js 不随安装包分发，由桌面版首次使用时从各自官方地址下载，各自的许可文本同样保存在 licenses 文件夹。
-
-0.4.81：网盘下载的页面适配改为 Ruxget 自写（夸克/UC、阿里云盘、百度网盘、迅雷云盘、123 云盘），不再包含 LinkSwift 代码和 js-md5；天翼云盘、中国移动云盘不再支持。
+0.4.80 及以前已发布的版本，按各自发布时声明的许可提供。0.4.81 起，Ruxget 的全部代码均为自行编写，并适用上面的版权声明。

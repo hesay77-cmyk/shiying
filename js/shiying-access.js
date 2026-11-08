@@ -1,4 +1,4 @@
-// GPL-3.0. Required platform access plus per-site optional access.
+// Required platform access plus per-site optional access.
 const ShiyingAccess = (() => {
     const required = chrome.runtime.getManifest().host_permissions || [];
     let granted = required.slice();
