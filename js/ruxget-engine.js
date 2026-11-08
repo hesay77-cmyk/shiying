@@ -176,9 +176,42 @@ const RuxgetEngine = (() => {
         const text = tasks && tasks.badgeText;
         return text ? String(text) : '';
     }
+    // Spec 05 v2 R1: the badge counts only items that can be downloaded on their own.
+    const PIECE_EXT = new Set(['m4v', 'm4a', 'mp4', 'aac', 'cmfv', 'cmfa']);
+    const PLAYLIST_EXT = new Set(['m3u8', 'm3u', 'mpd']);
+    const HLS_TYPE = /^application\/(vnd\.apple\.mpegurl|x-mpegurl|mpegurl|octet-stream-m3u8)$/;
+    const DASH_TYPE = /^application\/dash\+xml$/;
+    const PIECE_NAME = /(?:[-_.]\d+|(?:init|seg|segment|chunk)[-_]?\d*)$/i;
+    function folderOf(url) {
+        try { const u = new URL(url); return u.origin + u.pathname.slice(0, u.pathname.lastIndexOf('/') + 1); } catch { return ''; }
+    }
+    function badgeCount(list) {
+        if (!Array.isArray(list) || !list.length) return 0;
+        const info = list.map(item => {
+            const ext = String(item.ext || '').toLowerCase();
+            const type = String(item.type || '').split(';')[0].trim().toLowerCase();
+            const hls = ext === 'm3u8' || ext === 'm3u' || HLS_TYPE.test(type);
+            return {item, ext, folder: folderOf(item.url), hls, playlist: hls || PLAYLIST_EXT.has(ext) || DASH_TYPE.test(type)};
+        });
+        const playlistFolders = info.filter(i => i.playlist && i.folder);
+        const hlsFolders = info.filter(i => i.hls && i.ext === 'm3u8' && i.folder);
+        const below = (folder, base) => folder.length > base.length && folder.startsWith(base);
+        let count = 0;
+        for (const i of info) {
+            if (i.ext === 'm4s' || i.ext === 'ts') continue;
+            if (PIECE_EXT.has(i.ext) && i.folder) {
+                if (playlistFolders.some(p => below(i.folder, p.folder))) continue;
+                const base = String(i.item.name || '').replace(/\.[^.]*$/, '');
+                if (PIECE_NAME.test(base) && playlistFolders.some(p => p.folder === i.folder)) continue;
+            }
+            if (i.ext === 'm3u8' && i.folder && hlsFolders.some(p => p !== i && below(i.folder, p.folder))) continue;
+            count++;
+        }
+        return count;
+    }
     function updateBadge(tabId) {
         if (typeof tabId !== 'number' || tabId < 0) return;
-        const count = (media[tabId] || []).length;
+        const count = badgeCount(media[tabId]);
         const text = desktopText() || (count ? String(count) : '');
         chrome.action.setBadgeText({tabId, text}).catch(() => {});
     }
