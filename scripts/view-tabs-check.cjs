@@ -41,19 +41,20 @@ const checks=[];function check(name){checks.push(name);console.log('PASS '+name)
   assert.equal(await view(popup),'downloads');assert.equal(await popup.locator('#pageView').isVisible(),false);assert.equal(await popup.locator('#recentEmpty').isVisible(),true);
   assert.equal(await popup.locator('#openDownloadFolder').isVisible(),true);
   check('a page with nothing to download opens on 已下载 (empty: it says so; the downloads folder is one click away)');
-  // 0.4.72: only this browser session, like Chrome's own bubble. A video saved before Chrome started is not listed;
-  // one saved now is. 「全部下载记录」 opens Chrome's own download page.
+  // 0.4.72: only this browser session, like Chrome's own bubble, for Chrome's own downloads and desktop tasks.
+  // 0.4.81: what Ruxget itself saved stays listed after a restart (as the download card does), so yesterday's video
+  // is listed too. 「全部下载记录」 opens Chrome's own download page.
   {await worker.evaluate(()=>chrome.storage.session.set({ruxgetSessionStart:Date.now()-60000}));const now=Date.now();
    await worker.evaluate(now=>chrome.storage.session.set({ruxgetDesktopStatus:{at:now,running:true,active:0,jobs:[{id:'d1d1d1d1d1d1d1d1',title:'yesterday-handed.iso',file:'yesterday-handed.iso',state:'done',progress:100,at:now-86400000}]}}),now);
    await worker.evaluate(now=>chrome.storage.local.set({shiyingJobIds:['old','new'],'shiyingJob:old':{id:'old',title:'昨天的视频',format:'mp4',height:720,status:'complete',progress:100,stage:'下载完成',createdAt:new Date(now-86400000).toISOString()},'shiyingJob:new':{id:'new',title:'刚才的视频',format:'mp4',height:720,status:'complete',progress:100,stage:'下载完成',createdAt:new Date(now).toISOString()}}),now);
    const p=await open(tabs.blank);await p.locator('#tabDownloads').click();await p.waitForTimeout(400);
-   const text=await p.locator('#recentList').innerText();assert(text.includes('刚才的视频')&&!text.includes('昨天的视频'),'only this session: '+text);
+   const text=await p.locator('#recentList').innerText();assert(text.includes('刚才的视频')&&text.includes('昨天的视频')&&text.indexOf('刚才的视频')<text.indexOf('昨天的视频'),'Ruxget’s own videos, newest first, also from before Chrome started: '+text);
    assert(text.includes('yesterday-handed.iso'),'a desktop task handed over before Chrome started but finished now is listed: '+text);
    const before=browser.pages().length;await p.locator('#openDownloadHistory').click();await p.waitForTimeout(800);
    assert(browser.pages().some(page=>page.url().startsWith('chrome://downloads')),'「全部下载记录」 opens chrome://downloads');assert(browser.pages().length>before);
    for(const page of browser.pages())if(page.url().startsWith('chrome://downloads'))await page.close();await p.close();
    await worker.evaluate(()=>chrome.storage.local.remove(['shiyingJobIds','shiyingJob:old','shiyingJob:new']));
-   check('已下载 lists only this browser session; 「全部下载记录」 opens Chrome’s own download page');}
+   check('已下载 keeps Ruxget’s own videos from before Chrome started (0.4.81); 「全部下载记录」 opens Chrome’s own download page');}
   await popup.waitForTimeout(1600);await worker.evaluate(({tabId,origin})=>new Promise(r=>chrome.runtime.sendMessage({Message:'popupAddData',data:{tabId,url:origin+'/late.mp4',name:'late.mp4',ext:'mp4',type:'video/mp4',size:1048576,title:'Plain page',webUrl:origin+'/',requestId:'r0'}},()=>r())),{tabId:tabs.blank,origin}).catch(()=>{});
   await popup.waitForFunction(()=>!document.querySelector('#tabPage .tab-count').hidden,null,{timeout:8000});
   assert.equal(await view(popup),'downloads');assert.equal(await popup.locator('#tabPage .tab-count').innerText(),'1');
@@ -92,7 +93,7 @@ const checks=[];function check(name){checks.push(name);console.log('PASS '+name)
   popup=await open();await popup.locator('#tabDownloads').click();await popup.waitForTimeout(500);
   // (Playwright names accepted downloads by a GUID, so rows are found by their Chrome download id.)
   const rowIds=await popup.locator('#recentList li').evaluateAll(items=>items.map(item=>item.dataset.id));
-  assert.match(await popup.locator(`#recentList li[data-id="chrome-${plain}"]`).innerText(),/Chrome · 4 KB · 下载完成 · 双击打开/);
+  assert.match(await popup.locator(`#recentList li[data-id="chrome-${plain}"]`).innerText(),/Ruxget · 4 KB · 下载完成 · 双击打开/); // 0.4.81: started by the extension, so labelled Ruxget (file-gone-check covers “Chrome”)
   assert(!rowIds.includes('chrome-'+siteFile)&&rowIds.includes('s1'),'the site video is listed once, as its own row: '+JSON.stringify(rowIds));
   assert(!rowIds.includes('chrome-'+moved),'a cancelled (taken-over) download is not listed');
   assert.equal(await popup.locator(`#recentList li[data-id="chrome-${plain}"] .recent-show`).getAttribute('title'),'在文件夹中显示');

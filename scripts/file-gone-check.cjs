@@ -107,7 +107,7 @@ const GONE='文件已被移动或删除',LIMIT=16000;
   await list.waitForFunction(([s,g])=>(document.querySelector(s)?.textContent||'').includes(g),[`#recentList li[data-id="chrome-${own.downloadId}"]`,GONE],{timeout:3000});
   assert.match(await row(list,'chrome-'+own.downloadId).innerText(),/Ruxget · /);
   check('③ after a restart: 已下载 keeps Ruxget’s entries and marks them “'+GONE+'”');
-  await row(list,'one').locator('.recent-delete').click();assert.match(await row(list,'one').innerText(),/文件已不在，从列表移除？/);
+  await row(list,'one').locator('.recent-delete').click();await row(list,'one').getByText('文件已不在，从列表移除？').waitFor({timeout:3000});
   await row(list,'one').getByRole('button',{name:'移除'}).click();await row(list,'one').waitFor({state:'detached'});
   check('③ after a restart: a gone entry can be removed');
   await card.close();await list.close();await site2.close();

@@ -22,8 +22,9 @@
     const GONE_SAY = () => pick('文件已不在原来的位置，可能被移动或删除了', 'The file is no longer where it was saved');
     const KEY = 'ruxgetGoneFiles', AGAIN = 11500;
     let known = {};
-    const ready = chrome.storage.local.get(KEY).then(data => { known = Object.assign({}, data[KEY] || {}, known); }).catch(() => {});
-    chrome.storage.onChanged.addListener((changes, area) => { if (area === 'local' && changes[KEY]) known = Object.assign({}, changes[KEY].newValue || {}); });
+    // (Guarded: page previews in the layout checks have no chrome.storage.)
+    const ready = Promise.resolve().then(() => chrome.storage.local.get(KEY)).then(data => { known = Object.assign({}, data?.[KEY] || {}, known); }).catch(() => {});
+    try { chrome.storage.onChanged.addListener((changes, area) => { if (area === 'local' && changes[KEY]) known = Object.assign({}, changes[KEY].newValue || {}); }); } catch { /* no storage events */ }
     const has = id => Object.prototype.hasOwnProperty.call(known, id);
     // Remembered as missing: the same download (same id and start time; a cleared history can hand out an id again).
     const knownGone = item => !!item && has(item.id) && (!known[item.id] || !item.startTime || known[item.id] === item.startTime);
@@ -32,10 +33,12 @@
     async function remember(item) {
         if (!item || knownGone(item)) return;
         known[item.id] = item.startTime || '';
-        const {[KEY]: saved = {}} = await chrome.storage.local.get(KEY).catch(() => ({}));
-        const next = Object.assign({}, saved, {[item.id]: item.startTime || ''}), ids = Object.keys(next);
-        for (const old of ids.slice(0, Math.max(0, ids.length - 300))) delete next[old];
-        await chrome.storage.local.set({[KEY]: next}).catch(() => {});
+        try {
+            const {[KEY]: saved = {}} = await chrome.storage.local.get(KEY).catch(() => ({}));
+            const next = Object.assign({}, saved, {[item.id]: item.startTime || ''}), ids = Object.keys(next);
+            for (const old of ids.slice(0, Math.max(0, ids.length - 300))) delete next[old];
+            await chrome.storage.local.set({[KEY]: next}).catch(() => {});
+        } catch { /* remembered for this page only */ }
     }
     // The download record after Chrome has looked on disk (up to `wait` ms; a missing file is reported well within it).
     async function look(id, wait = 250) {
