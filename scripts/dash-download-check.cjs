@@ -13,6 +13,8 @@ const probe=file=>{const out=spawnSync(ffmpeg,['-hide_banner','-i',file],{encodi
  return {video:(out.match(/Stream #[^\n]*Video:/g)||[]).length,audio:(out.match(/Stream #[^\n]*Audio:/g)||[]).length,seconds:d?+d[1]*3600+ +d[2]*60+ +d[3]:0,height:+(out.match(/Video:[^\n]*?, (\d+)x(\d+)/)||[])[2]||0,raw:out};};
 const hits={};let origin='';
 const server=http.createServer((request,response)=>{
+ // 0.4.81: /slow/... serves the same media with every segment held back, so a download is still running a moment later.
+ if(request.url.startsWith('/slow/')&&!request.held&&!/[.](m3u8|mpd)$/.test(request.url.split('?')[0])){request.held=true;return setTimeout(()=>server.emit('request',request,response),2500);}
  const url=new URL(request.url,'http://x'),[,mode,set,...rest]=url.pathname.split('/'),file=rest.join('/');hits[url.pathname]=(hits[url.pathname]||0)+1;
  const base={'Access-Control-Allow-Origin':'*'};
  if(mode==='page.html'){response.writeHead(200,{'Content-Type':'text/html; charset=utf-8'});return response.end('<!doctype html><title>DASH 来源网页</title>');}
@@ -37,7 +39,7 @@ const server=http.createServer((request,response)=>{
  // (spec v4) Record the file names extension pages hand to chrome.downloads.download.
  await context.addInitScript(()=>{if(location.protocol!=='chrome-extension:'||!chrome.downloads?.download)return;const original=chrome.downloads.download.bind(chrome.downloads);
   chrome.downloads.download=(options,...rest)=>{chrome.storage.session.get('savedNames').then(r=>chrome.storage.session.set({savedNames:[...(r.savedNames||[]),options?.filename||'']})).catch(()=>{});return original(options,...rest);};});
- const dialogs=[];context.on('page',p=>p.on('dialog',d=>{dialogs.push(d.message());d.dismiss().catch(()=>{});}));
+ const dialogs=[],unloads=[];context.on('page',p=>p.on('dialog',d=>{if(d.type()==='beforeunload'){unloads.push(p.url());d.dismiss().catch(()=>{});return;}dialogs.push(d.message());d.dismiss().catch(()=>{});}));
  const worker=context.serviceWorkers()[0]||await context.waitForEvent('serviceworker');const id=new URL(worker.url()).hostname;
  const source=await context.newPage();await source.goto(origin+'/page.html');
  const sourceTab=await worker.evaluate(async o=>(await chrome.tabs.query({})).find(t=>(t.url||'').startsWith(o)).id,origin);
@@ -113,6 +115,23 @@ const server=http.createServer((request,response)=>{
  await page.evaluate(()=>chrome.storage.local.set({ruxgetUiLanguage:'en'}));await page.waitForTimeout(1200);
  {const text=await page.evaluate(()=>document.body.innerText);check(/\bVideo\b/.test(text)&&/\bAudio\b/.test(text)&&!/Picture|Sound\b/.test(text),'the English page says Video and Audio');}
  await page.evaluate(()=>chrome.storage.local.set({ruxgetUiLanguage:'zh_CN'}));await page.close();
+ // 0.4.81: keep the page open while downloading: a visible line, and closing or reloading asks first (beforeunload),
+ // only while a download is running. Dismissing the leave-page dialog keeps the page and its download.
+ {page=await open('/slow/template/manifest.mpd');await ready(page);
+  check(await page.locator('#keepOpenNote').isHidden(),'before 下载 there is no keep-open line');
+  const start=await lastId();await page.getByRole('button',{name:/^下载$/}).click();
+  await page.locator('#keepOpenNote').waitFor({state:'visible',timeout:5000});
+  check(/下载完成前请保持这个页面打开/.test(await page.locator('#keepOpenNote').innerText()),'while downloading the page says 下载完成前请保持这个页面打开');
+  await page.screenshot({path:path.join(report,'keep-open.png'),fullPage:true});
+  const asked=unloads.length;await page.close({runBeforeUnload:true});await page.waitForTimeout(1000);
+  check(unloads.length===asked+1&&!page.isClosed(),'closing the page while downloading asks first, and staying keeps the page');
+  await finished(start);await page.waitForFunction(()=>document.getElementById('keepOpenNote').hidden&&/下载完成/.test(document.body.innerText),null,{timeout:20000});
+  check(true,'the download still finishes, and the line goes away');
+  const after=unloads.length;await page.close({runBeforeUnload:true});await page.waitForEvent('close',{timeout:5000}).catch(()=>{});
+  check(page.isClosed()&&unloads.length===after,'after 下载完成 the page closes without asking');
+  page=await open('/slow/template/manifest.mpd');await ready(page);await page.locator('body').click({position:{x:5,y:5}});const none=unloads.length;
+  await page.close({runBeforeUnload:true});await page.waitForEvent('close',{timeout:5000}).catch(()=>{});
+  check(page.isClosed()&&unloads.length===none,'before 下载 the page closes without asking');}
  // (spec v4) Downloads go to the Ruxget sub-folder unless 另存为 is on.
  {const names=await worker.evaluate(()=>chrome.storage.session.get('savedNames').then(r=>r.savedNames||[]));check(names.length>0&&names.every(n=>/^Ruxget\//.test(n)),'every save goes to the Ruxget folder: '+names.slice(0,3).join(', '));}
  check(dialogs.length===0,'no dialog appeared at any point');

@@ -236,3 +236,6 @@ a { color: var(--olive); }
 }
 
 input::placeholder, textarea::placeholder { color: var(--ink-2); opacity: 1; }
+
+/* 0.4.81: while downloading, the page itself holds the download; a plain, visible line says to keep it open. */
+.keep-open { font-weight: 600; border-left: 3px solid var(--olive); border-radius: 0 6px 6px 0; margin-bottom: 14px; }

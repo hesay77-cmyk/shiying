@@ -7,6 +7,7 @@ const TEXT = {
   zh: {
     pageName: 'Ruxget · 视频下载',
     keepOpen: '请保持这个页面打开，下载进度会显示在这里。',
+    keepOpenWhile: '下载完成前请保持这个页面打开，关闭或刷新会中断下载。',
     showAdvanced: '显示高级选项',
     hideAdvanced: '收起高级选项',
     playlistField: '播放列表地址（.m3u8）',
@@ -105,6 +106,7 @@ const TEXT = {
   en: {
     pageName: 'Ruxget · Video Download',
     keepOpen: 'Keep this page open. Download progress appears here.',
+    keepOpenWhile: 'Keep this page open until the download finishes. Closing or reloading it stops the download.',
     showAdvanced: 'Show advanced options',
     hideAdvanced: 'Hide advanced options',
     playlistField: 'Playlist address (.m3u8)',
@@ -1334,8 +1336,17 @@ function showJobMessage(key, ...args) {
   say(el, key, ...args);
 }
 
+const BUSY = ['running', 'recording', 'saving'];
+/* ------------------------------------------------------------------ 0.4.81: keep the page open while downloading */
+// The download lives in this page: closing or reloading it ends the download. While one is running (or being
+// saved), a line above the progress says so, and closing or reloading asks first (Chrome's own leave-page dialog).
+// Nothing is asked before a download starts or after it finished, stopped or failed.
+const busyNow = () => !!job && !job.stopped && BUSY.includes(job.state);
+window.addEventListener('beforeunload', event => { if (!busyNow()) return; event.preventDefault(); event.returnValue = ''; });
+
 function setButtons(state) {
   // running | stopped | failed | failedSegments | done | recording | saving
+  $('keepOpenNote').hidden = !BUSY.includes(state);
   const stop = $('stopButton');
   stop.hidden = state === 'done' || state === 'saving' || (job && job.live && state !== 'recording');
   stop.disabled = false;

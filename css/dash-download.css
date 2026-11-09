@@ -209,3 +209,6 @@ a { color: var(--olive); }
   h1 { font-size: 19px; }
   .card { padding: 14px; }
 }
+
+/* 0.4.81: while downloading, the page itself holds the download; a plain, visible line says to keep it open. */
+.keep-open { font-weight: 600; border-left: 3px solid var(--olive); border-radius: 0 6px 6px 0; margin-bottom: 14px; }
