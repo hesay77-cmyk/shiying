@@ -86,7 +86,7 @@ const ShiyingPlatformUI = (() => {
     // 0.4.81: a finished download whose file was deleted or moved outside Chrome says so, offers no 打开, and its
     // 删除文件 becomes 从列表移除. Chrome answers after looking on disk (RuxgetOpen.gone); later changes come as events.
     const goneDownloads=new Set(),checkedAt=new Map();
-    const fileGone=job=>!!job&&job.status==='complete'&&Number.isInteger(job.downloadId)&&goneDownloads.has(job.downloadId);
+    const fileGone=job=>!!job&&job.status==='complete'&&Number.isInteger(job.downloadId)&&(goneDownloads.has(job.downloadId)||RuxgetOpen.remembered(job.downloadId));
     function checkFile(job){
         if(!job||job.status!=='complete'||!Number.isInteger(job.downloadId)||performance.now()-(checkedAt.get(job.downloadId)??-1e9)<2000)return;
         const id=job.downloadId;checkedAt.set(id,performance.now());
@@ -102,6 +102,9 @@ const ShiyingPlatformUI = (() => {
     // The side panel stays open while files are moved in Explorer: look again when it comes back into view.
     document.addEventListener('visibilitychange',()=>{if(!document.hidden&&currentJob)checkFile(currentJob);});
     window.addEventListener('focus',()=>{if(currentJob)checkFile(currentJob);});
+    // 0.4.81: and keep asking while a finished download is on the card (Chrome answers from what it last saw for up to
+    // 10 seconds, so one check right after showing it can still say "there"). See RuxgetOpen.watch.
+    const watchCard=RuxgetOpen.watch(()=>currentJob?.status==='complete'&&Number.isInteger(currentJob.downloadId)&&!fileGone(currentJob)?[currentJob.downloadId]:[]);
     function renderJob(job){
         currentJob=job;updateActions();
         $('#platformJob').hidden=!job;
@@ -117,7 +120,7 @@ const ShiyingPlatformUI = (() => {
         $('#platformDelete').hidden=!['complete','error','cancelled'].includes(job.status);
         $('#platformOpen').hidden=!(job.status==='complete'&&Number.isInteger(job.downloadId))||missing;$('#platformOpen').textContent=pick('打开','Open');
         $('#platformJob').title=$('#platformOpen').hidden?'':pick('双击打开文件','Double-click to open the file');
-        renderHint();checkFile(job);
+        renderHint();if(job.status==='complete'&&!missing&&!checkedAt.has(job.downloadId))watchCard();checkFile(job);
     }
     // A language switch while the panel is open: the task area (stage, 打开, 删除文件), the method menu and the hint line are
     // written again; the other texts written here follow through RuxgetI18n.live. An armed 删除文件 starts over.
