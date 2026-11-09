@@ -24,7 +24,7 @@
   "manifest_version": 3,
   "minimum_chrome_version": "116",
   "name": "__MSG_extName__",
-  "homepage_url": "https://hidaydream.cloud/",
+  "homepage_url": "https://hidaydream.cloud/ruxget/",
   "options_ui": {
     "page": "ruxget-settings.html",
     "open_in_tab": true

@@ -112,7 +112,7 @@ const MB=1024*1024;
    const help=page.getByRole('button',{name:'桌面版设置与帮助'});await help.waitFor({state:'visible'});
    const [opened]=await Promise.all([browser.waitForEvent('page'),help.click()]);
    await opened.waitForLoadState();assert.match(opened.url(),/shiying-desktop\.html$/);await opened.locator('#takeover').waitFor({state:'visible'});
-   assert.equal(await opened.locator('header a.desktop-get').getAttribute('href'),'https://hidaydream.cloud/desktop/?from=ext');
+   assert.equal(await opened.locator('header a.desktop-get').getAttribute('href'),'https://hidaydream.cloud/ruxget/desktop/?from=ext');
    await opened.close();await page.close();}
   check('the panel has no takeover row; settings → 「桌面版设置与帮助」 opens the desktop page (with the desktop download link)');
   const settings=await browser.newPage();await settings.goto(`chrome-extension://${id}/shiying-desktop.html`);
@@ -152,9 +152,9 @@ const MB=1024*1024;
   menuDesktop=await openSettings('missing');await menuDesktop.waitForFunction(()=>/还没装桌面版/.test(document.querySelector('#desktopStatus').textContent));
   assert.equal(await menuDesktop.getByRole('button',{name:'打开桌面版'}).count(),0);
   const [site]=await Promise.all([browser.waitForEvent('page'),menuDesktop.getByRole('button',{name:'下载桌面版',exact:true}).click()]);
-  await site.waitForLoadState();assert.equal(site.url(),'https://hidaydream.cloud/desktop/?from=ext');await site.close();await menuDesktop.close();
+  await site.waitForLoadState();assert.equal(site.url(),'https://hidaydream.cloud/ruxget/desktop/?from=ext');await site.close();await menuDesktop.close();
   const wizard=await browser.newPage();await wizard.goto(`chrome-extension://${id}/shiying-desktop.html`);
-  assert.equal(await wizard.locator('.installer-name').getAttribute('href'),'https://hidaydream.cloud/desktop/?from=wizard');await wizard.close();
+  assert.equal(await wizard.locator('.installer-name').getAttribute('href'),'https://hidaydream.cloud/ruxget/desktop/?from=wizard');await wizard.close();
   check('desktop app missing: “下载安装” and the setup page both go to the website download section');
 
   assert.deepEqual(errors,[]);check('no page errors');

@@ -13,7 +13,7 @@ const pick=(zh,en)=>window.RuxgetI18n?RuxgetI18n.pick(zh,en):zh;
 // in a copy loaded in developer mode; people who installed Ruxget normally never see it.
 // 0.4.81: the tab title in the interface language.
 const desktopTitle=()=>{if(document.querySelector('#desktopConnectionStatus'))document.title=pick('Ruxget 桌面版 · 安装与连接','Ruxget Desktop · Setup');};
-(window.RuxgetI18n?RuxgetI18n.ready():Promise.resolve()).then(desktopTitle).catch(()=>{});document.addEventListener('ruxget-i18n-applied',desktopTitle);
+(globalThis.window?.RuxgetI18n?RuxgetI18n.ready():Promise.resolve()).then(desktopTitle).catch(()=>{});document.addEventListener?.('ruxget-i18n-applied',desktopTitle);
 chrome.management?.getSelf?.().then(self=>{if(self?.installType==='development')document.querySelectorAll('[data-dev-only]').forEach(node=>{node.hidden=false;});}).catch(()=>{});
 const desktopId=document.querySelector('#desktopExtensionId');
 if(desktopId){desktopId.textContent=chrome.runtime.id;document.querySelector('#copyDesktopId').addEventListener('click',async()=>{await navigator.clipboard.writeText(chrome.runtime.id);document.querySelector('#copyDesktopId').textContent=pick('已复制','Copied');});}

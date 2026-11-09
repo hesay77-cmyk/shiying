@@ -14,7 +14,7 @@
         const element = document.createElement('button'); element.type = 'button'; element.className = primary ? 'primary-button' : 'text-button';
         element.textContent = label; element.addEventListener('click', handler); return element;
     }
-    const releaseUrl = () => typeof ShiyingNative !== 'undefined' ? ShiyingNative.DESKTOP_RELEASE_URL : 'https://hidaydream.cloud/desktop/?from=ext';
+    const releaseUrl = () => typeof ShiyingNative !== 'undefined' ? ShiyingNative.DESKTOP_RELEASE_URL : 'https://hidaydream.cloud/ruxget/desktop/?from=ext';
     function label() {
         staticText();
         renderDesktop(); showFolder().catch(() => {});

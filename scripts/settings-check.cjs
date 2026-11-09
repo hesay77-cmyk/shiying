@@ -36,11 +36,11 @@ const checks=[];function check(name){checks.push(name);console.log('PASS '+name)
   assert.equal(await page.locator('#saveAs').isChecked(),false);assert.equal(await page.locator('#floating').isChecked(),true);assert.equal(await page.locator('#recognize').isChecked(),true);
   assert.equal(await page.locator('input[name=language][value=zh_CN]').isChecked(),true);
   assert.equal(await page.locator('#versionText').innerText(),'版本 '+manifest.version);
-  assert.equal(await page.locator('a.desktop-get').innerText(),'下载 Ruxget 桌面版（免费，3 MB）');assert.equal(await page.locator('a.desktop-get').getAttribute('href'),'https://hidaydream.cloud/desktop/?from=ext');
+  assert.equal(await page.locator('a.desktop-get').innerText(),'下载 Ruxget 桌面版（免费，3 MB）');assert.equal(await page.locator('a.desktop-get').getAttribute('href'),'https://hidaydream.cloud/ruxget/desktop/?from=ext');
   assert.equal(await page.locator('#helpLink').getAttribute('href'),'shiying-help.html');assert.equal(await page.locator('#advancedLink').count(),0,'0.4.79: no link to the old options page');
   assert.equal(await page.locator('#sitesLink').getAttribute('href'),'shiying-help.html#site-access');
-  assert.equal(await page.locator('#privacyLink').getAttribute('href'),'https://hidaydream.cloud/privacy/'); // 03d9831: privacy now on the website
-  assert.equal(await page.locator('#siteLink').innerText(),'Ruxget 桌面版介绍');assert.equal(await page.locator('#siteLink').getAttribute('href'),'https://hidaydream.cloud/desktop/?from=ext');assert.equal(await page.locator('#siteLink').getAttribute('target'),'_blank');
+  assert.equal(await page.locator('#privacyLink').getAttribute('href'),'https://hidaydream.cloud/ruxget/privacy/'); // 03d9831: privacy now on the website
+  assert.equal(await page.locator('#siteLink').innerText(),'Ruxget 桌面版介绍');assert.equal(await page.locator('#siteLink').getAttribute('href'),'https://hidaydream.cloud/ruxget/desktop/?from=ext');assert.equal(await page.locator('#siteLink').getAttribute('target'),'_blank');
   assert.equal(await page.evaluate(()=>nativeCalls.length),0);assert.equal(await page.evaluate(()=>permissionRequests),0);
   await page.screenshot({path:path.join(report,'settings-zh.png'),fullPage:true});
   check('first visit: 从不 chosen, says Chrome isn’t allowed to talk to the desktop app yet, asks nothing and calls nothing by itself; links and version are there');

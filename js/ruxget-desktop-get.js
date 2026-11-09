@@ -2,7 +2,7 @@
 // data-desktop-get where it belongs. The link goes to the website's download section, marked as coming from the
 // extension (?from=ext) for the site's own visit count.
 (() => {
-    const URL_ = 'https://hidaydream.cloud/desktop/?from=ext';
+    const URL_ = 'https://hidaydream.cloud/ruxget/desktop/?from=ext';
     const pick = (zh, en) => window.RuxgetI18n ? RuxgetI18n.pick(zh, en) : zh;
     function render() {
         document.querySelectorAll('[data-desktop-get]').forEach(slot => {
