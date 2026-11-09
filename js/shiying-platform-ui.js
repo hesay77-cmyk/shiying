@@ -244,7 +244,16 @@ const ShiyingPlatformUI = (() => {
             live('#platformTitle',()=>pick('暂时没有读到视频','Couldn’t read the video yet'));
             $('#platformMeta').textContent = '';
             $('#platformNote').textContent = '';
-            live('#platformError',()=>RuxgetText.tr(error.message));
+            // 0.4.81: Douyin, Kuaishou and Xiaohongshu pages are optional sites. Until the person allows the site, Chrome
+            // refuses to let Ruxget read the page; say so in plain words with one button, instead of Chrome's English error.
+            const siteBlocked=source&&source.site!=='bilibili'&&/Cannot access contents|must request permission/i.test(error.message||'');
+            if(siteBlocked){
+                const names={douyin:['抖音','Douyin'],kuaishou:['快手','Kuaishou'],xiaohongshu:['小红书','Xiaohongshu']}[source.site]||['这个网站','this site'];
+                live('#platformError',()=>pick('需要允许 Ruxget 读取'+names[0]+'网页，才能找到视频。','Allow Ruxget to read '+names[1]+' pages to find the video.'));
+                const allow=document.createElement('button');allow.type='button';allow.className='hint-link';allow.textContent=pick('允许并读取','Allow and read');
+                allow.addEventListener('click',()=>{chrome.permissions.request({origins:[new URL(source.url).origin+'/*']}).catch(()=>false).then(granted=>{if(granted)read();});});
+                $('#platformError').append(' ',allow);
+            }else live('#platformError',()=>RuxgetText.tr(error.message));
             $('#platformError').hidden = false;
             qualityPlaceholder(()=>pick('读取成功后选择','Choose once the video is read'));
         } finally {if (serial === generation){$('#platformRead').disabled = false;updateActions();}}

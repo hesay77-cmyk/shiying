@@ -33,7 +33,7 @@ assert.deepEqual(ks.choices,[{height:0,label:'原画'}]);assert.equal(ks.title,'
 check('快手 catalog: falls back to the page’s main file when no quality list exists');
 assert.throws(()=>platform.muxedCatalog({site:'xiaohongshu',id:'x',url:'https://www.xiaohongshu.com/explore/x'},{duration:5,formats:[{width:720,height:1280,urls:['https://example.com/a.mp4']}],fallback:{urls:[]}}),/没有取得可下载的视频地址/);
 assert.throws(()=>platform.muxedCatalog({site:'kuaishou',id:'k',url:'https://www.kuaishou.com/short-video/k'},{duration:0,formats:[{width:1,height:2,urls:['https://v1.kwaicdn.com/a.mp4']}]}),/时长/);
-assert.deepEqual(platform.mediaOrigins,{douyin:['https://*.douyinvod.com/*','https://*.douyincdn.com/*'],kuaishou:[],xiaohongshu:['https://*.xhscdn.com/*']});
+assert.deepEqual(platform.mediaOrigins,{douyin:['https://*.douyinvod.com/*','https://*.douyincdn.com/*','https://*.zjcdn.com/*'],kuaishou:[],xiaohongshu:['https://*.xhscdn.com/*']});
 check('catalog refuses foreign hosts and missing durations; only 抖音/小红书 ask for server access');
 
 // 0.4.74: covers for the desktop app (GDI+ reads JPEG/PNG, not WebP): the first JPEG/PNG-looking address wins.

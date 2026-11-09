@@ -72,7 +72,7 @@ const dyPage=page(`document.getElementById('player').__reactFiber$x={memoizedPro
   await dy.evaluate(()=>{window.requested=[];chrome.permissions.request=async request=>{requested.push(request);return false;};});
   await dy.locator('label[for=formatVideo]').click();await dy.locator('#platformDownload').click();
   await dy.waitForFunction(()=>!document.querySelector('#platformError').hidden);
-  assert.deepEqual(await dy.evaluate(()=>requested),[{origins:['https://*.douyinvod.com/*','https://*.douyincdn.com/*']}]);
+  assert.deepEqual(await dy.evaluate(()=>requested),[{origins:['https://*.douyinvod.com/*','https://*.douyincdn.com/*','https://*.zjcdn.com/*']}]);
   assert.match(await dy.locator('#platformError').innerText(),/需要允许访问这个网站的视频服务器/);
   check('抖音: the first download asks for its video servers; declining explains why nothing started');
   await dy.evaluate(()=>{chrome.permissions.request=async request=>{requested.push(request);return true;};});

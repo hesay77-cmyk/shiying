@@ -4,7 +4,7 @@
 (() => {
     if (typeof ShiyingPlatform === 'undefined') return;
     const sites = {
-        douyin: {name: '抖音', hosts: /(^|\.)(douyinvod\.com|douyincdn\.com)$/, domains: ['douyinvod.com', 'douyincdn.com'], origins: ['https://*.douyinvod.com/*', 'https://*.douyincdn.com/*']},
+        douyin: {name: '抖音', hosts: /(^|\.)(douyinvod\.com|douyincdn\.com|zjcdn\.com)$/, domains: ['douyinvod.com', 'douyincdn.com', 'zjcdn.com'], origins: ['https://*.douyinvod.com/*', 'https://*.douyincdn.com/*', 'https://*.zjcdn.com/*']},
         kuaishou: {name: '快手', hosts: /(^|\.)(kwaicdn\.com|ndcimgs\.com|yximgs\.com|kwimgs\.com)$/, domains: ['kwaicdn.com', 'ndcimgs.com', 'yximgs.com', 'kwimgs.com'], origins: []},
         xiaohongshu: {name: '小红书', hosts: /(^|\.)xhscdn\.com$/, domains: ['xhscdn.com'], origins: ['https://*.xhscdn.com/*']}
     };

@@ -422,7 +422,7 @@ public partial class Manager : IDisposable {
                 bool biliTracks=Regex.IsMatch(videoHost,@"(^|\.)bilivideo\.(com|cn)$")&&Regex.IsMatch(audioHost,@"(^|\.)bilivideo\.(com|cn)$");
                 bool ytTracks=videoHost.EndsWith(".googlevideo.com")&&audioHost.EndsWith(".googlevideo.com");
                 bool combined=job.AudioUrl.Length==0&&(
-                    (sourceHost=="www.douyin.com"||sourceHost=="douyin.com")&&Regex.IsMatch(videoHost,@"(^|\.)(douyinvod|douyincdn)\.com$")||
+                    (sourceHost=="www.douyin.com"||sourceHost=="douyin.com")&&Regex.IsMatch(videoHost,@"(^|\.)(douyinvod|douyincdn|zjcdn)\.com$")||
                     (sourceHost=="www.kuaishou.com"||sourceHost=="kuaishou.com")&&Regex.IsMatch(videoHost,@"(^|\.)(kwaicdn|ndcimgs|yximgs|kwimgs)\.com$")||
                     (sourceHost=="www.xiaohongshu.com"||sourceHost=="xiaohongshu.com")&&Regex.IsMatch(videoHost,@"(^|\.)xhscdn\.com$"));
                 if(!(bili&&biliTracks||yt&&ytTracks||combined))throw new Exception("音视频轨与来源网站不匹配");
@@ -439,7 +439,7 @@ public partial class Manager : IDisposable {
     static bool YouTubeTracks(Download job){try{string host=new Uri(job.Url).Host;return job.Kind=="tracks"&&(host=="www.youtube.com"||host=="youtube.com"||host=="youtu.be"||host=="m.youtube.com");}catch{return false;}}
     static string TrackUrl(string value) {
         string url=Util.Url(value); var u=new Uri(url);
-        if(u.Scheme!="https"||!u.IsDefaultPort||!Regex.IsMatch(u.Host,@"(^|\.)(bilivideo\.(com|cn)|googlevideo\.com|douyinvod\.com|douyincdn\.com|kwaicdn\.com|ndcimgs\.com|yximgs\.com|kwimgs\.com|xhscdn\.com)$"))throw new Exception("视频轨地址不受支持");
+        if(u.Scheme!="https"||!u.IsDefaultPort||!Regex.IsMatch(u.Host,@"(^|\.)(bilivideo\.(com|cn)|googlevideo\.com|douyinvod\.com|douyincdn\.com|zjcdn\.com|kwaicdn\.com|ndcimgs\.com|yximgs\.com|kwimgs\.com|xhscdn\.com)$"))throw new Exception("视频轨地址不受支持");
         return url;
     }
     object Rpc(string method, params object[] parameters) {
