@@ -39,7 +39,7 @@ const checks=[];function check(name){checks.push(name);console.log('PASS '+name)
   assert.equal(await page.locator('a.desktop-get').innerText(),'下载 Ruxget 桌面版（免费，3 MB）');assert.equal(await page.locator('a.desktop-get').getAttribute('href'),'https://hidaydream.cloud/desktop/?from=ext');
   assert.equal(await page.locator('#helpLink').getAttribute('href'),'shiying-help.html');assert.equal(await page.locator('#advancedLink').count(),0,'0.4.79: no link to the old options page');
   assert.equal(await page.locator('#sitesLink').getAttribute('href'),'shiying-help.html#site-access');
-  assert.match(await page.locator('#privacyLink').getAttribute('href'),/PRIVACY\.md$/);
+  assert.equal(await page.locator('#privacyLink').getAttribute('href'),'https://hidaydream.cloud/privacy/'); // 03d9831: privacy now on the website
   assert.equal(await page.locator('#siteLink').innerText(),'Ruxget 桌面版介绍');assert.equal(await page.locator('#siteLink').getAttribute('href'),'https://hidaydream.cloud/desktop/?from=ext');assert.equal(await page.locator('#siteLink').getAttribute('target'),'_blank');
   assert.equal(await page.evaluate(()=>nativeCalls.length),0);assert.equal(await page.evaluate(()=>permissionRequests),0);
   await page.screenshot({path:path.join(report,'settings-zh.png'),fullPage:true});
