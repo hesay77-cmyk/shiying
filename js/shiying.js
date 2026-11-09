@@ -459,6 +459,16 @@ function chromeIntoRuxget(url,saveAs){
     try{chrome.downloads.onDeterminingFilename.addListener(listener);}catch{}
     return chrome.downloads.download({url,conflictAction:'uniquify'}).catch(error=>{stop();throw error;});
 }
+// 0.4.81: after 用 Chrome 下载, one quiet line under the paste box says where the file goes, then fades out (it used to
+// close the dialog with no visible answer).
+let pastedTimer=0;
+function pastedToChrome(saveAs){
+    const note=$('#platformPasteNote');if(!note){notify('已交给 Chrome 下载');return;}
+    clearTimeout(pastedTimer);note.classList.remove('is-fading');note.dataset.tone='info';
+    RuxgetI18n.live(note,()=>saveAs?RuxgetI18n.pick('已交给 Chrome 下载，请在 Chrome 的窗口里选择保存位置','Handed to Chrome. Choose where to save it in Chrome’s window'):RuxgetI18n.pick('已交给 Chrome 下载，保存在 Ruxget 文件夹','Handed to Chrome. It saves to the Ruxget folder'));
+    note.hidden=false;
+    pastedTimer=setTimeout(()=>{note.classList.add('is-fading');pastedTimer=setTimeout(()=>{note.hidden=true;note.classList.remove('is-fading');},250);},5000);
+}
 let linkDownloadBusy=false;
 function linkDownloadState(busy){linkDownloadBusy=busy;for(const id of ['linkUseChrome','linkUseDesktop','linkDownloadCancel','linkDownloadURL','linkDownloadReferer'])$('#'+id).disabled=busy;}
 function linkDownloadFailure(error){if(error.cancelled)return;$('#linkDownloadError').textContent=RuxgetText.tr(error.message||String(error));$('#linkDownloadError').hidden=false;}
@@ -476,7 +486,7 @@ $('#linkDownloadForm').addEventListener('submit',async event=>{
         let name=link.pathname.split('/').pop()||'';try{name=decodeURIComponent(name);}catch{}const ext=(/\.([a-z0-9]{1,8})$/i.exec(name)||[])[1]||'';
         const result=await chrome.runtime.sendMessage({Message:'shiyingDownload',tabId,data:{url:payload.url,ext,title:name.replace(/\.[a-z0-9]{1,8}$/i,'')||'下载文件',type:'',requestHeaders:{referer:payload.referer}}});
         if(!result?.ok)throw new Error(result?.error||'没有打开下载页，请重试');$('#linkDownload').close();notify('已在新标签页中打开下载页');}catch(error){linkDownloadFailure(error);}return;}
-    try{const payload=ShiyingNative.file($('#linkDownloadURL').value);linkDownloadState(true);$('#linkDownloadError').hidden=true;await chromeIntoRuxget(payload.url,$('#saveAs').checked);$('#linkDownload').close();notify('已交给 Chrome 下载');}catch(error){linkDownloadFailure(error);}finally{linkDownloadState(false);}
+    try{const payload=ShiyingNative.file($('#linkDownloadURL').value);linkDownloadState(true);$('#linkDownloadError').hidden=true;const saveAs=$('#saveAs').checked;await chromeIntoRuxget(payload.url,saveAs);$('#linkDownload').close();pastedToChrome(saveAs);}catch(error){linkDownloadFailure(error);}finally{linkDownloadState(false);}
 });
 $('#linkUseDesktop').addEventListener('click',()=>{
     if(linkDownloadBusy||!$('#linkDownloadForm').reportValidity())return;

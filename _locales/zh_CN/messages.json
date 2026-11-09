@@ -159,7 +159,7 @@
     "message": "取消"
   },
   "uiLinkHowNote": {
-    "message": "平时点击下载仍使用 Chrome，只有你选择时才打开 Ruxget 桌面版。"
+    "message": "用 Chrome 下载会存进下载文件夹里的 Ruxget 文件夹；大文件或需要暂停续传时，可以交给 Ruxget 桌面版。"
   },
   "uiPasteHttp": {
     "message": "粘贴 HTTP / HTTPS 下载链接"

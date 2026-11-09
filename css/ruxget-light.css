@@ -230,3 +230,5 @@ a{color:var(--olive)}
 .probe-switch .switch-track,.desktop-switch .switch-track{background:rgba(42,53,32,.16)!important}
 .probe-switch .switch-track::after,.desktop-switch .switch-track::after{background:#FFFEFA!important;box-shadow:0 1px 3px rgba(42,53,32,.25)}
 .probe-switch input:checked+.switch-track,.desktop-switch input:checked+.switch-track{background:var(--olive)!important}
+/* 0.4.81: the quiet line after a pasted link went to Chrome fades out */
+.paste-note{transition:opacity .25s ease}.paste-note.is-fading{opacity:0}

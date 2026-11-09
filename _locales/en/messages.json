@@ -159,7 +159,7 @@
     "message": "Cancel"
   },
   "uiLinkHowNote": {
-    "message": "Links you click on web pages still download in Chrome. Ruxget Desktop opens only when you choose it."
+    "message": "Chrome saves it in the Ruxget folder inside your downloads folder. For large files, or to pause and resume, use Ruxget Desktop."
   },
   "uiPasteHttp": {
     "message": "Paste an HTTP / HTTPS download link"
