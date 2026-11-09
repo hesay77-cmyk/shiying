@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ruxget Desktop · Setup</title>
+<title>Ruxget 桌面版 · 安装与连接</title>
 <link rel="stylesheet" href="css/shiying.css">
 <link rel="stylesheet" href="css/shiying-desktop.css">
 <link rel="stylesheet" href="css/ruxget-light.css">
@@ -102,7 +102,7 @@
     <h3 data-en="Only a tiny MP3, or the video link expired">只看到几个 KB 的 MP3，或视频地址已过期</h3>
     <p data-en="In the Ruxget panel, check the video title and quality, then send it to the desktop app again. Small MP3s in the advanced resource list are often just page sounds. If a link expired, read the video again on its page and resend.">在 Ruxget 主面板确认正片标题与清晰度，再发送到桌面版。高级资源列表里的小 MP3 可能只是网页提示音。地址过期时，在原网页重新读取视频后重新发送。</p>
     <h3 data-en="Several Ruxget icons or duplicate page buttons">出现多个 Ruxget 图标或重复浮钮</h3>
-    <p data-en="Open Chrome’s extensions page, check each Ruxget version and keep only the one you use enabled. After updating an unpacked copy, reload the extension and refresh the video page.">打开 Chrome 扩展管理页，核对各个 Ruxget 的版本号，只保留你准备使用的版本启用，关闭旧测试版本。更新本地插件后，重新加载扩展，再刷新视频页。</p>
+    <p data-en="Open Chrome’s extensions page (Chrome menu → Extensions → Manage extensions), keep only one Ruxget turned on, then refresh the video page.">打开 Chrome 的扩展程序管理页（Chrome 菜单 → 扩展程序 → 管理扩展程序），只保留一个 Ruxget 处于开启状态，再刷新视频页。</p>
   </details>
 
   <details>
@@ -128,18 +128,18 @@
     <p data-en="Some share pages aren’t supported; Aliyun Drive needs list view; up to 100 files at a time. If a link expires, go back to the drive and click again. Ruxget doesn’t bypass a drive’s own speed limits.">部分分享页不支持；阿里云盘需要切换到列表视图；一次最多 100 个文件。下载地址过期时，回到网盘重新点击即可。不会突破网盘自身的限速。</p>
   </details>
 
-  <details id="extension-install">
+  <details id="extension-install" data-dev-only hidden>
     <summary data-en="Don’t have the extension yet? Start here">还没装插件？从这里开始</summary>
     <p data-en="Install Ruxget from the Chrome Web Store; no developer mode needed, and it updates automatically. To load a developer package by hand:">推荐从 Chrome 网上应用店安装 Ruxget，不需要开启开发者模式，以后会自动更新。下面是手动加载开发者插件包的方法：</p>
     <ol>
       <li data-en-html="Unzip the package and open <code>chrome://extensions</code>.">解压开发者提供的插件包，在 Chrome 地址栏打开 <code>chrome://extensions</code>。</li>
       <li data-en="Turn on Developer mode and click “Load unpacked”.">开启「开发者模式」，点击「加载已解压的扩展程序」。</li>
-      <li data-en-html="Choose the folder that directly contains <code>manifest.json</code>, not a source ZIP or the desktop EXE.">选择名为「Chrome插件」的文件夹，或解压包中直接含有 <code>manifest.json</code> 的目录；不要选择源码 ZIP 或桌面 EXE。</li>
+      <li data-en-html="Choose the folder that directly contains <code>manifest.json</code>, not a source ZIP or the desktop EXE.">选择解压后直接含有 <code>manifest.json</code> 的文件夹；不要选择源码 ZIP 或桌面 EXE。</li>
       <li data-en="When Ruxget appears in the list, refresh your video or drive page. After updating the same folder, click “Reload” on the extension card and refresh the page. Don’t enable several copies of Ruxget.">在扩展列表看到 Ruxget 后，刷新视频页或网盘页。以后覆盖更新同一文件夹时，点扩展卡片上的「重新加载」，再刷新网页。不要同时启用多份 Ruxget。</li>
     </ol>
   </details>
 
-  <details>
+  <details data-dev-only hidden>
     <summary data-en="Connection diagnostics">连接诊断</summary>
     <label for="desktopExtensionId" data-en="Current extension ID (usually not needed)">当前扩展 ID（通常不需要手动填写）</label>
     <div class="desktop-id"><code id="desktopExtensionId"></code><button id="copyDesktopId" class="wizard-secondary" type="button" data-en="Copy">复制</button></div>

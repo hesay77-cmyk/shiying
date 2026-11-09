@@ -88,8 +88,9 @@ const TEXT = {
     headersSaved: '请求头已更新，之后的请求都会使用。',
     extraQuery: '分段地址附加参数',
     extraPlaceholder: '例如 token=abc',
-    copyCommand: '复制 N_m3u8DL-RE 命令',
-    commandCopied: '已复制 N_m3u8DL-RE 命令。',
+    copyCommand: '复制命令行下载命令',
+    commandTip: '复制一条命令，可在命令行下载工具 N_m3u8DL-RE 中使用',
+    commandCopied: '已复制命令行下载命令。',
     preview: '预览',
     closePreview: '关闭预览',
     previewFailed: '无法预览这个视频。',
@@ -187,8 +188,9 @@ const TEXT = {
     headersSaved: 'Request headers updated. They apply to all further requests.',
     extraQuery: 'Extra parameters for segment addresses',
     extraPlaceholder: 'for example token=abc',
-    copyCommand: 'Copy N_m3u8DL-RE command',
-    commandCopied: 'N_m3u8DL-RE command copied.',
+    copyCommand: 'Copy command-line download command',
+    commandTip: 'Copies a command for the N_m3u8DL-RE command-line downloader',
+    commandCopied: 'Download command copied.',
     preview: 'Preview',
     closePreview: 'Close preview',
     previewFailed: 'This video cannot be previewed.',
@@ -236,6 +238,7 @@ function applyLanguage() {
   $('customIv').placeholder = t('ivPlaceholder');
   $('extraQuery').placeholder = t('extraPlaceholder');
   $('previewButton').textContent = t(preview.hls ? 'closePreview' : 'preview');
+  $('commandButton').title = t('commandTip');
   if (!params.title) say($('subtitle'), 'keepOpen');
   if (info) { renderOptions(); renderSummary(); renderStartButton(); }
   renderTitle();

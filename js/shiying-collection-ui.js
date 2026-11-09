@@ -11,7 +11,7 @@ window.ShiyingCollectionUI=(()=>{
         $('collectionStart').disabled=starting||!chosen.length;
         $('collectionStart').textContent=say('下载所选 '+chosen.length+' 项','Download '+chosen.length+' selected');
         $('collectionHeight').hidden=$('collectionFormat').value==='mp3';
-        $('collectionQueueNote').textContent=$('collectionFormat').value==='mp3'?say('按顺序下载到 Chrome 默认位置。关闭面板仍会继续。','Downloads in order to Chrome’s default folder. Closing this panel keeps the queue running.'):RuxgetI18n.t('flowQueueNote');
+        $('collectionQueueNote').textContent=$('collectionFormat').value==='mp3'?say('按顺序下载到 Chrome 下载文件夹\\Ruxget。关闭面板仍会继续。','Downloads in order to the Ruxget folder in Chrome’s download folder. Closing this panel keeps the queue running.'):RuxgetI18n.t('flowQueueNote');
         loginNote();
         queueView(lastQueue);
     }

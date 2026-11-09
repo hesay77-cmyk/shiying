@@ -45,7 +45,7 @@
     "message": "打开 Ruxget 桌面版"
   },
   "uiOpenMenu": {
-    "message": "打开设置"
+    "message": "打开菜单"
   },
   "uiSaveAsLabel": {
     "message": "保存时选择文件夹"
@@ -198,7 +198,7 @@
     "message": "视频和声音，留在本地。"
   },
   "uiHelpIntroBody": {
-    "message": "点「下载视频」或「下载 MP3」，可以直接在 Chrome 内保存。需要大文件、BT 或让任务在关闭浏览器后继续时，可以安装配套桌面版，再在设置（面板右上角的齿轮）里选择「交给桌面版」。"
+    "message": "点「下载视频」或「下载 MP3」，可以直接在 Chrome 内保存。需要大文件、网盘、BT 或让任务在关闭浏览器后继续时，可以安装配套桌面版，再在设置（面板右上角的齿轮）里选择「交给桌面版」。"
   },
   "uiHelpDesktopLink": {
     "message": "桌面版完整安装方法与连接检查"
@@ -346,7 +346,7 @@
     "message": "全选"
   },
   "flowQueueNote": {
-    "message": "按顺序下载到 Chrome 默认位置；画质不超过所选上限。关闭面板仍会继续。"
+    "message": "按顺序下载到 Chrome 下载文件夹\\Ruxget；画质不超过所选上限。关闭面板仍会继续。"
   },
   "flowClose": {
     "message": "关闭"

@@ -100,6 +100,9 @@ $('#openTaskFile').addEventListener('click',()=>{if(savedDownload!==null)RuxgetO
 $('#openFile').addEventListener('click',async()=>{try{await request('shiyingPlatformOpen')}catch(error){say('#taskError',()=>tr(error.message));$('#taskError').hidden=false}});
 // Wait for the language so the first paint is already in the right language; live progress then overwrites these.
 (window.RuxgetI18n ? RuxgetI18n.ready() : Promise.resolve()).catch(() => {}).then(() => {
+    // 0.4.81: the tab title follows the interface language too (it stayed “Ruxget · Downloads” in Chinese).
+    const title = () => { document.title = pick('Ruxget · 下载管理', 'Ruxget · Downloads'); };
+    title(); document.addEventListener('ruxget-i18n-applied', title);
     say('#taskLabel', () => pick('下载进度', 'Download progress'));
     say('#taskTitle', () => pick('正在读取下载进度…', 'Reading download progress…'));
     say('#taskStage', () => pick('正在准备', 'Preparing'));

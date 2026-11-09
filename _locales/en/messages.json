@@ -198,7 +198,7 @@
     "message": "Video and audio, saved locally."
   },
   "uiHelpIntroBody": {
-    "message": "Click “Download video” or “Download MP3” to save in Chrome. For large files, torrents, or downloads that keep going after you close the browser, install the desktop app and choose “Hand downloads to the desktop app” in settings (the gear at the top right)."
+    "message": "Click “Download video” or “Download MP3” to save in Chrome. For large files, cloud drives, torrents, or downloads that keep going after you close the browser, install the desktop app and choose “Hand downloads to the desktop app” in settings (the gear at the top right)."
   },
   "uiHelpDesktopLink": {
     "message": "Desktop install guide and connection check"
@@ -346,7 +346,7 @@
     "message": "Select all"
   },
   "flowQueueNote": {
-    "message": "Downloads in order to Chrome’s default folder, up to the selected quality. Closing this panel keeps the queue running."
+    "message": "Downloads in order to the Ruxget folder in Chrome’s download folder, up to the selected quality. Closing this panel keeps the queue running."
   },
   "flowClose": {
     "message": "Close"
