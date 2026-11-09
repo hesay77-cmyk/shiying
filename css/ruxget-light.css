@@ -226,3 +226,7 @@ a{color:var(--olive)}
 .settings-actions .text-button:last-child:not(:first-child){color:var(--sub)!important;font-weight:400!important}
 .settings-card .settings-actions .text-button{font-weight:500!important}
 .settings-foot{padding:0!important}
+/* 0.4.81: the panel switches (大文件交给桌面版, 找出播放器里的视频) as on the desktop page: a visible track on cream */
+.probe-switch .switch-track,.desktop-switch .switch-track{background:rgba(42,53,32,.16)!important}
+.probe-switch .switch-track::after,.desktop-switch .switch-track::after{background:#FFFEFA!important;box-shadow:0 1px 3px rgba(42,53,32,.25)}
+.probe-switch input:checked+.switch-track,.desktop-switch input:checked+.switch-track{background:var(--olive)!important}

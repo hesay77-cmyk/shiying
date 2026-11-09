@@ -37,15 +37,17 @@ const server=http.createServer((request,response)=>{const url=new URL(request.ur
  const tabOf=async page=>worker.evaluate(async u=>(await chrome.tabs.query({})).find(t=>t.url===u).id,page.url());
  const panelFor=async page=>{const panel=await context.newPage();await panel.setViewportSize({width:380,height:640});await panel.goto(`chrome-extension://${id}/shiying.html?tabId=${await tabOf(page)}`);await panel.waitForTimeout(1500);return panel;};
  const listed=(panel,re)=>panel.evaluate(src=>document.body.innerText.match(new RegExp(src))!==null,re);
- const toggle=panel=>panel.getByRole('button',{name:/找出网页里藏起来的视频/});
- const enable=async(site,panel)=>{const reload=site.waitForEvent('load',{timeout:15000});await toggle(panel).click();await reload;await site.waitForTimeout(1500);};
+ // 0.4.81: a switch (role=switch) named 找出播放器里的视频, with “会刷新当前网页” beside it.
+ const toggle=panel=>panel.getByRole('switch',{name:/找出播放器里的视频/});
+ const enable=async(site,panel)=>{const reload=site.waitForEvent('load',{timeout:15000});await panel.locator('.probe-switch').click();await reload;await site.waitForTimeout(1500);};
  // 1–2. A playlist fetched from an address with no extension and the wrong type.
  const site=await context.newPage();await site.goto(origin+'/hidden.html');await site.waitForFunction(()=>window.got>0);
  let panel=await panelFor(site);check(!(await listed(panel,'api/play')),'without the probe, a playlist behind /api/play (text/plain) is not found');
- check(await toggle(panel).isVisible(),'the panel offers 找出网页里藏起来的视频 (页面播放器探测) on an allowed site');
+ check(await toggle(panel).count()===1&&!(await toggle(panel).isChecked())&&await panel.locator('.probe-switch').isVisible()&&/会刷新当前网页/.test(await panel.locator('.probe-switch').innerText()),'the panel offers the switch 找出播放器里的视频, off, saying 会刷新当前网页 (页面播放器探测) on an allowed site');
+ await panel.screenshot({path:path.join(report,'probe-off.png'),fullPage:true});
  await enable(site,panel);await panel.close();panel=await panelFor(site);
  check(await listed(panel,'(api/play|m3u8|网页|play)')&&(await panel.evaluate(t=>chrome.runtime.sendMessage({Message:'getData',tabId:t}),await tabOf(site))||[]).some(i=>/api\/play/.test(i.url)&&/m3u8/.test(i.ext)),'with the probe on (the page reloaded), the hidden playlist is listed as m3u8');
- check(/正在找网页里藏起来的视频/.test(await panel.evaluate(()=>document.body.innerText)),'the panel says it is looking for hidden videos (the probe is on)');await panel.screenshot({path:path.join(report,'probe-on.png'),fullPage:true});
+ check(/正在找播放器里的视频/.test(await panel.evaluate(()=>document.body.innerText))&&await panel.getByRole('switch').first().isChecked(),'the switch is on and says it is looking for videos in the player');await panel.screenshot({path:path.join(report,'probe-on.png'),fullPage:true});
  // 3. An address inside JSON.
  await site.goto(origin+'/json.html');await site.waitForFunction(()=>window.got);await site.waitForTimeout(1200);
  const data=await worker.evaluate(async u=>{const t=(await chrome.tabs.query({})).find(x=>x.url===u);return t?t.id:0;},site.url());
@@ -67,15 +69,15 @@ const server=http.createServer((request,response)=>{const url=new URL(request.ur
  await panel.getByRole('button',{name:/清空记录/}).click();await panel.waitForTimeout(1200);
  check(!/已记录 [1-9]/.test(await panel.evaluate(()=>document.body.innerText))||/已记录 0/.test(await panel.evaluate(()=>document.body.innerText)),'清空记录 sets the recorded sizes back to zero');
  // 6. Turning it off.
- const reload=site.waitForEvent('load',{timeout:15000});await panel.getByRole('button',{name:/关闭/}).first().click();await reload;await panel.close();
+ const reload=site.waitForEvent('load',{timeout:15000});await panel.locator('.probe-switch').click();await reload;await panel.close();
  await site.goto(origin+'/hidden.html');await site.waitForFunction(()=>window.got>0);await site.waitForTimeout(1000);
  await worker.evaluate(()=>0);panel=await panelFor(site);
  const after=await panel.evaluate(t=>chrome.runtime.sendMessage({Message:'getData',tabId:t}),await tabOf(site));
- check(!(after||[]).some(i=>/api\/play/.test(i.url))&&!/已开启/.test(await panel.evaluate(()=>document.body.innerText)),'after 关闭 the page is back to normal: nothing hidden is reported');
+ check(!(after||[]).some(i=>/api\/play/.test(i.url))&&!/正在找播放器里的视频/.test(await panel.evaluate(()=>document.body.innerText)),'after 关闭 the page is back to normal: nothing hidden is reported');
  // 7. Another site turns it off.
  await enable(site,panel);await site.goto(origin.replace('127.0.0.1','localhost')+'/other.html').catch(()=>{});await site.waitForTimeout(800);
  await site.goto(origin+'/hidden.html');await site.waitForFunction(()=>window.got>0);await site.waitForTimeout(1000);await panel.close();panel=await panelFor(site);
- check(!/已开启/.test(await panel.evaluate(()=>document.body.innerText)),'going to another site turns the probe off');
+ check(!/正在找播放器里的视频/.test(await panel.evaluate(()=>document.body.innerText)),'going to another site turns the probe off');
  await panel.setViewportSize({width:360,height:640});check(await panel.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'the panel fits 360 px');
  check(dialogs.length===0,'no dialog appeared');
  fs.writeFileSync(path.join(report,'summary.json'),JSON.stringify({checks},null,1));console.log(`probe-check passed (${checks.length} checks). Report: ${report}`);

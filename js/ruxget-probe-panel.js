@@ -1,5 +1,5 @@
 // Ruxget，2026-11-08，按功能说明书 06-页面播放器探测 从零编写。
-// Panel half of 页面播放器探测: the quiet switch after 「显示全部请求」, and the 「网页播放器缓存」 card at the top of
+// Panel half of 页面播放器探测: the switch after 「显示全部请求」, and the 「网页播放器缓存」 card at the top of
 // 本页视频 with 保存 and 清空记录. shiying.js calls attach() each time it draws the list; the card keeps itself up to
 // date from js/ruxget-probe.js (ruxgetProbeChanged).
 const RuxgetProbePanel = (() => {
@@ -24,23 +24,18 @@ const RuxgetProbePanel = (() => {
     }
 
     // ---------- the switch ----------
+    // 0.4.81: a real switch (the same look as 大文件交给桌面版), with a short line saying it reloads the page; before,
+    // it read as a line of plain text and the reload was only in the hover note.
     function paintEntry() {
-        const button = document.createElement('button');
-        button.type = 'button'; button.className = 'hint-link'; button.disabled = busy;
-        if (info.on) {
-            const text = document.createElement('span');
-            // 0.4.81: plain words for everyone (it was 页面播放器探测 / Page player probe).
-            text.textContent = pick('正在找网页里藏起来的视频', 'Looking for hidden videos');
-            text.title = pick('请播放视频，找到的会显示在列表里', 'Play the video; anything found shows up in the list');
-            button.textContent = pick('关闭', 'Turn off');
-            button.title = pick('关闭后网页会刷新一次，恢复原样', 'The page reloads once and is back to normal');
-            entry.replaceChildren(text, ' · ', button);
-        } else {
-            button.textContent = pick('找出网页里藏起来的视频', 'Find videos hidden in the page');
-            button.title = pick('有些网站的视频在列表里找不到，打开后会刷新网页再找一次（只对这个标签页）', 'Some sites’ videos don’t show up in the list. This reloads the page and looks again (this tab only).');
-            entry.replaceChildren(button);
-        }
-        button.addEventListener('click', () => toggle(!info.on));
+        const label = document.createElement('label'), input = document.createElement('input'), track = document.createElement('span'), words = document.createElement('span'), name = document.createElement('span'), note = document.createElement('small');
+        label.className = 'probe-switch'; words.className = 'probe-words'; track.className = 'switch-track'; track.setAttribute('aria-hidden', 'true');
+        input.type = 'checkbox'; input.setAttribute('role', 'switch'); input.checked = !!info.on; input.disabled = busy;
+        name.textContent = info.on ? pick('正在找播放器里的视频', 'Finding videos in the player') : pick('找出播放器里的视频', 'Find videos in the player');
+        note.textContent = info.on ? pick('请播放视频；关闭时会再刷新一次网页', 'Play the video. Turning this off reloads the page again') : pick('会刷新当前网页', 'Reloads this page');
+        label.title = info.on ? pick('找到的视频会显示在上面的列表里', 'Videos it finds show up in the list above') : pick('有些网站的视频在列表里找不到，打开后会刷新网页再找一次（只对这个标签页）', 'Some sites’ videos don’t show up in the list. This reloads the page and looks again (this tab only).');
+        words.append(name, note); label.append(input, track, words);
+        input.addEventListener('change', () => { input.checked = !!info.on; toggle(!info.on); });
+        entry.replaceChildren(label);
     }
     async function toggle(on) {
         if (busy || tabId === null) return;
