@@ -124,17 +124,20 @@
         const {ruxgetPausedForHandOver: handing = []} = await chrome.storage.session.get('ruxgetPausedForHandOver').catch(() => ({}));
         const waiting = item => item.state === 'in_progress' && item.danger && !['safe', 'accepted', 'allowlistedByPolicy', 'deepScannedSafe', 'deepScannedOpenedDangerous'].includes(item.danger);
         return items.filter(item => !item.incognito && !siteDownloads.has(item.id) && !hidden.includes(item.id) && !handing.includes(item.id) && !waiting(item) && !(item.state === 'interrupted' && item.error === 'USER_CANCELED'))
-            .map(item => ({chrome: true, id: 'chrome-' + item.id, downloadId: item.id, title: fileName(item), item, time: Date.parse(item.startTime) || 0, gone: item.state === 'complete' && item.exists === false,
+            .map(item => ({chrome: true, id: 'chrome-' + item.id, downloadId: item.id, title: fileName(item), item, time: Date.parse(item.startTime) || 0, own: item.byExtensionId === chrome.runtime.id,
+                gone: item.state === 'complete' && (item.exists === false || !!window.RuxgetOpen?.remembered(item.id)),
                 status: item.state === 'complete' ? 'complete' : item.state === 'in_progress' ? (item.paused ? 'paused' : 'running') : 'error'}));
     }
     const goneText = () => window.RuxgetOpen ? RuxgetOpen.goneText() : pick('文件已被移动或删除', 'The file was moved or deleted');
     // Site videos Ruxget saved through Chrome: does Chrome still find the file? (Searching makes Chrome look on disk;
-    // a file found missing comes back as downloads.onChanged, which renders the list again.)
+    // a file found missing comes back through RuxgetOpen.onGone, which renders the list again.)
     async function markSiteGone(jobs) {
-        await Promise.all(jobs.filter(job => job.status === 'complete' && Number.isInteger(job.downloadId)).map(async job => {
-            const [item] = await chrome.downloads.search({id: job.downloadId}).catch(() => []);
+        const finished = jobs.filter(job => job.status === 'complete' && Number.isInteger(job.downloadId));
+        const items = window.RuxgetOpen ? await RuxgetOpen.states(finished.map(job => job.downloadId)).catch(() => ({})) : {};
+        for (const job of finished) {
+            const item = items[job.downloadId];
             job.gone = !!item && item.state === 'complete' && item.exists === false;
-        }));
+        }
     }
     // The same sizes as the download pages (1 MB = 1024 × 1024 bytes; KB whole, MB one decimal, GB two).
     const MB = 1024 * 1024, size = bytes => bytes >= 1024 * MB ? (bytes / 1024 / MB).toFixed(2) + ' GB' : bytes >= MB ? (bytes / MB).toFixed(1) + ' MB' : Math.max(1, Math.round(bytes / 1024)) + ' KB';
@@ -148,7 +151,11 @@
         return job.status === 'paused' ? 'Chrome · ' + pick('已暂停', 'Paused') + ' · ' + amount : 'Chrome · ' + amount;
     }
     const icon = path => '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="' + path + '"/></svg>';
-    let renderedRunningChrome = false;
+    let renderedRunningChrome = false, shownFiles = [];
+    // While "已下载" is in view, Chrome is asked again about the files listed as present (RuxgetOpen.watch), and a file
+    // found missing renders the list again.
+    const askAgain = window.RuxgetOpen ? RuxgetOpen.watch(() => window.RuxgetTabs?.current?.() === 'downloads' ? shownFiles : []) : () => {};
+    window.RuxgetOpen?.onGone(() => later());
     async function render() {
         const {shiyingJobIds: ids = []} = await chrome.storage.local.get('shiyingJobIds');
         const keys = ids.slice(-SHOWN).reverse().map(id => 'shiyingJob:' + id), records = await chrome.storage.local.get(keys);
@@ -163,7 +170,10 @@
         for (const job of desktop) if (job.state === 'done' && !seen[job.id]) seen[job.id] = Date.now();
         if (Object.keys(seen).length !== Object.keys(doneAt).length) chrome.storage.session.set({ruxgetDesktopDoneAt: seen}).catch(() => {});
         for (const job of desktop) if (job.state === 'done') job.time = Math.max(job.time, seen[job.id] || 0);
-        const current = job => !since || job.time >= since || (job.desktop ? job.state !== 'done' : !done(job));
+        // 0.4.81: what Ruxget itself downloaded (site videos, its download pages, pasted links) stays listed after a
+        // restart, like the download card does, and says so when its file was deleted meanwhile; only Chrome's own
+        // downloads and desktop tasks are limited to this session.
+        const current = job => !since || job.time >= since || (job.desktop ? job.state !== 'done' : !job.chrome || job.own || !done(job));
         const jobs = [...browser, ...desktop, ...await chromeJobs(siteDownloads)].filter(current).sort((a, b) => b.time - a.time).slice(0, SHOWN);
         await markSiteGone(jobs.filter(job => !job.desktop && !job.chrome));
         // 0.4.81: the empty note no longer promises “only since Chrome started”: what is listed depends on when Chrome
@@ -175,6 +185,7 @@
         const running = jobs.filter(job => job.desktop ? job.state === 'active' : job.chrome ? job.status === 'running' : !done(job)).length;
         window.RuxgetTabs?.count('downloads', running);
         renderedRunningChrome = jobs.some(job => job.chrome && job.status === 'running');
+        shownFiles = jobs.filter(job => !job.desktop && job.status === 'complete' && !job.gone && Number.isInteger(job.downloadId)).map(job => job.downloadId);
         // Keyboard focus survives the refresh (it would jump to the top of the page otherwise).
         const focused = list.contains(document.activeElement) ? {id: document.activeElement.closest('li[data-id]')?.dataset.id, index: [...(document.activeElement.closest('li') || list).querySelectorAll('button')].indexOf(document.activeElement)} : null;
         openers.clear();
@@ -271,7 +282,7 @@
     // Chrome keeps the full history; Ruxget doesn't keep a second copy.
     history?.addEventListener('click', () => { chrome.tabs.create({url: 'chrome://downloads/'}).catch(() => {}); });
     document.addEventListener('ruxget-i18n-applied', later);
-    document.addEventListener('ruxget-view', event => { if (event.detail === 'downloads') later(); });
+    document.addEventListener('ruxget-view', event => { if (event.detail === 'downloads') { later(); setTimeout(askAgain, 400); } });
     document.addEventListener('keydown', event => { if (event.key === 'Escape' && confirming && !working) { confirming = ''; render().catch(() => {}); } });
     (window.RuxgetI18n ? RuxgetI18n.ready() : Promise.resolve()).catch(() => {}).then(() => render()).catch(() => {});
 })();
