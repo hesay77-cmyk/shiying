@@ -130,25 +130,31 @@
     }
     const goneText = () => window.RuxgetOpen ? RuxgetOpen.goneText() : pick('文件已被移动或删除', 'The file was moved or deleted');
     // Site videos Ruxget saved through Chrome: does Chrome still find the file? (Searching makes Chrome look on disk;
-    // a file found missing comes back through RuxgetOpen.onGone, which renders the list again.)
+    // a file found missing comes back through RuxgetOpen.onGone, which renders the list again.) 0.4.81: the row shows
+    // the file's actual name, so two downloads of the same video ("… .mp4" and "… (1).mp4") can be told apart.
     async function markSiteGone(jobs) {
         const finished = jobs.filter(job => job.status === 'complete' && Number.isInteger(job.downloadId));
         const items = window.RuxgetOpen ? await RuxgetOpen.states(finished.map(job => job.downloadId)).catch(() => ({})) : {};
         for (const job of finished) {
             const item = items[job.downloadId];
             job.gone = !!item && item.state === 'complete' && item.exists === false;
+            const name = String(item?.filename || job.file || '').split(/[\\/]/).filter(Boolean).pop();
+            if (name) job.fileName = name;
         }
     }
     // The same sizes as the download pages (1 MB = 1024 × 1024 bytes; KB whole, MB one decimal, GB two).
     const MB = 1024 * 1024, size = bytes => bytes >= 1024 * MB ? (bytes / 1024 / MB).toFixed(2) + ' GB' : bytes >= MB ? (bytes / MB).toFixed(1) + ' MB' : Math.max(1, Math.round(bytes / 1024)) + ' KB';
     function chromeMeta(job) {
         const item = job.item, percent = item.totalBytes > 0 ? Math.round(item.bytesReceived / item.totalBytes * 100) : 0;
-        if (job.gone) return 'Chrome · ' + goneText();
-        if (job.status === 'complete') return ['Chrome', item.fileSize > 0 ? size(item.fileSize) : '', pick('下载完成', 'Downloaded')].filter(Boolean).join(' · ');
-        if (job.status === 'error') return 'Chrome · ' + pick('下载中断', 'Interrupted');
+        // 0.4.81: "Ruxget" for everything Ruxget started (HLS/DASH pages, file pages, pasted links, subtitles), "Chrome"
+        // only for downloads started on a web page and handled by Chrome itself.
+        const who = job.own ? 'Ruxget' : 'Chrome';
+        if (job.gone) return who + ' · ' + goneText();
+        if (job.status === 'complete') return [who, item.fileSize > 0 ? size(item.fileSize) : '', pick('下载完成', 'Downloaded')].filter(Boolean).join(' · ');
+        if (job.status === 'error') return who + ' · ' + pick('下载中断', 'Interrupted');
         // Bytes as well as the percentage: a large file stays at 0% for a while and would look stuck.
         const amount = item.totalBytes > 0 ? percent + '% · ' + size(item.bytesReceived || 0) + ' / ' + size(item.totalBytes) : size(item.bytesReceived || 0);
-        return job.status === 'paused' ? 'Chrome · ' + pick('已暂停', 'Paused') + ' · ' + amount : 'Chrome · ' + amount;
+        return job.status === 'paused' ? who + ' · ' + pick('已暂停', 'Paused') + ' · ' + amount : who + ' · ' + amount;
     }
     const icon = path => '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="' + path + '"/></svg>';
     let renderedRunningChrome = false, shownFiles = [];
@@ -194,7 +200,8 @@
             if (confirming === job.id) { item.append(confirmRow(job)); return item; }
             const button = document.createElement('button'), title = document.createElement('b'), meta = document.createElement('small');
             button.type = 'button'; button.className = 'recent-open'; button.dataset.status = job.status;
-            title.textContent = job.title || pick('网页视频', 'Video'); title.title = job.title || '';
+            const label = job.fileName || job.title;
+            title.textContent = label || pick('网页视频', 'Video'); title.title = job.fileName && job.title && job.title !== job.fileName ? job.title + '\n' + job.fileName : label || '';
             const percent = Number.isFinite(Number(job.progress)) ? Math.round(Number(job.progress)) : 0;
             // 0.4.74: in English "Downloaded · double-click to open" wrapped mid-word in the 360 px panel; a finished row that
             // opens says only "Double-click to open" (being openable already means it finished).
